@@ -34,6 +34,8 @@ namespace Pinball.Ingame
         bool _isPressed = false;
         float _pressedElapsed = 0f;
 
+        public ESide Side => _side;
+
         float SideDirection => _side == ESide.Left ? NORMAL_MULTIPLIER : MIRRORED_DIRECTION;
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;

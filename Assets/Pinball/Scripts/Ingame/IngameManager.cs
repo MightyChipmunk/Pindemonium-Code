@@ -19,9 +19,6 @@ namespace Pinball.Ingame
         const int DEFAULT_MAP_INDEX = 0;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
-        [SerializeField] Flipper _leftFlipper = null;
-        [SerializeField] Flipper _rightFlipper = null;
-        [SerializeField] Spring _spring = null;
         [SerializeField] BallSpawner _ballSpawner = null;
         [SerializeField] BallDrainZone _drainZone = null;
         [SerializeField] MapLoader _mapLoader = null;
@@ -31,6 +28,7 @@ namespace Pinball.Ingame
         ScoreCounter _scoreCounter = null;
         BallStockCounter _ballStock = null;
         DamageCalculator _damageCalculator = null;
+        MapRoot _currentMap = null;
         EGameState _gameState = EGameState.Ready;
 
         void Awake()
@@ -53,17 +51,14 @@ namespace Pinball.Ingame
             _damageCalculator.Init(GetBallAttackPower);
 
             _inputRouter.Init();
-            _leftFlipper.Init(GetFlipPower);
-            _rightFlipper.Init(GetFlipPower);
-            _spring.Init();
             _ballSpawner.Init();
             _drainZone.Init();
             _mapLoader.Init();
             _uiRoot.Init();
 
-            MapRoot mapRoot = _mapLoader.Load(DEFAULT_MAP_INDEX);
-            if (null != mapRoot)
-                mapRoot.Init(_scoreCounter.Add, _damageCalculator.Calculate);
+            _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
+            if (null != _currentMap)
+                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower);
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;
@@ -93,17 +88,10 @@ namespace Pinball.Ingame
             if (null != _mapLoader)
                 _mapLoader.Release();
 
+            _currentMap = null;
+
             if (null != _ballSpawner)
                 _ballSpawner.Release();
-
-            if (null != _spring)
-                _spring.Release();
-
-            if (null != _rightFlipper)
-                _rightFlipper.Release();
-
-            if (null != _leftFlipper)
-                _leftFlipper.Release();
 
             if (null != _damageCalculator)
             {
@@ -126,18 +114,23 @@ namespace Pinball.Ingame
 
         void OnFlipperLeftChanged(bool isPressed)
         {
-            if (_gameState == EGameState.GameOver)
-                return;
-
-            _leftFlipper.SetPressed(isPressed);
+            SetFlipperPressed(Flipper.ESide.Left, isPressed);
         }
 
         void OnFlipperRightChanged(bool isPressed)
         {
+            SetFlipperPressed(Flipper.ESide.Right, isPressed);
+        }
+
+        void SetFlipperPressed(Flipper.ESide side, bool isPressed)
+        {
             if (_gameState == EGameState.GameOver)
                 return;
 
-            _rightFlipper.SetPressed(isPressed);
+            if (null == _currentMap)
+                return;
+
+            _currentMap.SetFlipperPressed(side, isPressed);
         }
 
         void OnLaunchPressed()
@@ -145,7 +138,10 @@ namespace Pinball.Ingame
             if (_gameState == EGameState.GameOver)
                 return;
 
-            if (_spring.TryLaunch())
+            if (null == _currentMap)
+                return;
+
+            if (_currentMap.TryLaunch())
                 _gameState = EGameState.Playing;
         }
 
@@ -172,19 +168,27 @@ namespace Pinball.Ingame
 
         void LoadBallOnSpring()
         {
+            if (null == _currentMap)
+                return;
+
             Ball ball = _ballSpawner.Spawn(transform.position);
             if (null == ball)
                 return;
 
             ball.SetMass(_statData.BallMass);
-            _spring.LoadBall(ball);
+            _currentMap.LoadBall(ball);
         }
 
         void EndGame()
         {
             _gameState = EGameState.GameOver;
-            _leftFlipper.SetPressed(false);
-            _rightFlipper.SetPressed(false);
+
+            if (null != _currentMap)
+            {
+                _currentMap.SetFlipperPressed(Flipper.ESide.Left, false);
+                _currentMap.SetFlipperPressed(Flipper.ESide.Right, false);
+            }
+
             Debug.Log("[IngameManager] Game Over");
         }
 
