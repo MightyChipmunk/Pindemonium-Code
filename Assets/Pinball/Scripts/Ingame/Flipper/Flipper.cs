@@ -21,6 +21,7 @@ namespace Pinball.Ingame
 
         const float NORMAL_MULTIPLIER = 1f;
         const float MIRRORED_DIRECTION = -1f;
+        const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
 
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] FlipperConfigData _config = null;
@@ -93,23 +94,45 @@ namespace Pinball.Ingame
                 return;
 
             ContactPoint2D contact = collision.GetContact(0);
-            EHitGrade grade = EvaluateHitGrade(contact.point);
+            float hitRatio = GetHitRatio(contact.point);
+            EHitGrade grade = EvaluateHitGrade(hitRatio);
             float impulse = GetFlipPower() * GetGradeMultiplier(grade);
             collision.rigidbody.AddForce((Vector2)transform.up * impulse, ForceMode2D.Impulse);
+            LogHit(grade, hitRatio);
             OnBallStruck?.Invoke(grade, contact.point);
         }
 
-        EHitGrade EvaluateHitGrade(Vector2 worldContactPoint)
+        float GetHitRatio(Vector2 worldContactPoint)
         {
             Vector3 localPoint = transform.InverseTransformPoint(worldContactPoint);
-            float ratio = Mathf.Abs(localPoint.x) / _config.FlipperLength;
+            return Mathf.Abs(localPoint.x) / _config.FlipperLength;
+        }
 
-            bool isSweetSpot = ratio >= _config.SweetSpotMinRatio && ratio <= _config.SweetSpotMaxRatio;
+        EHitGrade EvaluateHitGrade(float hitRatio)
+        {
+            bool isSweetSpot = hitRatio >= _config.SweetSpotMinRatio && hitRatio <= _config.SweetSpotMaxRatio;
             if (!isSweetSpot)
                 return EHitGrade.Normal;
 
             bool isPerfectTiming = _pressedElapsed >= _config.PerfectTimingMin && _pressedElapsed <= _config.PerfectTimingMax;
             return isPerfectTiming ? EHitGrade.Perfect : EHitGrade.SweetSpot;
+        }
+
+        void LogHit(EHitGrade grade, float hitRatio)
+        {
+            if (!_config.IsHitLogEnabled)
+                return;
+
+            Debug.LogFormat(HIT_LOG_FORMAT,
+                name,
+                grade,
+                _pressedElapsed,
+                _config.PerfectTimingMin,
+                _config.PerfectTimingMax,
+                hitRatio,
+                _config.SweetSpotMinRatio,
+                _config.SweetSpotMaxRatio,
+                GetGradeMultiplier(grade));
         }
 
         float GetGradeMultiplier(EHitGrade grade)
