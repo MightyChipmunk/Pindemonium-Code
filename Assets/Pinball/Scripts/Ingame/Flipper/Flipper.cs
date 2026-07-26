@@ -100,7 +100,7 @@ namespace Pinball.Ingame
             EHitGrade grade = EvaluateHitGrade(hitRatio);
             float impulse = GetFlipPower() * GetGradeMultiplier(grade);
             collision.rigidbody.AddForce((Vector2)transform.up * impulse, ForceMode2D.Impulse);
-            LogHit(grade, hitRatio);
+            // LogHit(grade, hitRatio);
             OnBallStruck?.Invoke(grade, contact.point);
         }
 
@@ -122,6 +122,7 @@ namespace Pinball.Ingame
 
         void LogHit(EHitGrade grade, float hitRatio)
         {
+#if UNITY_EDITOR
             if (!_config.IsHitLogEnabled)
                 return;
 
@@ -135,6 +136,7 @@ namespace Pinball.Ingame
                 _config.SweetSpotMinRatio,
                 _config.SweetSpotMaxRatio,
                 GetGradeMultiplier(grade));
+#endif
         }
 
         float GetGradeMultiplier(EHitGrade grade)
