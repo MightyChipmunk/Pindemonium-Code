@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Pinball.Util;
 using UnityEngine;
 
@@ -22,6 +23,7 @@ namespace Pinball.Ingame
         const float NORMAL_MULTIPLIER = 1f;
         const float MIRRORED_DIRECTION = -1f;
         const float MIN_FALLOFF_RANGE = 0.0001f;
+        const float SWING_ANGLE_EPSILON = 0.01f;
         const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
 
         [SerializeField] Rigidbody2D _rigidbody = null;
@@ -32,6 +34,8 @@ namespace Pinball.Ingame
         public event Action<EHitGrade, Vector2> OnBallStruck;
 
         Func<float> _flipPowerGetter = null;
+        List<Rigidbody2D> _touchingBodies = null;
+        List<Rigidbody2D> _struckBodies = null;
         bool _isPressed = false;
         float _pressedElapsed = 0f;
 
@@ -44,6 +48,8 @@ namespace Pinball.Ingame
         public void Init(Func<float> flipPowerGetter)
         {
             _flipPowerGetter = flipPowerGetter;
+            _touchingBodies = new List<Rigidbody2D>();
+            _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
             _pressedElapsed = 0f;
 
@@ -55,6 +61,18 @@ namespace Pinball.Ingame
 
         public void Release()
         {
+            if (null != _touchingBodies)
+            {
+                _touchingBodies.Clear();
+                _touchingBodies = null;
+            }
+
+            if (null != _struckBodies)
+            {
+                _struckBodies.Clear();
+                _struckBodies = null;
+            }
+
             _flipPowerGetter = null;
             OnBallStruck = null;
         }
@@ -65,8 +83,33 @@ namespace Pinball.Ingame
                 return;
 
             _isPressed = isPressed;
-            if (isPressed)
-                _pressedElapsed = 0f;
+
+            if (null != _struckBodies)
+                _struckBodies.Clear();
+
+            if (!isPressed)
+                return;
+
+            _pressedElapsed = 0f;
+            StrikeTouchingBodies();
+        }
+
+        void StrikeTouchingBodies()
+        {
+            if (null == _touchingBodies)
+                return;
+
+            for (int i = _touchingBodies.Count - 1; i >= 0; --i)
+            {
+                Rigidbody2D body = _touchingBodies[i];
+                if (null == body)
+                {
+                    _touchingBodies.RemoveAt(i);
+                    continue;
+                }
+
+                Strike(body);
+            }
         }
 
         void FixedUpdate()
@@ -84,25 +127,56 @@ namespace Pinball.Ingame
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (!_isPressed)
-                return;
-
-            if (null == _config)
-                return;
-
             if (null == collision.rigidbody)
                 return;
 
             if (!_ballLayerMask.HasLayer(collision.gameObject.layer))
                 return;
 
-            ContactPoint2D contact = collision.GetContact(0);
-            float hitRatio = GetHitRatio(contact.point);
+            if (null != _touchingBodies && !_touchingBodies.Contains(collision.rigidbody))
+                _touchingBodies.Add(collision.rigidbody);
+
+            Strike(collision.rigidbody);
+        }
+
+        void OnCollisionExit2D(Collision2D collision)
+        {
+            if (null == _touchingBodies)
+                return;
+
+            if (null == collision.rigidbody)
+                return;
+
+            _touchingBodies.Remove(collision.rigidbody);
+        }
+
+        bool IsSwinging()
+        {
+            if (!_isPressed)
+                return false;
+
+            return Mathf.Abs(Mathf.DeltaAngle(_rigidbody.rotation, PressedAngle)) > SWING_ANGLE_EPSILON;
+        }
+
+        void Strike(Rigidbody2D body)
+        {
+            if (null == _config)
+                return;
+
+            if (!IsSwinging())
+                return;
+
+            if (null == _struckBodies || _struckBodies.Contains(body))
+                return;
+
+            _struckBodies.Add(body);
+
+            float hitRatio = GetHitRatio(body.position);
             EHitGrade grade = EvaluateHitGrade(hitRatio);
             float impulseScale = GetImpulseScale(grade, hitRatio);
-            collision.rigidbody.AddForce((Vector2)transform.up * (GetFlipPower() * impulseScale), ForceMode2D.Impulse);
+            body.AddForce((Vector2)transform.up * (GetFlipPower() * impulseScale), ForceMode2D.Impulse);
             LogHit(grade, hitRatio, impulseScale);
-            OnBallStruck?.Invoke(grade, contact.point);
+            OnBallStruck?.Invoke(grade, body.position);
         }
 
         float GetHitRatio(Vector2 worldContactPoint)
