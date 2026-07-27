@@ -21,6 +21,7 @@ namespace Pinball.Ingame
 
         const float NORMAL_MULTIPLIER = 1f;
         const float MIRRORED_DIRECTION = -1f;
+        const float MIN_FALLOFF_RANGE = 0.0001f;
         const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
 
         [SerializeField] Rigidbody2D _rigidbody = null;
@@ -98,9 +99,9 @@ namespace Pinball.Ingame
             ContactPoint2D contact = collision.GetContact(0);
             float hitRatio = GetHitRatio(contact.point);
             EHitGrade grade = EvaluateHitGrade(hitRatio);
-            float impulse = GetFlipPower() * GetGradeMultiplier(grade);
-            collision.rigidbody.AddForce((Vector2)transform.up * impulse, ForceMode2D.Impulse);
-            // LogHit(grade, hitRatio);
+            float impulseScale = GetImpulseScale(grade, hitRatio);
+            collision.rigidbody.AddForce((Vector2)transform.up * (GetFlipPower() * impulseScale), ForceMode2D.Impulse);
+            LogHit(grade, hitRatio, impulseScale);
             OnBallStruck?.Invoke(grade, contact.point);
         }
 
@@ -120,7 +121,7 @@ namespace Pinball.Ingame
             return isPerfectTiming ? EHitGrade.Perfect : EHitGrade.SweetSpot;
         }
 
-        void LogHit(EHitGrade grade, float hitRatio)
+        void LogHit(EHitGrade grade, float hitRatio, float impulseScale)
         {
 #if UNITY_EDITOR
             if (!_config.IsHitLogEnabled)
@@ -135,21 +136,64 @@ namespace Pinball.Ingame
                 hitRatio,
                 _config.SweetSpotMinRatio,
                 _config.SweetSpotMaxRatio,
-                GetGradeMultiplier(grade));
+                impulseScale);
 #endif
         }
 
-        float GetGradeMultiplier(EHitGrade grade)
+        float GetImpulseScale(EHitGrade grade, float hitRatio)
         {
             switch (grade)
             {
-                case EHitGrade.SweetSpot:
-                    return _config.SweetSpotBonusMultiplier;
                 case EHitGrade.Perfect:
                     return _config.PerfectBonusMultiplier;
+                case EHitGrade.SweetSpot:
+                    return _config.SweetSpotBonusMultiplier * GetTimingScale(_config.SweetSpotTimingMinScale);
                 default:
-                    return NORMAL_MULTIPLIER;
+                    return NORMAL_MULTIPLIER * GetSpotScale(hitRatio) * GetTimingScale(_config.NormalTimingMinScale);
             }
+        }
+
+        float GetTimingScale(float minScale)
+        {
+            return GetFalloffScale(GetPerfectTimingDistance(), _config.TimingFalloffRange, minScale);
+        }
+
+        float GetSpotScale(float hitRatio)
+        {
+            return GetFalloffScale(GetSweetSpotDistance(hitRatio), _config.SpotFalloffRange, _config.NormalSpotMinScale);
+        }
+
+        float GetPerfectTimingDistance()
+        {
+            if (_pressedElapsed < _config.PerfectTimingMin)
+                return _config.PerfectTimingMin - _pressedElapsed;
+
+            if (_pressedElapsed > _config.PerfectTimingMax)
+                return _pressedElapsed - _config.PerfectTimingMax;
+
+            return 0f;
+        }
+
+        float GetSweetSpotDistance(float hitRatio)
+        {
+            if (hitRatio < _config.SweetSpotMinRatio)
+                return _config.SweetSpotMinRatio - hitRatio;
+
+            if (hitRatio > _config.SweetSpotMaxRatio)
+                return hitRatio - _config.SweetSpotMaxRatio;
+
+            return 0f;
+        }
+
+        static float GetFalloffScale(float distance, float falloffRange, float minScale)
+        {
+            if (distance <= 0f)
+                return NORMAL_MULTIPLIER;
+
+            if (falloffRange < MIN_FALLOFF_RANGE)
+                return minScale;
+
+            return Mathf.Lerp(NORMAL_MULTIPLIER, minScale, Mathf.Clamp01(distance / falloffRange));
         }
 
         float GetFlipPower()

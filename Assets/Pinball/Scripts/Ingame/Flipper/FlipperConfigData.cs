@@ -15,6 +15,11 @@ namespace Pinball.Ingame
         [SerializeField] float _perfectBonusMultiplier = 2f;
         [SerializeField] float _perfectTimingMin = 0.3f;
         [SerializeField] float _perfectTimingMax = 0.6f;
+        [SerializeField] float _timingFalloffRange = 0.15f;
+        [SerializeField] float _spotFalloffRange = 0.4f;
+        [SerializeField] float _sweetSpotTimingMinScale = 0.5f;
+        [SerializeField] float _normalTimingMinScale = 0.2f;
+        [SerializeField] float _normalSpotMinScale = 0.2f;
         [SerializeField] bool _isHitLogEnabled = false;
 
         public float RestAngle => _restAngle;
@@ -27,6 +32,11 @@ namespace Pinball.Ingame
         public float PerfectBonusMultiplier => _perfectBonusMultiplier;
         public float PerfectTimingMin => _perfectTimingMin;
         public float PerfectTimingMax => _perfectTimingMax;
+        public float TimingFalloffRange => _timingFalloffRange;
+        public float SpotFalloffRange => _spotFalloffRange;
+        public float SweetSpotTimingMinScale => _sweetSpotTimingMinScale;
+        public float NormalTimingMinScale => _normalTimingMinScale;
+        public float NormalSpotMinScale => _normalSpotMinScale;
         public bool IsHitLogEnabled => _isHitLogEnabled;
     }
 }
