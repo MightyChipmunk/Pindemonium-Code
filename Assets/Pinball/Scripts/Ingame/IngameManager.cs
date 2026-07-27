@@ -1,5 +1,6 @@
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Presentation;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.UI;
 using Pinball.Util;
@@ -23,6 +24,7 @@ namespace Pinball.Ingame
         [SerializeField] BallDrainZone _drainZone = null;
         [SerializeField] MapLoader _mapLoader = null;
         [SerializeField] IngameUIRoot _uiRoot = null;
+        [SerializeField] IngameDirector _director = null;
         [SerializeField] PinballStatData _statData = null;
 
         ScoreCounter _scoreCounter = null;
@@ -55,10 +57,11 @@ namespace Pinball.Ingame
             _drainZone.Init();
             _mapLoader.Init();
             _uiRoot.Init();
+            _director.Init();
 
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
             if (null != _currentMap)
-                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower);
+                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit);
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;
@@ -89,6 +92,9 @@ namespace Pinball.Ingame
                 _mapLoader.Release();
 
             _currentMap = null;
+
+            if (null != _director)
+                _director.Release();
 
             if (null != _ballSpawner)
                 _ballSpawner.Release();

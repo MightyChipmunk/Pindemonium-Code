@@ -11,7 +11,9 @@ namespace Pinball.Ingame.Map
         [SerializeField] Flipper _rightFlipper = null;
         [SerializeField] Spring _spring = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter)
+        Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
+
+        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck)
         {
             if (null != _interactables)
             {
@@ -19,16 +21,22 @@ namespace Pinball.Ingame.Map
                     _interactables[i].Init(onScoreGained, damageEvaluator);
             }
 
+            _onBallStruck = onBallStruck;
             _leftFlipper.Init(flipPowerGetter);
             _rightFlipper.Init(flipPowerGetter);
+            _leftFlipper.OnBallStruck += OnFlipperBallStruck;
+            _rightFlipper.OnBallStruck += OnFlipperBallStruck;
             _spring.Init();
         }
 
         public void Release()
         {
             _spring.Release();
+            _rightFlipper.OnBallStruck -= OnFlipperBallStruck;
+            _leftFlipper.OnBallStruck -= OnFlipperBallStruck;
             _rightFlipper.Release();
             _leftFlipper.Release();
+            _onBallStruck = null;
 
             if (null == _interactables)
                 return;
@@ -53,6 +61,11 @@ namespace Pinball.Ingame.Map
         public bool TryLaunch()
         {
             return _spring.TryLaunch();
+        }
+
+        void OnFlipperBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
+        {
+            _onBallStruck?.Invoke(grade, worldPoint);
         }
 
 #if UNITY_EDITOR
