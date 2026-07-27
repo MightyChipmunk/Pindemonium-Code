@@ -4,11 +4,9 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public abstract class MapInteractable : MonoBehaviour
+    public abstract class MapInteractable : BehaviourBase
     {
         [SerializeField] LayerMask _ballLayerMask = default;
-        [SerializeField] float _scoreMultiplier = 1f;
-        [SerializeField] float _bounceForce = 5f;
 
         Action<int> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
@@ -17,33 +15,26 @@ namespace Pinball.Ingame.Map
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
+            OnInit();
         }
 
-        public virtual void Release()
+        public void Release()
         {
+            OnRelease();
             _onScoreGained = null;
             _damageEvaluator = null;
         }
 
-        void OnCollisionEnter2D(Collision2D collision)
+        protected virtual void OnInit() { }
+
+        protected virtual void OnRelease() { }
+
+        protected bool IsBallLayer(int layer)
         {
-            if (null == collision.rigidbody)
-                return;
-
-            if (!_ballLayerMask.HasLayer(collision.gameObject.layer))
-                return;
-
-            float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
-            float damage = EvaluateDamage(collisionImpulse);
-            int score = Mathf.RoundToInt(damage * _scoreMultiplier);
-            _onScoreGained?.Invoke(score);
-
-            Vector2 bounceDirection = (collision.rigidbody.position - (Vector2)transform.position).normalized;
-            collision.rigidbody.AddForce(bounceDirection * _bounceForce, ForceMode2D.Impulse);
-            OnBallHit(collision, damage);
+            return _ballLayerMask.HasLayer(layer);
         }
 
-        float EvaluateDamage(float collisionImpulse)
+        protected float EvaluateDamage(float collisionImpulse)
         {
             if (null == _damageEvaluator)
                 return 0f;
@@ -51,6 +42,12 @@ namespace Pinball.Ingame.Map
             return _damageEvaluator(collisionImpulse);
         }
 
-        protected virtual void OnBallHit(Collision2D collision, float damage) { }
+        protected void GainScore(int score)
+        {
+            if (score <= 0)
+                return;
+
+            _onScoreGained?.Invoke(score);
+        }
     }
 }

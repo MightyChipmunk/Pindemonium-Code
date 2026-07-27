@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class BumperInteractable : MapInteractable
+    public class BumperInteractable : CollisionInteractable
     {
         const float PUNCH_SCALE = 0.2f;
         const float PUNCH_DURATION = 0.2f;
@@ -12,15 +12,18 @@ namespace Pinball.Ingame.Map
 
         Tween _hitTween = null;
 
-        public override void Release()
+        protected override void OnRelease()
         {
-            base.Release();
-
             if (null != _hitTween)
             {
                 _hitTween.Kill();
                 _hitTween = null;
             }
+        }
+
+        protected override Vector2 GetBounceDirection(Collision2D collision)
+        {
+            return (collision.rigidbody.position - (Vector2)transform.position).normalized;
         }
 
         protected override void OnBallHit(Collision2D collision, float damage)

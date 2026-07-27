@@ -69,6 +69,13 @@ namespace Pinball.Ingame.Map
                 else
                     _rightFlipper = flippers[i];
             }
+
+            for (int i = 0; i < _interactables.Length; ++i)
+            {
+                LaneInteractable lane = _interactables[i] as LaneInteractable;
+                if (null != lane)
+                    lane.BakePath();
+            }
         }
 #endif // UNITY_EDITOR
     }
