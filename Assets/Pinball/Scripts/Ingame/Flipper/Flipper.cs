@@ -37,6 +37,7 @@ namespace Pinball.Ingame
         List<Rigidbody2D> _touchingBodies = null;
         List<Rigidbody2D> _struckBodies = null;
         bool _isPressed = false;
+        bool _isSwingActive = false;
         float _pressedElapsed = 0f;
 
         public ESide Side => _side;
@@ -51,6 +52,7 @@ namespace Pinball.Ingame
             _touchingBodies = new List<Rigidbody2D>();
             _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
+            _isSwingActive = false;
             _pressedElapsed = 0f;
 
             if (null == _config)
@@ -84,12 +86,13 @@ namespace Pinball.Ingame
 
             _isPressed = isPressed;
 
-            if (null != _struckBodies)
-                _struckBodies.Clear();
-
             if (!isPressed)
                 return;
 
+            if (null != _struckBodies)
+                _struckBodies.Clear();
+
+            _isSwingActive = true;
             _pressedElapsed = 0f;
             StrikeTouchingBodies();
         }
@@ -117,12 +120,15 @@ namespace Pinball.Ingame
             if (null == _config)
                 return;
 
-            if (_isPressed)
+            if (_isPressed || _isSwingActive)
                 _pressedElapsed += Time.deltaTime;
 
-            float targetAngle = _isPressed ? PressedAngle : RestAngle;
+            float targetAngle = _isPressed || _isSwingActive ? PressedAngle : RestAngle;
             float nextAngle = Mathf.MoveTowards(_rigidbody.rotation, targetAngle, _config.RotateSpeed * Time.deltaTime);
             _rigidbody.MoveRotation(nextAngle);
+
+            if (_isSwingActive && Mathf.Abs(Mathf.DeltaAngle(nextAngle, PressedAngle)) <= SWING_ANGLE_EPSILON)
+                _isSwingActive = false;
         }
 
         void OnCollisionEnter2D(Collision2D collision)
@@ -152,7 +158,7 @@ namespace Pinball.Ingame
 
         bool IsSwinging()
         {
-            if (!_isPressed)
+            if (!_isPressed && !_isSwingActive)
                 return false;
 
             return Mathf.Abs(Mathf.DeltaAngle(_rigidbody.rotation, PressedAngle)) > SWING_ANGLE_EPSILON;
