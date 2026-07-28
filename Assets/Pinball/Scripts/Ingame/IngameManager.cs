@@ -25,6 +25,7 @@ namespace Pinball.Ingame
         [SerializeField] MapLoader _mapLoader = null;
         [SerializeField] IngameUIRoot _uiRoot = null;
         [SerializeField] IngameDirector _director = null;
+        [SerializeField] CameraController _cameraController = null;
         [SerializeField] PinballStatData _statData = null;
 
         ScoreCounter _scoreCounter = null;
@@ -57,7 +58,8 @@ namespace Pinball.Ingame
             _drainZone.Init();
             _mapLoader.Init();
             _uiRoot.Init();
-            _director.Init();
+            _cameraController.Init();
+            _director.Init(_cameraController.ShakeCam);
 
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
             if (null != _currentMap)
@@ -95,6 +97,9 @@ namespace Pinball.Ingame
 
             if (null != _director)
                 _director.Release();
+
+            if (null != _cameraController)
+                _cameraController.Release();
 
             if (null != _ballSpawner)
                 _ballSpawner.Release();
