@@ -63,7 +63,7 @@ namespace Pinball.Ingame
 
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
             if (null != _currentMap)
-                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit);
+                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge);
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;
@@ -72,7 +72,7 @@ namespace Pinball.Ingame
 
             _inputRouter.OnFlipperLeftChanged += OnFlipperLeftChanged;
             _inputRouter.OnFlipperRightChanged += OnFlipperRightChanged;
-            _inputRouter.OnLaunchPressed += OnLaunchPressed;
+            _inputRouter.OnLaunchChanged += OnLaunchChanged;
             _drainZone.OnColliderEntered += OnBallDrained;
 
             LoadBallOnSpring();
@@ -144,13 +144,19 @@ namespace Pinball.Ingame
             _currentMap.SetFlipperPressed(side, isPressed);
         }
 
-        void OnLaunchPressed()
+        void OnLaunchChanged(bool isPressed)
         {
             if (_gameState == EGameState.GameOver)
                 return;
 
             if (null == _currentMap)
                 return;
+
+            if (isPressed)
+            {
+                _currentMap.SetSpringCharging(true);
+                return;
+            }
 
             if (_currentMap.TryLaunch())
                 _gameState = EGameState.Playing;
@@ -198,6 +204,7 @@ namespace Pinball.Ingame
             {
                 _currentMap.SetFlipperPressed(Flipper.ESide.Left, false);
                 _currentMap.SetFlipperPressed(Flipper.ESide.Right, false);
+                _currentMap.SetSpringCharging(false);
             }
 
             Debug.Log("[IngameManager] Game Over");

@@ -10,7 +10,7 @@ namespace Pinball.Ingame.InputModule
 
         public event Action<bool> OnFlipperLeftChanged;
         public event Action<bool> OnFlipperRightChanged;
-        public event Action OnLaunchPressed;
+        public event Action<bool> OnLaunchChanged;
 
         bool _isInited = false;
 
@@ -23,7 +23,7 @@ namespace Pinball.Ingame.InputModule
         {
             OnFlipperLeftChanged = null;
             OnFlipperRightChanged = null;
-            OnLaunchPressed = null;
+            OnLaunchChanged = null;
             _isInited = false;
         }
 
@@ -52,7 +52,10 @@ namespace Pinball.Ingame.InputModule
                 OnFlipperRightChanged?.Invoke(false);
 
             if (keyboard[_keyConfig.LaunchKey].wasPressedThisFrame)
-                OnLaunchPressed?.Invoke();
+                OnLaunchChanged?.Invoke(true);
+
+            if (keyboard[_keyConfig.LaunchKey].wasReleasedThisFrame)
+                OnLaunchChanged?.Invoke(false);
         }
     }
 }

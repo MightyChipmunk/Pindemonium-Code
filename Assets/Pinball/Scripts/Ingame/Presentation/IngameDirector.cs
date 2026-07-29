@@ -50,6 +50,14 @@ namespace Pinball.Ingame.Presentation
             _hitStopPlayer.Play(presentation.HitStopTimeScale, presentation.HitStopDuration, presentation.RecoverDuration, presentation.RecoverEase);
         }
 
+        public void PlaySpringCharge(Spring.EChargeEvent chargeEvent, Vector2 worldPoint)
+        {
+            if (null == _config)
+                return;
+
+            PlayFX(_config.GetSpringChargeFX(chargeEvent), worldPoint);
+        }
+
         void PlayCameraShake(HitPresentationData presentation)
         {
             if (!presentation.IsCameraShakeEnabled)

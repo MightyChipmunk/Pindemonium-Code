@@ -13,7 +13,7 @@ namespace Pinball.Ingame.Map
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck)
+        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent)
         {
             if (null != _interactables)
             {
@@ -26,7 +26,7 @@ namespace Pinball.Ingame.Map
             _rightFlipper.Init(flipPowerGetter);
             _leftFlipper.OnBallStruck += OnFlipperBallStruck;
             _rightFlipper.OnBallStruck += OnFlipperBallStruck;
-            _spring.Init();
+            _spring.Init(onSpringChargeEvent);
         }
 
         public void Release()
@@ -56,6 +56,11 @@ namespace Pinball.Ingame.Map
         public void LoadBall(Ball ball)
         {
             _spring.LoadBall(ball);
+        }
+
+        public void SetSpringCharging(bool isCharging)
+        {
+            _spring.SetCharging(isCharging);
         }
 
         public bool TryLaunch()
