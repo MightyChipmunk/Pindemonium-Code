@@ -9,6 +9,9 @@ namespace Pinball.Ingame.Map
     {
         const float DROP_DURATION = 0.1f;
         const float RAISE_DURATION = 0.18f;
+        const float SHAKE_DURATION = 0.5f;
+        const float SHAKE_STRENGTH = 0.14f;
+        const int SHAKE_VIBRATO = 20;
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
@@ -35,7 +38,7 @@ namespace Pinball.Ingame.Map
 
         public void Release()
         {
-            KillMoveTween();
+            KillMoveTween(false);
             _onDropped = null;
             _ballLayerChecker = null;
         }
@@ -47,7 +50,7 @@ namespace Pinball.Ingame.Map
 
             _isDropped = false;
             _collider.enabled = true;
-            KillMoveTween();
+            KillMoveTween(false);
 
             if (null == _visual)
                 return;
@@ -55,24 +58,42 @@ namespace Pinball.Ingame.Map
             _moveTween = _visual.DOLocalMove(_raisedLocalPosition, RAISE_DURATION);
         }
 
+        public void PlayShake()
+        {
+            if (null == _visual)
+                return;
+
+            KillMoveTween(false);
+
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(_visual.DOLocalMove(GetDroppedLocalPosition(), DROP_DURATION));
+            sequence.Append(_visual.DOShakePosition(SHAKE_DURATION, SHAKE_STRENGTH, SHAKE_VIBRATO));
+            _moveTween = sequence;
+        }
+
         void Drop()
         {
             _isDropped = true;
             _collider.enabled = false;
-            KillMoveTween();
+            KillMoveTween(false);
 
             if (null != _visual)
-                _moveTween = _visual.DOLocalMove(_raisedLocalPosition + Vector3.down * _dropDistance, DROP_DURATION);
+                _moveTween = _visual.DOLocalMove(GetDroppedLocalPosition(), DROP_DURATION);
 
             _onDropped?.Invoke();
         }
 
-        void KillMoveTween()
+        Vector3 GetDroppedLocalPosition()
+        {
+            return _raisedLocalPosition + Vector3.down * _dropDistance;
+        }
+
+        void KillMoveTween(bool isComplete)
         {
             if (null == _moveTween)
                 return;
 
-            _moveTween.Kill();
+            _moveTween.Kill(isComplete);
             _moveTween = null;
         }
 

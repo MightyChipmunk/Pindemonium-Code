@@ -52,7 +52,14 @@ namespace Pinball.Ingame.Map
                 return;
 
             GainScore(_clearScoreReward);
+            PlayClearShake();
             ResetBankAsync(_cancellationTokenSource.Token).Forget();
+        }
+
+        void PlayClearShake()
+        {
+            for (int i = 0; i < _targets.Length; ++i)
+                _targets[i].PlayShake();
         }
 
         async UniTaskVoid ResetBankAsync(CancellationToken cancellationToken)
