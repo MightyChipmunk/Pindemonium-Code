@@ -6,10 +6,17 @@ namespace Pinball.Ingame.UI
     {
         [SerializeField] ScoreView _scoreView = null;
         [SerializeField] BallCountView _ballCountView = null;
+        [SerializeField] ScorePopupSpawner _scorePopupSpawner = null;
 
-        public void Init() { }
+        public void Init()
+        {
+            _scorePopupSpawner.Init();
+        }
 
-        public void Release() { }
+        public void Release()
+        {
+            _scorePopupSpawner.Release();
+        }
 
         public void SetScore(int score)
         {
@@ -19,6 +26,11 @@ namespace Pinball.Ingame.UI
         public void SetBallCount(int count)
         {
             _ballCountView.SetValue(count);
+        }
+
+        public void PlayScorePopup(int score, Vector2 worldPoint)
+        {
+            _scorePopupSpawner.Play(score, worldPoint);
         }
     }
 }

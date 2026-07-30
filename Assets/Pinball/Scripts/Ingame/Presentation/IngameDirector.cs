@@ -6,18 +6,17 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Presentation
 {
-    public class IngameDirector : MonoBehaviour
+    public class IngameDirector
     {
-        [SerializeField] PresentationConfigData _config = null;
-        [SerializeField] FXPoolData _fxPoolData = null;
-
+        PresentationConfigData _config = null;
         HitStopPlayer _hitStopPlayer = null;
         Action<CameraController.ECameraShakeType, float> _cameraShaker = null;
 
-        public void Init(Action<CameraController.ECameraShakeType, float> cameraShaker)
+        public void Init(PresentationConfigData config, FXPoolData fxPoolData, Action<CameraController.ECameraShakeType, float> cameraShaker)
         {
+            _config = config;
             _cameraShaker = cameraShaker;
-            StaticPool<PoolableFX.EFXType, PoolableFX>.Init(_fxPoolData);
+            StaticPool<PoolableFX.EFXType, PoolableFX>.Init(fxPoolData);
             _hitStopPlayer = new HitStopPlayer();
             _hitStopPlayer.Init();
         }
@@ -25,6 +24,7 @@ namespace Pinball.Ingame.Presentation
         public void Release()
         {
             _cameraShaker = null;
+            _config = null;
 
             if (null != _hitStopPlayer)
             {

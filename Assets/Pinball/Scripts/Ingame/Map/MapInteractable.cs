@@ -9,11 +9,11 @@ namespace Pinball.Ingame.Map
     {
         [SerializeField] LayerMask _ballLayerMask = default;
 
-        Action<int> _onScoreGained = null;
+        Action<int, Vector2> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public void Init(Action<int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
@@ -48,10 +48,15 @@ namespace Pinball.Ingame.Map
 
         protected void GainScore(int score)
         {
+            GainScore(score, transform.position);
+        }
+
+        protected void GainScore(int score, Vector2 worldPoint)
+        {
             if (score <= 0)
                 return;
 
-            _onScoreGained?.Invoke(score);
+            _onScoreGained?.Invoke(score, worldPoint);
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)

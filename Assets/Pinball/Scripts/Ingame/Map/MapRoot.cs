@@ -14,7 +14,7 @@ namespace Pinball.Ingame.Map
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public void Init(Action<int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             if (null != _interactables)
             {

@@ -1,3 +1,4 @@
+using Pinball.FX;
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Presentation;
@@ -24,10 +25,12 @@ namespace Pinball.Ingame
         [SerializeField] BallDrainZone _drainZone = null;
         [SerializeField] MapLoader _mapLoader = null;
         [SerializeField] IngameUIRoot _uiRoot = null;
-        [SerializeField] IngameDirector _director = null;
         [SerializeField] CameraController _cameraController = null;
         [SerializeField] PinballStatData _statData = null;
+        [SerializeField] PresentationConfigData _presentationConfig = null;
+        [SerializeField] FXPoolData _fxPoolData = null;
 
+        IngameDirector _director = null;
         ScoreCounter _scoreCounter = null;
         BallStockCounter _ballStock = null;
         DamageCalculator _damageCalculator = null;
@@ -59,11 +62,12 @@ namespace Pinball.Ingame
             _mapLoader.Init();
             _uiRoot.Init();
             _cameraController.Init();
-            _director.Init(_cameraController.ShakeCam);
+            _director = new IngameDirector();
+            _director.Init(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
 
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
             if (null != _currentMap)
-                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge, _director.PlayFX);
+                _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge, _director.PlayFX);
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;
@@ -96,7 +100,10 @@ namespace Pinball.Ingame
             _currentMap = null;
 
             if (null != _director)
+            {
                 _director.Release();
+                _director = null;
+            }
 
             if (null != _cameraController)
                 _cameraController.Release();
@@ -121,6 +128,12 @@ namespace Pinball.Ingame
                 _scoreCounter.Release();
                 _scoreCounter = null;
             }
+        }
+
+        void OnMapScoreGained(int score, Vector2 worldPoint)
+        {
+            _scoreCounter.Add(score);
+            _uiRoot.PlayScorePopup(score, worldPoint);
         }
 
         void OnFlipperLeftChanged(bool isPressed)

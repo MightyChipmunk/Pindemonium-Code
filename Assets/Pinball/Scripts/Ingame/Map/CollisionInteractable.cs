@@ -17,7 +17,7 @@ namespace Pinball.Ingame.Map
 
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
             float damage = EvaluateDamage(collisionImpulse);
-            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()));
+            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), collision.GetContact(0).point);
 
             collision.rigidbody.AddForce(GetBounceDirection(collision) * GetBounceForce(), ForceMode2D.Impulse);
             OnBallHit(collision, damage);
