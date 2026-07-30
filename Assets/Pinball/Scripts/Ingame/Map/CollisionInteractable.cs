@@ -17,13 +17,23 @@ namespace Pinball.Ingame.Map
 
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
             float damage = EvaluateDamage(collisionImpulse);
-            GainScore(Mathf.RoundToInt(damage * _scoreMultiplier));
+            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()));
 
-            collision.rigidbody.AddForce(GetBounceDirection(collision) * _bounceForce, ForceMode2D.Impulse);
+            collision.rigidbody.AddForce(GetBounceDirection(collision) * GetBounceForce(), ForceMode2D.Impulse);
             OnBallHit(collision, damage);
         }
 
         protected abstract Vector2 GetBounceDirection(Collision2D collision);
+
+        protected virtual float GetScoreMultiplier()
+        {
+            return _scoreMultiplier;
+        }
+
+        protected virtual float GetBounceForce()
+        {
+            return _bounceForce;
+        }
 
         protected virtual void OnBallHit(Collision2D collision, float damage) { }
     }

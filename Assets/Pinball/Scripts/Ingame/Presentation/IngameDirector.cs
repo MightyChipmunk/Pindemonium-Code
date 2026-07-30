@@ -66,7 +66,7 @@ namespace Pinball.Ingame.Presentation
             _cameraShaker?.Invoke(presentation.CameraShakeType, presentation.CameraShakeDelay);
         }
 
-        void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
+        public void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
         {
             if (fxType == PoolableFX.EFXType.NonePooling)
                 return;

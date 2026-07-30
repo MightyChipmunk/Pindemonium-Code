@@ -1,4 +1,5 @@
 using System;
+using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
 
@@ -13,12 +14,12 @@ namespace Pinball.Ingame.Map
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent)
+        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             if (null != _interactables)
             {
                 for (int i = 0; i < _interactables.Length; ++i)
-                    _interactables[i].Init(onScoreGained, damageEvaluator);
+                    _interactables[i].Init(onScoreGained, damageEvaluator, fxPlayer);
             }
 
             _onBallStruck = onBallStruck;

@@ -63,7 +63,7 @@ namespace Pinball.Ingame
 
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
             if (null != _currentMap)
-                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge);
+                _currentMap.Init(_scoreCounter.Add, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge, _director.PlayFX);
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;

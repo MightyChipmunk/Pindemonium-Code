@@ -1,4 +1,5 @@
 using System;
+using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
 
@@ -10,11 +11,13 @@ namespace Pinball.Ingame.Map
 
         Action<int> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
+        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
 
-        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator)
+        public void Init(Action<int> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
+            _fxPlayer = fxPlayer;
             OnInit();
         }
 
@@ -23,6 +26,7 @@ namespace Pinball.Ingame.Map
             OnRelease();
             _onScoreGained = null;
             _damageEvaluator = null;
+            _fxPlayer = null;
         }
 
         protected virtual void OnInit() { }
@@ -48,6 +52,14 @@ namespace Pinball.Ingame.Map
                 return;
 
             _onScoreGained?.Invoke(score);
+        }
+
+        protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
+        {
+            if (fxType == PoolableFX.EFXType.NonePooling)
+                return;
+
+            _fxPlayer?.Invoke(fxType, worldPoint);
         }
     }
 }
