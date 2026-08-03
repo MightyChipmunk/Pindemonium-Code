@@ -18,7 +18,7 @@ namespace Pinball.Ingame.Map
         public struct GradeSpec
         {
             public EGrade Grade;
-            public Color VisualColor;
+            public Sprite VisualSprite;
             public float RootScale;
             public float BounceForce;
             public float ScoreMultiplier;

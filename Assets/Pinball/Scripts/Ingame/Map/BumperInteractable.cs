@@ -104,8 +104,11 @@ namespace Pinball.Ingame.Map
 
             transform.localScale = Vector3.one * _spec.RootScale;
 
-            if (null != _visualRenderer)
-                _visualRenderer.color = _spec.VisualColor;
+            if (null == _visualRenderer)
+                return;
+
+            if (null != _spec.VisualSprite)
+                _visualRenderer.sprite = _spec.VisualSprite;
         }
 
         void Break()
