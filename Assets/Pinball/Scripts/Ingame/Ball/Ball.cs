@@ -7,6 +7,7 @@ namespace Pinball.Ingame
     {
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
+        [SerializeField] BallTrail _trail = null;
 
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
@@ -33,6 +34,7 @@ namespace Pinball.Ingame
         public void MoveTo(Vector3 position)
         {
             transform.position = position;
+            _trail.Clear();
         }
 
         public void AddImpulse(Vector2 impulse)
@@ -45,11 +47,13 @@ namespace Pinball.Ingame
         public void OnGet()
         {
             gameObject.SetActive(true);
+            _trail.Init();
         }
 
         public void OnReturn()
         {
             SetKinematic(true);
+            _trail.Release();
         }
 
         public void OnTerminate() { }
