@@ -10,9 +10,9 @@ namespace Pinball.Ingame.Map
     {
         const float HIT_PUNCH_RATIO = 0.7f;
         const float HIT_PUNCH_DURATION = 0.2f;
-        const int HIT_PUNCH_VIBRATO = 10;
-        const float RESPAWN_PUNCH_RATIO = 1.2f;
-        const float RESPAWN_PUNCH_DURATION = 0.4f;
+        const int HIT_PUNCH_VIBRATO = 9;
+        const float RESPAWN_PUNCH_RATIO = 0.6f;
+        const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
 
         [SerializeField] BumperGradeData _gradeData = null;
