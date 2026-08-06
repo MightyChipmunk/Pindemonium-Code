@@ -10,6 +10,8 @@ namespace Pinball.Ingame.Map
         const int MIN_POINT_COUNT = 2;
         const float MIN_SEGMENT_LENGTH = 0.0001f;
 
+        [SerializeField] LaneEntrance _startEntrance = null;
+        [SerializeField] LaneEntrance _endEntrance = null;
         [SerializeField] Transform _pathRoot = null;
         [SerializeField] Vector2[] _bakedLocalPoints = null;
         [SerializeField] int _scoreReward = 0;
@@ -27,10 +29,19 @@ namespace Pinball.Ingame.Map
             LoadBakedPath();
             _travelingBodies = new List<Rigidbody2D>();
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+            _startEntrance.Init(OnStartEntranceEntered);
+
+            if (null != _endEntrance)
+                _endEntrance.Init(OnEndEntranceEntered);
         }
 
         protected override void OnRelease()
         {
+            if (null != _endEntrance)
+                _endEntrance.Release();
+
+            _startEntrance.Release();
+
             if (null != _cancellationTokenSource)
             {
                 _cancellationTokenSource.Cancel();
@@ -68,7 +79,17 @@ namespace Pinball.Ingame.Map
                 _pathDistances[i] = _pathDistances[i - 1] + Vector2.Distance(_pathPoints[i - 1], _pathPoints[i]);
         }
 
-        void OnTriggerEnter2D(Collider2D other)
+        void OnStartEntranceEntered(Collider2D other)
+        {
+            TryEnterLane(other, true);
+        }
+
+        void OnEndEntranceEntered(Collider2D other)
+        {
+            TryEnterLane(other, false);
+        }
+
+        void TryEnterLane(Collider2D other, bool isForward)
         {
             if (null == _pathPoints)
                 return;
@@ -86,11 +107,14 @@ namespace Pinball.Ingame.Map
             if (_travelingBodies.Contains(body))
                 return;
 
+            if (Vector2.Dot(body.linearVelocity, GetEnterDirection(isForward)) <= 0f)
+                return;
+
             float entrySpeed = body.linearVelocity.magnitude;
-            TravelAsync(body, Mathf.Clamp(entrySpeed, _minTravelSpeed, _maxTravelSpeed), _cancellationTokenSource.Token).Forget();
+            TravelAsync(body, Mathf.Clamp(entrySpeed, _minTravelSpeed, _maxTravelSpeed), isForward, _cancellationTokenSource.Token).Forget();
         }
 
-        async UniTaskVoid TravelAsync(Rigidbody2D body, float travelSpeed, CancellationToken cancellationToken)
+        async UniTaskVoid TravelAsync(Rigidbody2D body, float travelSpeed, bool isForward, CancellationToken cancellationToken)
         {
             _travelingBodies.Add(body);
             body.linearVelocity = Vector2.zero;
@@ -105,11 +129,12 @@ namespace Pinball.Ingame.Map
                 await UniTask.Yield(PlayerLoopTiming.FixedUpdate, cancellationToken);
 
                 traveledLength += travelSpeed * Time.deltaTime;
-                body.MovePosition(SamplePath(Mathf.Min(traveledLength, totalLength)));
+                float sampled = Mathf.Min(traveledLength, totalLength);
+                body.MovePosition(SamplePath(isForward ? sampled : totalLength - sampled));
             }
 
             _travelingBodies.Remove(body);
-            ReleaseBody(body, GetExitDirection() * travelSpeed * _exitSpeedMultiplier);
+            ReleaseBody(body, GetExitDirection(isForward) * travelSpeed * _exitSpeedMultiplier);
             GainScore(_scoreReward);
         }
 
@@ -130,8 +155,20 @@ namespace Pinball.Ingame.Map
             return _pathPoints[_pathPoints.Length - 1];
         }
 
-        Vector2 GetExitDirection()
+        Vector2 GetEnterDirection(bool isForward)
         {
+            if (isForward)
+                return (_pathPoints[1] - _pathPoints[0]).normalized;
+
+            int lastIndex = _pathPoints.Length - 1;
+            return (_pathPoints[lastIndex - 1] - _pathPoints[lastIndex]).normalized;
+        }
+
+        Vector2 GetExitDirection(bool isForward)
+        {
+            if (!isForward)
+                return (_pathPoints[0] - _pathPoints[1]).normalized;
+
             int lastIndex = _pathPoints.Length - 1;
             return (_pathPoints[lastIndex] - _pathPoints[lastIndex - 1]).normalized;
         }
@@ -157,6 +194,29 @@ namespace Pinball.Ingame.Map
         protected override void OnBindSerializedField()
         {
             BakePath();
+            BindEntrances();
+        }
+
+        void BindEntrances()
+        {
+            _startEntrance = null;
+            _endEntrance = null;
+
+            if (null == _bakedLocalPoints || _bakedLocalPoints.Length < MIN_POINT_COUNT)
+                return;
+
+            LaneEntrance[] entrances = GetComponentsInChildren<LaneEntrance>(true);
+            Vector2 startPoint = _bakedLocalPoints[0];
+            Vector2 endPoint = _bakedLocalPoints[_bakedLocalPoints.Length - 1];
+
+            for (int i = 0; i < entrances.Length; ++i)
+            {
+                Vector2 local = transform.InverseTransformPoint(entrances[i].transform.position);
+                if ((local - startPoint).sqrMagnitude <= (local - endPoint).sqrMagnitude)
+                    _startEntrance = entrances[i];
+                else
+                    _endEntrance = entrances[i];
+            }
         }
 
         Vector2[] BuildLocalPath()
