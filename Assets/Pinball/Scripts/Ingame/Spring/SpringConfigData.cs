@@ -8,7 +8,7 @@ namespace Pinball.Ingame
         [SerializeField] float _launchImpulse = 15f;
         [SerializeField] float _peakChargeDuration = 2f;
         [SerializeField] float _resetChargeDuration = 3f;
-        [SerializeField] float _minPowerRatio = 0.25f;
+        [SerializeField] float _minPowerRatio = 0.45f;
 
         public float LaunchImpulse => _launchImpulse;
         public float PeakChargeDuration => _peakChargeDuration;
