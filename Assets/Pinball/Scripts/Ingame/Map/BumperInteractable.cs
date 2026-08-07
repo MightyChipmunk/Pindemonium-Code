@@ -28,6 +28,8 @@ namespace Pinball.Ingame.Map
         float _currentHealth = 0f;
         bool _isBroken = false;
 
+        public event Action OnBroken;
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
@@ -47,6 +49,8 @@ namespace Pinball.Ingame.Map
 
         protected override void OnRelease()
         {
+            OnBroken = null;
+
             if (null != _cancellationTokenSource)
             {
                 _cancellationTokenSource.Cancel();
@@ -122,6 +126,7 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _visual.gameObject.SetActive(false);
 
+            OnBroken?.Invoke();
             RespawnAsync(_cancellationTokenSource.Token).Forget();
         }
 
