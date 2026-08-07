@@ -1,9 +1,14 @@
+using Cysharp.Threading.Tasks;
+using Pinball.Core;
 using Pinball.FX;
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Presentation;
+using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.UI;
+using Pinball.Settings;
+using Pinball.UI;
 using Pinball.Util;
 using UnityEngine;
 
@@ -16,9 +21,11 @@ namespace Pinball.Ingame
             Ready = 0,
             Playing = 1,
             GameOver = 2,
+            Shopping = 3,
         }
 
         const int DEFAULT_MAP_INDEX = 0;
+        const int STAGE_CLEAR_BASE_MONEY = 3;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -29,13 +36,22 @@ namespace Pinball.Ingame
         [SerializeField] PinballStatData _statData = null;
         [SerializeField] PresentationConfigData _presentationConfig = null;
         [SerializeField] FXPoolData _fxPoolData = null;
+        [SerializeField] StageCatalogData _stageCatalog = null;
+        [SerializeField] UIViewCatalogData _viewCatalog = null;
+        [SerializeField] SettingsConfigData _settingsConfig = null;
 
         IngameDirector _director = null;
         ScoreCounter _scoreCounter = null;
         BallStockCounter _ballStock = null;
         DamageCalculator _damageCalculator = null;
+        StageProgressTracker _stageTracker = null;
+        MoneyWallet _wallet = null;
         MapRoot _currentMap = null;
+        Ball _activeBall = null;
         EGameState _gameState = EGameState.Ready;
+        bool _isExitingToLobby = false;
+
+        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping;
 
         void Awake()
         {
@@ -55,8 +71,11 @@ namespace Pinball.Ingame
             _ballStock.Init(_statData.InitialBallCount);
             _damageCalculator = new DamageCalculator();
             _damageCalculator.Init(GetBallAttackPower);
+            _wallet = new MoneyWallet();
+            _wallet.Init();
 
             _inputRouter.Init();
+            _inputRouter.OnEscapePressed += OnEscapePressed;
             _ballSpawner.Init();
             _drainZone.Init();
             _mapLoader.Init();
@@ -65,14 +84,24 @@ namespace Pinball.Ingame
             _director = new IngameDirector();
             _director.Init(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
 
-            _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
-            if (null != _currentMap)
-                _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge, _director.PlayFX);
+            LoadMap();
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballStock.OnChanged += _uiRoot.SetBallCount;
             _uiRoot.SetScore(_scoreCounter.Current);
             _uiRoot.SetBallCount(_ballStock.Remaining);
+
+            GameSettings.EnsureInit(_settingsConfig);
+            UIManager.EnsureInit(_viewCatalog);
+            UIManager.OnEvent += OnUIEvent;
+            _uiRoot.OnPauseClicked += OnPauseButtonClicked;
+            _stageTracker = new StageProgressTracker();
+            _stageTracker.Init(_stageCatalog);
+            _stageTracker.OnStageStarted += OnStageStarted;
+            _stageTracker.OnStageCleared += OnStageCleared;
+            _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
+            _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
+            _stageTracker.StartFirstStage();
 
             _inputRouter.OnFlipperLeftChanged += OnFlipperLeftChanged;
             _inputRouter.OnFlipperRightChanged += OnFlipperRightChanged;
@@ -85,6 +114,23 @@ namespace Pinball.Ingame
 
         public void Release()
         {
+            UIManager.OnEvent -= OnUIEvent;
+            UIManager.HideAll();
+
+            if (null != _stageTracker)
+            {
+                _stageTracker.Release();
+                _stageTracker = null;
+            }
+
+            if (null != _wallet)
+            {
+                _wallet.Release();
+                _wallet = null;
+            }
+
+            _activeBall = null;
+
             if (null != _drainZone)
                 _drainZone.Release();
 
@@ -136,6 +182,40 @@ namespace Pinball.Ingame
             _uiRoot.PlayScorePopup(score, worldPoint);
         }
 
+        void OnStageStarted(int stageNumber, StageData stage)
+        {
+            if (null == stage)
+                return;
+
+            UIManager.Show(new StageInfoView.Args(stageNumber, stage.TargetScore, 0));
+        }
+
+        void OnStageCleared(int stageNumber, StageData stage)
+        {
+            _gameState = EGameState.Shopping;
+            ResetMapControlStates();
+            DespawnActiveBall();
+            _wallet.Add(_ballStock.Remaining + STAGE_CLEAR_BASE_MONEY);
+
+            if (!UIManager.IsInitialized)
+            {
+                RestartNextStage();
+                return;
+            }
+
+            UIManager.Show(new StageClearView.Args(stageNumber));
+        }
+
+        void OnStageScoreChanged(int stageScore)
+        {
+            StageData stage = _stageTracker.GetCurrentStage();
+            if (null == stage)
+                return;
+
+            UIManager.Show(new StageInfoView.Args(_stageTracker.StageNumber, stage.TargetScore, stageScore));
+        }
+
+
         void OnFlipperLeftChanged(bool isPressed)
         {
             SetFlipperPressed(Flipper.ESide.Left, isPressed);
@@ -148,7 +228,7 @@ namespace Pinball.Ingame
 
         void SetFlipperPressed(Flipper.ESide side, bool isPressed)
         {
-            if (_gameState == EGameState.GameOver)
+            if (IsControlBlocked)
                 return;
 
             if (null == _currentMap)
@@ -159,7 +239,7 @@ namespace Pinball.Ingame
 
         void OnLaunchChanged(bool isPressed)
         {
-            if (_gameState == EGameState.GameOver)
+            if (IsControlBlocked)
                 return;
 
             if (null == _currentMap)
@@ -177,13 +257,17 @@ namespace Pinball.Ingame
 
         void OnBallDrained(Collider2D collider)
         {
-            if (_gameState == EGameState.GameOver)
+            if (IsControlBlocked)
                 return;
 
             if (!_ballSpawner.TryResolve(collider, out Ball ball))
                 return;
 
             _ballSpawner.Despawn(ball);
+
+            if (ball == _activeBall)
+                _activeBall = null;
+
             _ballStock.Consume();
 
             if (_ballStock.Remaining <= 0)
@@ -196,6 +280,15 @@ namespace Pinball.Ingame
             _gameState = EGameState.Ready;
         }
 
+        void LoadMap()
+        {
+            _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
+            if (null == _currentMap)
+                return;
+
+            _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, _director.PlayFlipperHit, _director.PlaySpringCharge, _director.PlayFX);
+        }
+
         void LoadBallOnSpring()
         {
             if (null == _currentMap)
@@ -206,21 +299,101 @@ namespace Pinball.Ingame
                 return;
 
             ball.SetMass(_statData.BallMass);
+            _activeBall = ball;
             _currentMap.LoadBall(ball);
         }
 
         void EndGame()
         {
             _gameState = EGameState.GameOver;
+            ResetMapControlStates();
+            Debug.Log("[IngameManager] Game Over");
+        }
 
-            if (null != _currentMap)
+        void ResetMapControlStates()
+        {
+            if (null == _currentMap)
+                return;
+
+            _currentMap.SetFlipperPressed(Flipper.ESide.Left, false);
+            _currentMap.SetFlipperPressed(Flipper.ESide.Right, false);
+            _currentMap.SetSpringCharging(false);
+        }
+
+        void DespawnActiveBall()
+        {
+            if (null == _activeBall)
+                return;
+
+            _ballSpawner.Despawn(_activeBall);
+            _activeBall = null;
+        }
+
+        void OnUIEvent(UIManager.EEvent uiEvent)
+        {
+            switch (uiEvent)
             {
-                _currentMap.SetFlipperPressed(Flipper.ESide.Left, false);
-                _currentMap.SetFlipperPressed(Flipper.ESide.Right, false);
-                _currentMap.SetSpringCharging(false);
+                case UIManager.EEvent.StageClearFinished:
+                    OpenShop();
+                    break;
+                case UIManager.EEvent.ShopStartRequested:
+                    RestartNextStage();
+                    break;
+                case UIManager.EEvent.ExitToLobbyRequested:
+                    OnLobbyExitRequested();
+                    break;
+            }
+        }
+
+        void OpenShop()
+        {
+            UIManager.Show(new ShopView.Args(_wallet.Current));
+        }
+
+        void RestartNextStage()
+        {
+            _ballStock.Init(_statData.InitialBallCount);
+            _uiRoot.SetBallCount(_ballStock.Remaining);
+            _stageTracker.AdvanceToNextStage();
+            LoadMap();
+            LoadBallOnSpring();
+            _gameState = EGameState.Ready;
+        }
+
+        void OnEscapePressed()
+        {
+            TogglePausePopup();
+        }
+
+        void OnPauseButtonClicked()
+        {
+            TogglePausePopup();
+        }
+
+        void TogglePausePopup()
+        {
+            if (_gameState == EGameState.Shopping)
+                return;
+
+            if (UIManager.IsOpen(UIViewCatalogData.EViewType.Settings))
+                return;
+
+            if (UIManager.IsOpen(UIViewCatalogData.EViewType.PausePopup))
+            {
+                UIManager.Hide(UIViewCatalogData.EViewType.PausePopup);
+                return;
             }
 
-            Debug.Log("[IngameManager] Game Over");
+            UIManager.Show(new PausePopupView.Args());
+        }
+
+        void OnLobbyExitRequested()
+        {
+            if (_isExitingToLobby)
+                return;
+
+            _isExitingToLobby = true;
+            SceneFlow.LoadLobbyAsync().Forget();
         }
 
         float GetFlipPower()

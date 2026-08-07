@@ -1,4 +1,5 @@
 using System;
+using Pinball.Settings;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,6 +12,7 @@ namespace Pinball.Ingame.InputModule
         public event Action<bool> OnFlipperLeftChanged;
         public event Action<bool> OnFlipperRightChanged;
         public event Action<bool> OnLaunchChanged;
+        public event Action OnEscapePressed;
 
         bool _isInited = false;
 
@@ -24,6 +26,7 @@ namespace Pinball.Ingame.InputModule
             OnFlipperLeftChanged = null;
             OnFlipperRightChanged = null;
             OnLaunchChanged = null;
+            OnEscapePressed = null;
             _isInited = false;
         }
 
@@ -39,23 +42,36 @@ namespace Pinball.Ingame.InputModule
             if (null == keyboard)
                 return;
 
-            if (keyboard[_keyConfig.FlipperLeftKey].wasPressedThisFrame)
-                OnFlipperLeftChanged?.Invoke(true);
+            CheckKey(keyboard, ResolveKey(EKeyAction.FlipperLeft, _keyConfig.FlipperLeftKey), OnFlipperLeftChanged);
+            CheckKey(keyboard, ResolveKey(EKeyAction.FlipperRight, _keyConfig.FlipperRightKey), OnFlipperRightChanged);
+            CheckKey(keyboard, ResolveKey(EKeyAction.Launch, _keyConfig.LaunchKey), OnLaunchChanged);
 
-            if (keyboard[_keyConfig.FlipperLeftKey].wasReleasedThisFrame)
-                OnFlipperLeftChanged?.Invoke(false);
+            if (keyboard.escapeKey.wasPressedThisFrame)
+                OnEscapePressed?.Invoke();
+        }
 
-            if (keyboard[_keyConfig.FlipperRightKey].wasPressedThisFrame)
-                OnFlipperRightChanged?.Invoke(true);
+        static Key ResolveKey(EKeyAction action, Key fallbackKey)
+        {
+            if (!GameSettings.IsInitialized)
+                return fallbackKey;
 
-            if (keyboard[_keyConfig.FlipperRightKey].wasReleasedThisFrame)
-                OnFlipperRightChanged?.Invoke(false);
+            Key key = GameSettings.GetKey(action);
+            if (key == Key.None)
+                return fallbackKey;
 
-            if (keyboard[_keyConfig.LaunchKey].wasPressedThisFrame)
-                OnLaunchChanged?.Invoke(true);
+            return key;
+        }
 
-            if (keyboard[_keyConfig.LaunchKey].wasReleasedThisFrame)
-                OnLaunchChanged?.Invoke(false);
+        static void CheckKey(Keyboard keyboard, Key key, Action<bool> callback)
+        {
+            if (key == Key.None)
+                return;
+
+            if (keyboard[key].wasPressedThisFrame)
+                callback?.Invoke(true);
+
+            if (keyboard[key].wasReleasedThisFrame)
+                callback?.Invoke(false);
         }
     }
 }
