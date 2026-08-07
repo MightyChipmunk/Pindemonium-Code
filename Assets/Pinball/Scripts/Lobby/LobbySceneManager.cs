@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using Pinball.Core;
+using Pinball.Save;
 using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
@@ -27,9 +28,11 @@ namespace Pinball.Lobby
 
         public void Init()
         {
+            SaveManager.EnsureInit();
             GameSettings.EnsureInit(_settingsConfig);
             UIManager.EnsureInit(_viewCatalog);
             _uiRoot.Init(OnContinueRequested, OnNewGameRequested, OnSettingsRequested);
+            _uiRoot.SetContinueInteractable(SaveManager.HasIngameSave);
         }
 
         public void Release()
@@ -42,7 +45,14 @@ namespace Pinball.Lobby
 
         void OnContinueRequested()
         {
-            Debug.Log("[LobbySceneManager] 이어하기는 아직 준비되지 않았습니다.");
+            if (_isLoadingIngame)
+                return;
+
+            if (!SaveManager.HasIngameSave)
+                return;
+
+            _isLoadingIngame = true;
+            SceneFlow.LoadIngameAsync(true).Forget();
         }
 
         void OnNewGameRequested()
@@ -51,7 +61,8 @@ namespace Pinball.Lobby
                 return;
 
             _isLoadingIngame = true;
-            SceneFlow.LoadIngameAsync().Forget();
+            SaveManager.ClearIngame();
+            SceneFlow.LoadIngameAsync(false).Forget();
         }
 
         void OnSettingsRequested()

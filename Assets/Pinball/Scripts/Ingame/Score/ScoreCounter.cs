@@ -9,9 +9,9 @@ namespace Pinball.Ingame
         public int Current => _current;
         public event Action<int> OnChanged;
 
-        public void Init()
+        public void Init(int initialScore)
         {
-            _current = 0;
+            _current = initialScore;
         }
 
         public void Release()

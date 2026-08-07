@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Pinball.Ingame.Stage
 {
@@ -17,12 +18,12 @@ namespace Pinball.Ingame.Stage
         public event Action<int, StageData> OnStageCleared;
         public event Action<int> OnStageScoreChanged;
 
-        public void Init(StageCatalogData catalog)
+        public void Init(StageCatalogData catalog, int startStageNumber, int startTotalScore)
         {
             _catalog = catalog;
-            _stageIndex = 0;
-            _stageStartScore = 0;
-            _totalScore = 0;
+            _stageIndex = Mathf.Max(0, startStageNumber - 1);
+            _stageStartScore = startTotalScore;
+            _totalScore = startTotalScore;
             _isCleared = false;
         }
 

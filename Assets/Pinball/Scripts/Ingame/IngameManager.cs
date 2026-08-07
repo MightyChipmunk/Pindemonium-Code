@@ -7,6 +7,7 @@ using Pinball.Ingame.Presentation;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.UI;
+using Pinball.Save;
 using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
@@ -26,6 +27,7 @@ namespace Pinball.Ingame
 
         const int DEFAULT_MAP_INDEX = 0;
         const int STAGE_CLEAR_BASE_MONEY = 3;
+        const int FIRST_STAGE_NUMBER = 1;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -65,14 +67,27 @@ namespace Pinball.Ingame
 
         public void Init()
         {
+            SaveManager.EnsureInit();
+
+            int startStageNumber = FIRST_STAGE_NUMBER;
+            int startMoney = 0;
+            int startScore = 0;
+            IngamePlayData savedData = SceneFlow.IsContinueRequested ? SaveManager.GetIngameData() : null;
+            if (null != savedData)
+            {
+                startStageNumber = savedData.StageNumber;
+                startMoney = savedData.Money;
+                startScore = savedData.TotalScore;
+            }
+
             _scoreCounter = new ScoreCounter();
-            _scoreCounter.Init();
+            _scoreCounter.Init(startScore);
             _ballStock = new BallStockCounter();
             _ballStock.Init(_statData.InitialBallCount);
             _damageCalculator = new DamageCalculator();
             _damageCalculator.Init(GetBallAttackPower);
             _wallet = new MoneyWallet();
-            _wallet.Init();
+            _wallet.Init(startMoney);
 
             _inputRouter.Init();
             _inputRouter.OnEscapePressed += OnEscapePressed;
@@ -96,7 +111,7 @@ namespace Pinball.Ingame
             UIManager.OnEvent += OnUIEvent;
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
             _stageTracker = new StageProgressTracker();
-            _stageTracker.Init(_stageCatalog);
+            _stageTracker.Init(_stageCatalog, startStageNumber, startScore);
             _stageTracker.OnStageStarted += OnStageStarted;
             _stageTracker.OnStageCleared += OnStageCleared;
             _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
@@ -184,6 +199,9 @@ namespace Pinball.Ingame
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
+            UpdateBestStage(stageNumber);
+            SaveProgress();
+
             if (null == stage)
                 return;
 
@@ -196,6 +214,7 @@ namespace Pinball.Ingame
             ResetMapControlStates();
             DespawnActiveBall();
             _wallet.Add(_ballStock.Remaining + STAGE_CLEAR_BASE_MONEY);
+            SaveProgress();
 
             if (!UIManager.IsInitialized)
             {
@@ -307,7 +326,30 @@ namespace Pinball.Ingame
         {
             _gameState = EGameState.GameOver;
             ResetMapControlStates();
+            SaveManager.ClearIngame();
             Debug.Log("[IngameManager] Game Over");
+        }
+
+        void SaveProgress()
+        {
+            IngamePlayData data = new IngamePlayData();
+            data.StageNumber = _stageTracker.StageNumber;
+            data.Money = _wallet.Current;
+            data.TotalScore = _scoreCounter.Current;
+            SaveManager.SaveIngame(data);
+        }
+
+        void UpdateBestStage(int stageNumber)
+        {
+            UserData userData = SaveManager.GetUserData();
+            if (null == userData)
+                return;
+
+            if (stageNumber <= userData.BestStageNumber)
+                return;
+
+            userData.BestStageNumber = stageNumber;
+            SaveManager.SaveUser();
         }
 
         void ResetMapControlStates()

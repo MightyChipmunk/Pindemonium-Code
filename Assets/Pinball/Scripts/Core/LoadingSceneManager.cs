@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Save;
 using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
@@ -22,6 +23,7 @@ namespace Pinball.Core
 
         async UniTaskVoid BootAsync(CancellationToken cancellationToken)
         {
+            SaveManager.EnsureInit();
             GameSettings.EnsureInit(_settingsConfig);
             UIManager.EnsureInit(_viewCatalog);
             await UniTask.Delay(TimeSpan.FromSeconds(MIN_DISPLAY_SECONDS), cancellationToken: cancellationToken);

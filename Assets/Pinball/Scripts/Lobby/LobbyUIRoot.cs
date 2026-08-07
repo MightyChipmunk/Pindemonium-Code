@@ -25,6 +25,11 @@ namespace Pinball.Lobby
             _settingsButton.onClick.AddListener(OnSettingsClicked);
         }
 
+        public void SetContinueInteractable(bool isInteractable)
+        {
+            _continueButton.interactable = isInteractable;
+        }
+
         public void Release()
         {
             _continueButton.onClick.RemoveListener(OnContinueClicked);

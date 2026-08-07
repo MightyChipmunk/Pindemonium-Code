@@ -6,9 +6,9 @@ namespace Pinball.Ingame
 
         public int Current => _current;
 
-        public void Init()
+        public void Init(int initialAmount)
         {
-            _current = 0;
+            _current = initialAmount;
         }
 
         public void Release()
