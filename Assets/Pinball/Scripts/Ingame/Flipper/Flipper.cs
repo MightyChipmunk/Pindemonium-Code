@@ -34,6 +34,7 @@ namespace Pinball.Ingame
         public event Action<EHitGrade, Vector2> OnBallStruck;
 
         Func<float> _flipPowerGetter = null;
+        Func<float> _perfectTimingRelaxGetter = null;
         List<Rigidbody2D> _touchingBodies = null;
         List<Rigidbody2D> _struckBodies = null;
         bool _isPressed = false;
@@ -46,9 +47,10 @@ namespace Pinball.Ingame
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;
 
-        public void Init(Func<float> flipPowerGetter)
+        public void Init(Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter)
         {
             _flipPowerGetter = flipPowerGetter;
+            _perfectTimingRelaxGetter = perfectTimingRelaxGetter;
             _touchingBodies = new List<Rigidbody2D>();
             _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
@@ -76,6 +78,7 @@ namespace Pinball.Ingame
             }
 
             _flipPowerGetter = null;
+            _perfectTimingRelaxGetter = null;
             OnBallStruck = null;
         }
 
@@ -197,8 +200,17 @@ namespace Pinball.Ingame
             if (!isSweetSpot)
                 return EHitGrade.Normal;
 
-            bool isPerfectTiming = _pressedElapsed >= _config.PerfectTimingMin && _pressedElapsed <= _config.PerfectTimingMax;
+            float timingRelax = GetPerfectTimingRelax();
+            bool isPerfectTiming = _pressedElapsed >= _config.PerfectTimingMin - timingRelax && _pressedElapsed <= _config.PerfectTimingMax + timingRelax;
             return isPerfectTiming ? EHitGrade.Perfect : EHitGrade.SweetSpot;
+        }
+
+        float GetPerfectTimingRelax()
+        {
+            if (null == _perfectTimingRelaxGetter)
+                return 0f;
+
+            return _perfectTimingRelaxGetter();
         }
 
         void LogHit(EHitGrade grade, float hitRatio, float impulseScale)

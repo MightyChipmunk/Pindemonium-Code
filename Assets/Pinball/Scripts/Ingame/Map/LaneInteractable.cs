@@ -24,6 +24,8 @@ namespace Pinball.Ingame.Map
         List<Rigidbody2D> _travelingBodies = null;
         CancellationTokenSource _cancellationTokenSource = null;
 
+        public override EGimmickType GimmickType => EGimmickType.Lane;
+
         protected override void OnInit()
         {
             LoadBakedPath();

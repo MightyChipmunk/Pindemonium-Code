@@ -23,6 +23,8 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         Tween _hitTween = null;
 
+        public override EGimmickType GimmickType => EGimmickType.StandupTarget;
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());

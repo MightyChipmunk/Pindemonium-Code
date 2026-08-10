@@ -15,6 +15,8 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         int _droppedCount = 0;
 
+        public override EGimmickType GimmickType => EGimmickType.DropTarget;
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());

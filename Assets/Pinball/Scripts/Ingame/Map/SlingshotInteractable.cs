@@ -13,6 +13,8 @@ namespace Pinball.Ingame.Map
 
         Tween _kickTween = null;
 
+        public override EGimmickType GimmickType => EGimmickType.Slingshot;
+
         protected override void OnRelease()
         {
             if (null != _kickTween)

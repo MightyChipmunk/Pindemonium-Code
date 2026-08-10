@@ -23,5 +23,17 @@ namespace Pinball.Ingame
 
             _current += amount;
         }
+
+        public bool TrySpend(int amount)
+        {
+            if (amount <= 0)
+                return false;
+
+            if (_current < amount)
+                return false;
+
+            _current -= amount;
+            return true;
+        }
     }
 }

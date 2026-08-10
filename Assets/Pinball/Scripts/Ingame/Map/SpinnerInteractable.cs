@@ -24,6 +24,8 @@ namespace Pinball.Ingame.Map
         float _currentAngle = 0f;
         bool _isSpinning = false;
 
+        public override EGimmickType GimmickType => EGimmickType.Spinner;
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());

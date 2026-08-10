@@ -7,13 +7,26 @@ namespace Pinball.Ingame.Map
 {
     public abstract class MapInteractable : BehaviourBase
     {
+        public enum EGimmickType
+        {
+            Bumper = 0,
+            Slingshot = 1,
+            Spinner = 2,
+            DropTarget = 3,
+            StandupTarget = 4,
+            LampBank = 5,
+            Lane = 6,
+        }
+
         [SerializeField] LayerMask _ballLayerMask = default;
 
-        Action<int, Vector2> _onScoreGained = null;
+        Action<EGimmickType, int, Vector2> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
 
-        public void Init(Action<int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public abstract EGimmickType GimmickType { get; }
+
+        public void Init(Action<EGimmickType, int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
@@ -56,7 +69,7 @@ namespace Pinball.Ingame.Map
             if (score <= 0)
                 return;
 
-            _onScoreGained?.Invoke(score, worldPoint);
+            _onScoreGained?.Invoke(GimmickType, score, worldPoint);
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)

@@ -14,6 +14,9 @@ namespace Pinball.Ingame.Map
         const float RESPAWN_PUNCH_RATIO = 0.6f;
         const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
+        const float MIN_BURN_INTERVAL = 0.05f;
+
+        static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
 
         [SerializeField] BumperGradeData _gradeData = null;
         [SerializeField] BumperGradeData.EGrade _grade = BumperGradeData.EGrade.Yellow;
@@ -22,13 +25,19 @@ namespace Pinball.Ingame.Map
         [SerializeField] SpriteRenderer _visualRenderer = null;
 
         CancellationTokenSource _cancellationTokenSource = null;
+        CancellationTokenSource _burnTokenSource = null;
         Tween _visualTween = null;
         BumperGradeData.GradeSpec _spec = default;
         Vector3 _visualBaseScale = Vector3.one;
+        Color _visualBaseColor = Color.white;
         float _currentHealth = 0f;
         bool _isBroken = false;
 
+        public override EGimmickType GimmickType => EGimmickType.Bumper;
+        public bool IsBroken => _isBroken;
+
         public event Action OnBroken;
+        public event Action<BumperInteractable, float> OnBallDamaged;
 
         protected override void OnInit()
         {
@@ -40,6 +49,9 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _visualBaseScale = _visual.localScale;
 
+            if (null != _visualRenderer)
+                _visualBaseColor = _visualRenderer.color;
+
             ApplyGradeVisual();
 
             _currentHealth = _spec.MaxHealth;
@@ -50,6 +62,8 @@ namespace Pinball.Ingame.Map
         protected override void OnRelease()
         {
             OnBroken = null;
+            OnBallDamaged = null;
+            StopBurning();
 
             if (null != _cancellationTokenSource)
             {
@@ -94,11 +108,80 @@ namespace Pinball.Ingame.Map
             if (null == _gradeData)
                 return;
 
+            ReduceHealth(damage);
+            OnBallDamaged?.Invoke(this, damage);
+        }
+
+        public void ApplyDamage(float damage)
+        {
+            if (_isBroken)
+                return;
+
+            if (null == _gradeData)
+                return;
+
+            if (damage <= 0f)
+                return;
+
+            PlayFX(_spec.HitFX, transform.position);
+            PlayVisualPunch(HIT_PUNCH_RATIO, HIT_PUNCH_DURATION, HIT_PUNCH_VIBRATO);
+            ReduceHealth(damage);
+        }
+
+        public void Ignite(float damagePerTick, float intervalSeconds)
+        {
+            if (_isBroken)
+                return;
+
+            if (damagePerTick <= 0f)
+                return;
+
+            StopBurning();
+            _burnTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+            ApplyBurningTint(true);
+            BurnAsync(damagePerTick, Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds), _burnTokenSource.Token).Forget();
+        }
+
+        void ReduceHealth(float damage)
+        {
             _currentHealth -= damage;
             if (_currentHealth >= 0f)
                 return;
 
             Break();
+        }
+
+        async UniTaskVoid BurnAsync(float damagePerTick, float intervalSeconds, CancellationToken cancellationToken)
+        {
+            while (!_isBroken)
+            {
+                await UniTask.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken: cancellationToken);
+
+                if (_isBroken)
+                    return;
+
+                ReduceHealth(damagePerTick);
+            }
+        }
+
+        void StopBurning()
+        {
+            if (null != _burnTokenSource)
+            {
+                _burnTokenSource.Cancel();
+                _burnTokenSource.Dispose();
+                _burnTokenSource = null;
+            }
+
+            ApplyBurningTint(false);
+        }
+
+        void ApplyBurningTint(bool isBurning)
+        {
+            if (null == _visualRenderer)
+                return;
+
+            _visualRenderer.color = isBurning ? BURNING_TINT : _visualBaseColor;
         }
 
         void ApplyGradeVisual()
@@ -118,6 +201,7 @@ namespace Pinball.Ingame.Map
         void Break()
         {
             _isBroken = true;
+            StopBurning();
             _collider.enabled = false;
             GainScore(_spec.BreakScore);
             PlayFX(_spec.BreakFX, transform.position);

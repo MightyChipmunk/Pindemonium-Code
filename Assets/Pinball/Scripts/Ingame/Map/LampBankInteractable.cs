@@ -21,6 +21,8 @@ namespace Pinball.Ingame.Map
         int _litCount = 0;
         bool _isPlayingSiren = false;
 
+        public override EGimmickType GimmickType => EGimmickType.LampBank;
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
