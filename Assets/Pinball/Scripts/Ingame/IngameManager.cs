@@ -29,11 +29,6 @@ namespace Pinball.Ingame
         const int STAGE_CLEAR_BASE_MONEY = 3;
         const int FIRST_STAGE_NUMBER = 1;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
-        const int PASSIVE_OWNED_COUNT = 1;
-
-        static readonly Color DEFAULT_TRAIL_COLOR = Color.white;
-        static readonly Color FIREBALL_TRAIL_COLOR = new Color(1f, 0.55f, 0.2f, 1f);
-        static readonly Color LIGHTNING_BALL_TRAIL_COLOR = new Color(0.45f, 0.85f, 1f, 1f);
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -52,17 +47,17 @@ namespace Pinball.Ingame
         [SerializeField] ShopCatalogData _shopCatalog = null;
 
         IngameDirector _director = null;
+        PlayerController _playerController = null;
+        BallFlowController _ballFlow = null;
         ScoreCounter _scoreCounter = null;
-        BallStockCounter _ballStock = null;
         DamageCalculator _damageCalculator = null;
         StageProgressTracker _stageTracker = null;
         MoneyWallet _wallet = null;
-        ComboTracker _comboTracker = null;
         PlayerLoadout _loadout = null;
-        ShopSession _shopSession = null;
+        StatProvider _statProvider = null;
+        IngameShopController _shopController = null;
+        IngameSaveHandler _saveHandler = null;
         MapRoot _currentMap = null;
-        Ball _activeBall = null;
-        int _ballCollisionCount = 0;
         EGameState _gameState = EGameState.Ready;
         bool _isExitingToLobby = false;
 
@@ -81,32 +76,33 @@ namespace Pinball.Ingame
         public void Init()
         {
             SaveManager.EnsureInit();
+            _saveHandler = new IngameSaveHandler();
 
             int startStageNumber = FIRST_STAGE_NUMBER;
             int startMoney = 0;
             int startScore = 0;
-            IngamePlayData savedData = SceneFlow.IsContinueRequested ? SaveManager.GetIngameData() : null;
-            if (null != savedData)
+            if (_saveHandler.TryLoad(out int savedStageNumber, out int savedMoney, out int savedScore))
             {
-                startStageNumber = savedData.StageNumber;
-                startMoney = savedData.Money;
-                startScore = savedData.TotalScore;
+                startStageNumber = savedStageNumber;
+                startMoney = savedMoney;
+                startScore = savedScore;
             }
 
-            _scoreCounter = new ScoreCounter();
-            _scoreCounter.Init(startScore);
-            _ballStock = new BallStockCounter();
-            _ballStock.Init(_statData.InitialBallCount);
-            _damageCalculator = new DamageCalculator();
-            _damageCalculator.Init(GetBallAttackPower);
             _wallet = new MoneyWallet();
             _wallet.Init(startMoney);
             _loadout = new PlayerLoadout();
             _loadout.Init(null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount);
-            _comboTracker = new ComboTracker();
-            _comboTracker.Init(_comboConfig, GetComboMultiplierBonus, GetComboTimeoutBonus);
-            _comboTracker.OnComboChanged += OnComboChanged;
-            _comboTracker.OnComboEnded += OnComboEnded;
+            _statProvider = new StatProvider();
+            _statProvider.Init(_statData, _loadout);
+            _damageCalculator = new DamageCalculator();
+            _damageCalculator.Init(_statProvider.GetBallAttackPower);
+            _scoreCounter = new ScoreCounter();
+            _scoreCounter.Init(startScore, _comboConfig, _statProvider, _uiRoot.PlayScorePopup);
+            _scoreCounter.OnComboChanged += OnComboChanged;
+            _scoreCounter.OnComboEnded += OnComboEnded;
+            _shopController = new IngameShopController();
+            _shopController.Init(_shopConfig, _shopCatalog, _wallet, _loadout);
+            _shopController.OnNextStageRequested += RestartNextStage;
 
             _inputRouter.Init();
             _inputRouter.OnEscapePressed += OnEscapePressed;
@@ -117,13 +113,21 @@ namespace Pinball.Ingame
             _cameraController.Init();
             _director = new IngameDirector();
             _director.Init(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
+            _playerController = new PlayerController();
+            _playerController.Init(_inputRouter, GetIsControlBlocked);
+            _playerController.OnLaunched += OnBallLaunched;
+            _ballFlow = new BallFlowController();
+            _ballFlow.Init(_ballSpawner, _drainZone, _statProvider, _statData.InitialBallCount, _statData.BallMass, transform.position, GetIsControlBlocked, GetIsPlaying);
+            _ballFlow.OnBallLost += OnBallLost;
+            _ballFlow.OnBallReady += OnBallReady;
+            _ballFlow.OnAllBallsLost += EndGame;
 
             LoadMap();
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
-            _ballStock.OnChanged += _uiRoot.SetBallCount;
+            _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
             _uiRoot.SetScore(_scoreCounter.Current);
-            _uiRoot.SetBallCount(_ballStock.Remaining);
+            _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
 
             GameSettings.EnsureInit(_settingsConfig);
             UIManager.EnsureInit(_viewCatalog);
@@ -137,12 +141,7 @@ namespace Pinball.Ingame
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
             _stageTracker.StartFirstStage();
 
-            _inputRouter.OnFlipperLeftChanged += OnFlipperLeftChanged;
-            _inputRouter.OnFlipperRightChanged += OnFlipperRightChanged;
-            _inputRouter.OnLaunchChanged += OnLaunchChanged;
-            _drainZone.OnColliderEntered += OnBallDrained;
-
-            LoadBallOnSpring();
+            _ballFlow.LoadBallOnSpring();
             _gameState = EGameState.Ready;
         }
 
@@ -157,16 +156,40 @@ namespace Pinball.Ingame
                 _stageTracker = null;
             }
 
-            if (null != _shopSession)
+            if (null != _ballFlow)
             {
-                _shopSession.Release();
-                _shopSession = null;
+                _ballFlow.Release();
+                _ballFlow = null;
             }
 
-            if (null != _comboTracker)
+            if (null != _playerController)
             {
-                _comboTracker.Release();
-                _comboTracker = null;
+                _playerController.Release();
+                _playerController = null;
+            }
+
+            if (null != _shopController)
+            {
+                _shopController.Release();
+                _shopController = null;
+            }
+
+            if (null != _scoreCounter)
+            {
+                _scoreCounter.Release();
+                _scoreCounter = null;
+            }
+
+            if (null != _damageCalculator)
+            {
+                _damageCalculator.Release();
+                _damageCalculator = null;
+            }
+
+            if (null != _statProvider)
+            {
+                _statProvider.Release();
+                _statProvider = null;
             }
 
             if (null != _loadout)
@@ -180,8 +203,6 @@ namespace Pinball.Ingame
                 _wallet.Release();
                 _wallet = null;
             }
-
-            _activeBall = null;
 
             if (null != _drainZone)
                 _drainZone.Release();
@@ -209,93 +230,37 @@ namespace Pinball.Ingame
             if (null != _ballSpawner)
                 _ballSpawner.Release();
 
-            if (null != _damageCalculator)
-            {
-                _damageCalculator.Release();
-                _damageCalculator = null;
-            }
-
-            if (null != _ballStock)
-            {
-                _ballStock.Release();
-                _ballStock = null;
-            }
-
-            if (null != _scoreCounter)
-            {
-                _scoreCounter.Release();
-                _scoreCounter = null;
-            }
+            _saveHandler = null;
         }
 
         void Update()
         {
-            if (null == _comboTracker)
+            if (null == _scoreCounter)
                 return;
 
-            _comboTracker.Tick(Time.deltaTime);
-        }
-
-        void OnMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint, MapInteractable.EScoreSource scoreSource)
-        {
-            int finalScore = Mathf.RoundToInt(score * (1f + GetGimmickScoreRatio(gimmickType) + GetLoadoutEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)));
-
-            if (scoreSource == MapInteractable.EScoreSource.BallHit)
-                _comboTracker.AddBounce(finalScore);
-
-            _scoreCounter.Add(finalScore);
-            _uiRoot.PlayScorePopup(finalScore, worldPoint);
+            _scoreCounter.Tick(Time.deltaTime);
         }
 
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
         {
             _director.PlayFlipperHit(grade, worldPoint);
-
-            if (grade != Flipper.EHitGrade.Perfect)
-                return;
-
-            int parryScore = Mathf.RoundToInt(GetLoadoutEffectSum(ShopItemData.EEffectType.PerfectParryScoreAdd));
-            if (parryScore <= 0)
-                return;
-
-            _scoreCounter.Add(parryScore);
-            _uiRoot.PlayScorePopup(parryScore, worldPoint);
+            _scoreCounter.HandlePerfectParry(grade, worldPoint);
         }
 
         void OnBumperDamaged(BumperInteractable bumper, float damage)
         {
-            if (_loadout.HasEffect(ShopItemData.EEffectType.BumperBurn))
+            if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperBurn))
             {
-                float burnDamage = damage * _loadout.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
-                bumper.Ignite(burnDamage, _loadout.GetEffectSub(ShopItemData.EEffectType.BumperBurn), PoolableFX.EFXType.Fireball);
+                float burnDamage = damage * _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
+                bumper.Ignite(burnDamage, _statProvider.GetEffectSub(ShopItemData.EEffectType.BumperBurn), PoolableFX.EFXType.Fireball);
             }
 
-            if (!_loadout.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
+            if (!_statProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
                 return;
 
-            float chainRatio = _loadout.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
-            int maxChainCount = Mathf.RoundToInt(_loadout.GetEffectSub(ShopItemData.EEffectType.BumperChainLightning));
+            float chainRatio = _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
+            int maxChainCount = Mathf.RoundToInt(_statProvider.GetEffectSub(ShopItemData.EEffectType.BumperChainLightning));
             _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount, PoolableFX.EFXType.LightningBall, PoolableFX.EFXType.LightningChainLink);
-        }
-
-        void CountBallCollision()
-        {
-            if (_gameState != EGameState.Playing)
-                return;
-
-            if (!_loadout.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
-                return;
-
-            int collisionLimit = Mathf.RoundToInt(_loadout.GetEffectSub(ShopItemData.EEffectType.FragileBallScoreRatio));
-            if (collisionLimit <= 0)
-                return;
-
-            ++_ballCollisionCount;
-            if (_ballCollisionCount < collisionLimit)
-                return;
-
-            DespawnActiveBall();
-            HandleBallLost();
         }
 
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
@@ -311,13 +276,12 @@ namespace Pinball.Ingame
                 return;
             }
 
-            _scoreCounter.Add(bonusScore);
             UIManager.Show(new ComboView.BonusArgs(bonusScore));
         }
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
-            UpdateBestStage(stageNumber);
+            _saveHandler.UpdateBestStage(stageNumber);
             SaveProgress();
 
             if (null == stage)
@@ -329,10 +293,10 @@ namespace Pinball.Ingame
         void OnStageCleared(int stageNumber, StageData stage)
         {
             _gameState = EGameState.Shopping;
-            ResetMapControlStates();
-            _comboTracker.EndCombo();
-            DespawnActiveBall();
-            _wallet.Add(_ballStock.Remaining + STAGE_CLEAR_BASE_MONEY + CalculateInterest());
+            _playerController.ResetControlStates();
+            _scoreCounter.EndCombo();
+            _ballFlow.DespawnActiveBall();
+            _wallet.Add(_ballFlow.RemainingBalls + STAGE_CLEAR_BASE_MONEY + _shopController.CalculateInterest());
             SaveProgress();
 
             if (!UIManager.IsInitialized)
@@ -353,330 +317,67 @@ namespace Pinball.Ingame
             UIManager.Show(new StageInfoView.Args(_stageTracker.StageNumber, stage.TargetScore, stageScore));
         }
 
-
-        void OnFlipperLeftChanged(bool isPressed)
+        void OnBallLaunched()
         {
-            SetFlipperPressed(Flipper.ESide.Left, isPressed);
+            _gameState = EGameState.Playing;
         }
 
-        void OnFlipperRightChanged(bool isPressed)
+        void OnBallLost()
         {
-            SetFlipperPressed(Flipper.ESide.Right, isPressed);
+            _scoreCounter.EndCombo();
         }
 
-        void SetFlipperPressed(Flipper.ESide side, bool isPressed)
+        void OnBallReady()
         {
-            if (IsControlBlocked)
-                return;
-
-            if (null == _currentMap)
-                return;
-
-            _currentMap.SetFlipperPressed(side, isPressed);
-        }
-
-        void OnLaunchChanged(bool isPressed)
-        {
-            if (IsControlBlocked)
-                return;
-
-            if (null == _currentMap)
-                return;
-
-            if (isPressed)
-            {
-                _currentMap.SetSpringCharging(true);
-                return;
-            }
-
-            if (_currentMap.TryLaunch())
-                _gameState = EGameState.Playing;
-        }
-
-        void OnBallDrained(Collider2D collider)
-        {
-            if (IsControlBlocked)
-                return;
-
-            if (!_ballSpawner.TryResolve(collider, out Ball ball))
-                return;
-
-            _ballSpawner.Despawn(ball);
-
-            if (ball == _activeBall)
-                _activeBall = null;
-
-            HandleBallLost();
-        }
-
-        void HandleBallLost()
-        {
-            _comboTracker.EndCombo();
-
-            if (_gameState == EGameState.Shopping)
-                return;
-
-            _ballStock.Consume();
-
-            if (_ballStock.Remaining <= 0)
-            {
-                EndGame();
-                return;
-            }
-
-            LoadBallOnSpring();
             _gameState = EGameState.Ready;
+        }
+
+        bool GetIsControlBlocked()
+        {
+            return IsControlBlocked;
+        }
+
+        bool GetIsPlaying()
+        {
+            return _gameState == EGameState.Playing;
         }
 
         void LoadMap()
         {
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
+            _playerController.SetMap(_currentMap);
+            _ballFlow.SetMap(_currentMap);
             if (null == _currentMap)
                 return;
 
-            _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX);
-        }
-
-        void LoadBallOnSpring()
-        {
-            if (null == _currentMap)
-                return;
-
-            Ball ball = _ballSpawner.Spawn(transform.position);
-            if (null == ball)
-                return;
-
-            ball.SetMass(_statData.BallMass);
-            ball.SetTrailColor(GetBallTrailColor());
-            ball.SetCollisionCallback(CountBallCollision);
-            _activeBall = ball;
-            _ballCollisionCount = 0;
-            _currentMap.LoadBall(ball);
-        }
-
-        Color GetBallTrailColor()
-        {
-            if (_loadout.HasEffect(ShopItemData.EEffectType.BumperBurn))
-                return FIREBALL_TRAIL_COLOR;
-
-            if (_loadout.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
-                return LIGHTNING_BALL_TRAIL_COLOR;
-
-            return DEFAULT_TRAIL_COLOR;
+            _currentMap.Init(_scoreCounter.HandleMapScoreGained, _damageCalculator.Calculate, _statProvider.GetFlipPower, _statProvider.GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX);
         }
 
         void EndGame()
         {
             _gameState = EGameState.GameOver;
-            ResetMapControlStates();
-            SaveManager.ClearIngame();
+            _playerController.ResetControlStates();
+            _saveHandler.ClearOnGameOver();
             Debug.Log("[IngameManager] Game Over");
         }
 
         void SaveProgress()
         {
-            IngamePlayData data = new IngamePlayData();
-            data.StageNumber = _stageTracker.StageNumber;
-            data.Money = _wallet.Current;
-            data.TotalScore = _scoreCounter.Current;
-            SaveManager.SaveIngame(data);
-        }
-
-        void UpdateBestStage(int stageNumber)
-        {
-            UserData userData = SaveManager.GetUserData();
-            if (null == userData)
-                return;
-
-            if (stageNumber <= userData.BestStageNumber)
-                return;
-
-            userData.BestStageNumber = stageNumber;
-            SaveManager.SaveUser();
-        }
-
-        void ResetMapControlStates()
-        {
-            if (null == _currentMap)
-                return;
-
-            _currentMap.SetFlipperPressed(Flipper.ESide.Left, false);
-            _currentMap.SetFlipperPressed(Flipper.ESide.Right, false);
-            _currentMap.SetSpringCharging(false);
-        }
-
-        void DespawnActiveBall()
-        {
-            if (null == _activeBall)
-                return;
-
-            _ballSpawner.Despawn(_activeBall);
-            _activeBall = null;
+            _saveHandler.Save(_stageTracker.StageNumber, _wallet.Current, _scoreCounter.Current);
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)
         {
-            switch (uiEvent)
-            {
-                case UIManager.EEvent.StageClearFinished:
-                    OpenShop();
-                    break;
-                case UIManager.EEvent.ShopStartRequested:
-                    RestartNextStage();
-                    break;
-                case UIManager.EEvent.ExitToLobbyRequested:
-                    OnLobbyExitRequested();
-                    break;
-                case UIManager.EEvent.ShopBuyRequested:
-                    TryBuyOffer(payload);
-                    break;
-                case UIManager.EEvent.ShopRerollRequested:
-                    TryReroll();
-                    break;
-            }
-        }
-
-        void OpenShop()
-        {
-            _shopSession = new ShopSession();
-            _shopSession.Init(_shopConfig, _shopCatalog, CanOfferItem);
-            RefreshShopView();
-        }
-
-        void RefreshShopView()
-        {
-            if (null == _shopSession)
-                return;
-
-            UIManager.Show(new ShopView.Args(_wallet.Current, _shopSession.CurrentRerollPrice));
-
-            for (int i = 0; i < ShopSession.OFFER_SLOT_COUNT; ++i)
-                UIManager.Show(new ShopView.OfferArgs(i, GetOfferItemIndex(i)));
-
-            RefreshOwnedView();
-        }
-
-        void RefreshOwnedView()
-        {
-            UIManager.Show(new ShopView.OwnedResetArgs(_loadout.PassiveCount, _loadout.PassiveSlotCount, _loadout.UpgradeKindCount));
-
-            for (int i = 0; i < _loadout.PassiveCount; ++i)
-                UIManager.Show(new ShopView.OwnedItemArgs(GetPassiveItemIndex(i), PASSIVE_OWNED_COUNT));
-
-            for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
-                UIManager.Show(new ShopView.OwnedItemArgs(GetUpgradeItemIndex(i), _loadout.GetUpgradeCount(i)));
-        }
-
-        int GetOfferItemIndex(int slotIndex)
-        {
-            if (null == _shopCatalog || null == _shopSession)
-                return ShopCatalogData.INVALID_INDEX;
-
-            return _shopCatalog.IndexOf(_shopSession.GetOffer(slotIndex));
-        }
-
-        int GetPassiveItemIndex(int passiveIndex)
-        {
-            if (null == _shopCatalog || null == _loadout)
-                return ShopCatalogData.INVALID_INDEX;
-
-            return _shopCatalog.IndexOf(_loadout.GetPassive(passiveIndex));
-        }
-
-        int GetUpgradeItemIndex(int upgradeIndex)
-        {
-            if (null == _shopCatalog || null == _loadout)
-                return ShopCatalogData.INVALID_INDEX;
-
-            return _shopCatalog.IndexOf(_loadout.GetUpgrade(upgradeIndex));
-        }
-
-        void TryBuyOffer(int slotIndex)
-        {
-            if (null == _shopSession)
-                return;
-
-            ShopItemData item = _shopSession.GetOffer(slotIndex);
-            if (null == item)
-                return;
-
-            if (!CanApplyItem(item))
-                return;
-
-            if (!_wallet.TrySpend(item.Price))
-                return;
-
-            ApplyItem(item);
-            _shopSession.MarkSold(slotIndex);
-            RefreshShopView();
-        }
-
-        void TryReroll()
-        {
-            if (null == _shopSession)
-                return;
-
-            if (!_wallet.TrySpend(_shopSession.CurrentRerollPrice))
-                return;
-
-            _shopSession.Reroll();
-            RefreshShopView();
-        }
-
-        bool CanOfferItem(ShopItemData item)
-        {
-            if (null == item)
-                return false;
-
-            if (item.Kind != ShopItemData.EItemKind.Passive)
-                return true;
-
-            return _loadout.CanAddPassive(item);
-        }
-
-        bool CanApplyItem(ShopItemData item)
-        {
-            if (item.Kind != ShopItemData.EItemKind.Passive)
-                return true;
-
-            return _loadout.CanAddPassive(item);
-        }
-
-        void ApplyItem(ShopItemData item)
-        {
-            if (item.Kind == ShopItemData.EItemKind.Passive)
-            {
-                _loadout.TryAddPassive(item);
-                return;
-            }
-
-            _loadout.AddUpgrade(item);
-        }
-
-        int CalculateInterest()
-        {
-            if (null == _shopConfig)
-                return 0;
-
-            if (_shopConfig.InterestPerAmount <= 0)
-                return 0;
-
-            return Mathf.Min(_wallet.Current / _shopConfig.InterestPerAmount, _shopConfig.InterestMax);
+            if (uiEvent == UIManager.EEvent.ExitToLobbyRequested)
+                OnLobbyExitRequested();
         }
 
         void RestartNextStage()
         {
-            if (null != _shopSession)
-            {
-                _shopSession.Release();
-                _shopSession = null;
-            }
-
-            _ballStock.Init(_statData.InitialBallCount);
-            _uiRoot.SetBallCount(_ballStock.Remaining);
+            _ballFlow.RefillStock();
             _stageTracker.AdvanceToNextStage();
             LoadMap();
-            LoadBallOnSpring();
+            _ballFlow.LoadBallOnSpring();
             _gameState = EGameState.Ready;
         }
 
@@ -714,53 +415,6 @@ namespace Pinball.Ingame
 
             _isExitingToLobby = true;
             SceneFlow.LoadLobbyAsync().Forget();
-        }
-
-        float GetFlipPower()
-        {
-            if (null == _statData)
-                return 0f;
-
-            return _statData.FlipPower + GetLoadoutEffectSum(ShopItemData.EEffectType.FlipPowerAdd);
-        }
-
-        float GetBallAttackPower()
-        {
-            if (null == _statData)
-                return 0f;
-
-            return _statData.BallAttackPower + GetLoadoutEffectSum(ShopItemData.EEffectType.BallAttackPowerAdd);
-        }
-
-        float GetPerfectTimingRelax()
-        {
-            return GetLoadoutEffectSum(ShopItemData.EEffectType.PerfectTimingRelax);
-        }
-
-        float GetComboMultiplierBonus()
-        {
-            return GetLoadoutEffectSum(ShopItemData.EEffectType.ComboMultiplierAdd);
-        }
-
-        float GetComboTimeoutBonus()
-        {
-            return GetLoadoutEffectSum(ShopItemData.EEffectType.ComboTimeoutAdd);
-        }
-
-        float GetGimmickScoreRatio(MapInteractable.EGimmickType gimmickType)
-        {
-            if (null == _loadout)
-                return 0f;
-
-            return _loadout.GetGimmickScoreRatio(gimmickType);
-        }
-
-        float GetLoadoutEffectSum(ShopItemData.EEffectType effectType)
-        {
-            if (null == _loadout)
-                return 0f;
-
-            return _loadout.GetEffectSum(effectType);
         }
     }
 }
