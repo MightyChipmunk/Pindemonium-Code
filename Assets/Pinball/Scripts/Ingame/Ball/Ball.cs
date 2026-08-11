@@ -1,3 +1,4 @@
+using System;
 using Pinball.Util;
 using UnityEngine;
 
@@ -9,8 +10,15 @@ namespace Pinball.Ingame
         [SerializeField] Collider2D _collider = null;
         [SerializeField] BallTrail _trail = null;
 
+        Action _onCollided = null;
+
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
+
+        public void SetCollisionCallback(Action onCollided)
+        {
+            _onCollided = onCollided;
+        }
 
         public void SetMass(float mass)
         {
@@ -54,8 +62,17 @@ namespace Pinball.Ingame
         {
             SetKinematic(true);
             _trail.Release();
+            _onCollided = null;
         }
 
-        public void OnTerminate() { }
+        public void OnTerminate()
+        {
+            _onCollided = null;
+        }
+
+        void OnCollisionEnter2D(Collision2D collision)
+        {
+            _onCollided?.Invoke();
+        }
     }
 }

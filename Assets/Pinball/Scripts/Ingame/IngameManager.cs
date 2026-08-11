@@ -238,7 +238,6 @@ namespace Pinball.Ingame
             _comboTracker.AddBounce(finalScore);
             _scoreCounter.Add(finalScore);
             _uiRoot.PlayScorePopup(finalScore, worldPoint);
-            CountBallCollision();
         }
 
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
@@ -274,6 +273,9 @@ namespace Pinball.Ingame
 
         void CountBallCollision()
         {
+            if (_gameState != EGameState.Playing)
+                return;
+
             if (!_loadout.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
                 return;
 
@@ -438,6 +440,7 @@ namespace Pinball.Ingame
                 return;
 
             ball.SetMass(_statData.BallMass);
+            ball.SetCollisionCallback(CountBallCollision);
             _activeBall = ball;
             _ballCollisionCount = 0;
             _currentMap.LoadBall(ball);
