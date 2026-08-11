@@ -47,6 +47,7 @@ namespace Pinball.Ingame.Map
 
         void OnTargetDropped()
         {
+            NotifyBallHit();
             GainScore(_dropScoreReward);
             ++_droppedCount;
 

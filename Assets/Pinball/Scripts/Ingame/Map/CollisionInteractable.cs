@@ -15,6 +15,8 @@ namespace Pinball.Ingame.Map
             if (!IsBallLayer(collision.gameObject.layer))
                 return;
 
+            NotifyBallHit();
+
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
             float damage = EvaluateDamage(collisionImpulse);
             GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), collision.GetContact(0).point);

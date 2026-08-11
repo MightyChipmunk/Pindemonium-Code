@@ -23,7 +23,7 @@ namespace Pinball.Ingame.Map
         List<BumperInteractable> _bumpers = null;
         CancellationTokenSource _cancellationTokenSource = null;
 
-        public void Init(Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<BumperInteractable, float> onBumperDamaged, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<PoolableFX.EFXType, Vector2, Vector2> lineFXPlayer)
+        public void Init(Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<BumperInteractable, float> onBumperDamaged, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<PoolableFX.EFXType, Vector2, Vector2> lineFXPlayer, Action onGimmickBallHit)
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _bumpers = new List<BumperInteractable>();
@@ -34,7 +34,7 @@ namespace Pinball.Ingame.Map
             {
                 for (int i = 0; i < _interactables.Length; ++i)
                 {
-                    _interactables[i].Init(onScoreGained, damageEvaluator, fxPlayer);
+                    _interactables[i].Init(onScoreGained, damageEvaluator, fxPlayer, onGimmickBallHit);
 
                     BumperInteractable bumper = _interactables[i] as BumperInteractable;
                     if (null == bumper)

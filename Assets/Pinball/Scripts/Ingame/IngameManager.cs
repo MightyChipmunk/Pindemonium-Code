@@ -350,7 +350,7 @@ namespace Pinball.Ingame
             if (null == _currentMap)
                 return;
 
-            _currentMap.Init(_scoreCounter.HandleMapScoreGained, _damageCalculator.Calculate, _statProvider.GetFlipPower, _statProvider.GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX);
+            _currentMap.Init(_scoreCounter.HandleMapScoreGained, _damageCalculator.Calculate, _statProvider.GetFlipPower, _statProvider.GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX, _ballFlow.CountGimmickHit);
         }
 
         void EndGame()

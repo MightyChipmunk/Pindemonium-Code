@@ -29,14 +29,16 @@ namespace Pinball.Ingame.Map
         Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
+        Action _onBallHit = null;
 
         public abstract EGimmickType GimmickType { get; }
 
-        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action onBallHit)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
             _fxPlayer = fxPlayer;
+            _onBallHit = onBallHit;
             OnInit();
         }
 
@@ -46,6 +48,7 @@ namespace Pinball.Ingame.Map
             _onScoreGained = null;
             _damageEvaluator = null;
             _fxPlayer = null;
+            _onBallHit = null;
         }
 
         protected virtual void OnInit() { }
@@ -81,6 +84,11 @@ namespace Pinball.Ingame.Map
                 return;
 
             _onScoreGained?.Invoke(GimmickType, score, worldPoint, scoreSource);
+        }
+
+        protected void NotifyBallHit()
+        {
+            _onBallHit?.Invoke();
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)

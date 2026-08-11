@@ -18,7 +18,7 @@ namespace Pinball.Ingame
         Vector3 _spawnPosition = Vector3.zero;
         float _ballMass = 0f;
         int _initialBallCount = 0;
-        int _ballCollisionCount = 0;
+        int _gimmickHitCount = 0;
 
         public int RemainingBalls => _ballStock.Remaining;
 
@@ -85,9 +85,8 @@ namespace Pinball.Ingame
 
             ball.SetMass(_ballMass);
             ApplyPassiveAura(ball);
-            ball.SetCollisionCallback(CountBallCollision);
             _activeBall = ball;
-            _ballCollisionCount = 0;
+            _gimmickHitCount = 0;
             _map.LoadBall(ball);
         }
 
@@ -146,20 +145,23 @@ namespace Pinball.Ingame
             OnBallReady?.Invoke();
         }
 
-        void CountBallCollision()
+        public void CountGimmickHit()
         {
             if (!IsPlaying())
+                return;
+
+            if (null == _activeBall)
                 return;
 
             if (!_stats.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
                 return;
 
-            int collisionLimit = Mathf.RoundToInt(_stats.GetEffectSub(ShopItemData.EEffectType.FragileBallScoreRatio));
-            if (collisionLimit <= 0)
+            int hitLimit = Mathf.RoundToInt(_stats.GetEffectSub(ShopItemData.EEffectType.FragileBallScoreRatio));
+            if (hitLimit <= 0)
                 return;
 
-            ++_ballCollisionCount;
-            if (_ballCollisionCount < collisionLimit)
+            ++_gimmickHitCount;
+            if (_gimmickHitCount < hitLimit)
                 return;
 
             DespawnActiveBall();
