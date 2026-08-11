@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
@@ -8,6 +10,8 @@ namespace Pinball.Ingame.Map
 {
     public class MapRoot : BehaviourBase
     {
+        const float CHAIN_INTERVAL = 0.1f;
+
         [SerializeField] MapInteractable[] _interactables = null;
         [SerializeField] Flipper _leftFlipper = null;
         [SerializeField] Flipper _rightFlipper = null;
@@ -15,14 +19,16 @@ namespace Pinball.Ingame.Map
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
         Action<BumperInteractable, float> _onBumperDamaged = null;
+        Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
         List<BumperInteractable> _bumpers = null;
-        List<BumperInteractable> _chainedBumpers = null;
+        CancellationTokenSource _cancellationTokenSource = null;
 
-        public void Init(Action<MapInteractable.EGimmickType, int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<BumperInteractable, float> onBumperDamaged, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public void Init(Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<BumperInteractable, float> onBumperDamaged, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<PoolableFX.EFXType, Vector2, Vector2> lineFXPlayer)
         {
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _bumpers = new List<BumperInteractable>();
-            _chainedBumpers = new List<BumperInteractable>();
             _onBumperDamaged = onBumperDamaged;
+            _lineFXPlayer = lineFXPlayer;
 
             if (null != _interactables)
             {
@@ -49,6 +55,14 @@ namespace Pinball.Ingame.Map
 
         public void Release()
         {
+            if (null != _cancellationTokenSource)
+            {
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
+
+            _lineFXPlayer = null;
             _spring.Release();
             _rightFlipper.OnBallStruck -= OnFlipperBallStruck;
             _leftFlipper.OnBallStruck -= OnFlipperBallStruck;
@@ -66,12 +80,6 @@ namespace Pinball.Ingame.Map
                 _bumpers = null;
             }
 
-            if (null != _chainedBumpers)
-            {
-                _chainedBumpers.Clear();
-                _chainedBumpers = null;
-            }
-
             if (null == _interactables)
                 return;
 
@@ -79,34 +87,43 @@ namespace Pinball.Ingame.Map
                 _interactables[i].Release();
         }
 
-        public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount)
+        public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount, PoolableFX.EFXType chainFX, PoolableFX.EFXType chainLinkFX)
         {
-            if (null == _bumpers || null == _chainedBumpers)
+            if (null == _bumpers || null == _cancellationTokenSource)
                 return;
 
             if (maxChainCount <= 0 || chainRatio <= 0f)
                 return;
 
-            _chainedBumpers.Clear();
-            _chainedBumpers.Add(source);
+            ChainDamageAsync(source, baseDamage, chainRatio, maxChainCount, chainFX, chainLinkFX, _cancellationTokenSource.Token).Forget();
+        }
+
+        async UniTaskVoid ChainDamageAsync(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount, PoolableFX.EFXType chainFX, PoolableFX.EFXType chainLinkFX, CancellationToken cancellationToken)
+        {
+            List<BumperInteractable> chainedBumpers = new List<BumperInteractable>();
+            chainedBumpers.Add(source);
 
             Vector2 originPoint = source.transform.position;
             float chainDamage = baseDamage;
 
             for (int i = 0; i < maxChainCount; ++i)
             {
+                await UniTask.Delay(TimeSpan.FromSeconds(CHAIN_INTERVAL), cancellationToken: cancellationToken);
+
                 chainDamage *= chainRatio;
-                BumperInteractable target = FindNearestChainTarget(originPoint);
+                BumperInteractable target = FindNearestChainTarget(originPoint, chainedBumpers);
                 if (null == target)
                     return;
 
-                _chainedBumpers.Add(target);
-                originPoint = target.transform.position;
-                target.ApplyDamage(chainDamage);
+                chainedBumpers.Add(target);
+                Vector2 targetPoint = target.transform.position;
+                _lineFXPlayer?.Invoke(chainLinkFX, originPoint, targetPoint);
+                originPoint = targetPoint;
+                target.ApplyDamage(chainDamage, chainFX);
             }
         }
 
-        BumperInteractable FindNearestChainTarget(Vector2 originPoint)
+        BumperInteractable FindNearestChainTarget(Vector2 originPoint, List<BumperInteractable> chainedBumpers)
         {
             BumperInteractable nearest = null;
             float nearestSqrDistance = float.MaxValue;
@@ -117,7 +134,7 @@ namespace Pinball.Ingame.Map
                 if (bumper.IsBroken)
                     continue;
 
-                if (_chainedBumpers.Contains(bumper))
+                if (chainedBumpers.Contains(bumper))
                     continue;
 
                 float sqrDistance = ((Vector2)bumper.transform.position - originPoint).sqrMagnitude;

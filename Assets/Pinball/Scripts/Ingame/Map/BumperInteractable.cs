@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Pinball.FX;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -15,6 +16,7 @@ namespace Pinball.Ingame.Map
         const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
         const float MIN_BURN_INTERVAL = 0.05f;
+        const float BURN_DURATION = 3f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
 
@@ -26,6 +28,7 @@ namespace Pinball.Ingame.Map
 
         CancellationTokenSource _cancellationTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
+        PoolableFX.EFXType _burnFX = PoolableFX.EFXType.NonePooling;
         Tween _visualTween = null;
         BumperGradeData.GradeSpec _spec = default;
         Vector3 _visualBaseScale = Vector3.one;
@@ -112,7 +115,7 @@ namespace Pinball.Ingame.Map
             OnBallDamaged?.Invoke(this, damage);
         }
 
-        public void ApplyDamage(float damage)
+        public void ApplyDamage(float damage, PoolableFX.EFXType extraFX)
         {
             if (_isBroken)
                 return;
@@ -124,11 +127,13 @@ namespace Pinball.Ingame.Map
                 return;
 
             PlayFX(_spec.HitFX, transform.position);
+            PlayFX(extraFX, transform.position);
             PlayVisualPunch(HIT_PUNCH_RATIO, HIT_PUNCH_DURATION, HIT_PUNCH_VIBRATO);
+            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
             ReduceHealth(damage);
         }
 
-        public void Ignite(float damagePerTick, float intervalSeconds)
+        public void Ignite(float damagePerTick, float intervalSeconds, PoolableFX.EFXType burnFX)
         {
             if (_isBroken)
                 return;
@@ -137,8 +142,10 @@ namespace Pinball.Ingame.Map
                 return;
 
             StopBurning();
+            _burnFX = burnFX;
             _burnTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             ApplyBurningTint(true);
+            PlayFX(_burnFX, transform.position);
             BurnAsync(damagePerTick, Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds), _burnTokenSource.Token).Forget();
         }
 
@@ -153,15 +160,20 @@ namespace Pinball.Ingame.Map
 
         async UniTaskVoid BurnAsync(float damagePerTick, float intervalSeconds, CancellationToken cancellationToken)
         {
-            while (!_isBroken)
+            int tickCount = Mathf.Max(1, Mathf.RoundToInt(BURN_DURATION / intervalSeconds));
+            for (int i = 0; i < tickCount; ++i)
             {
                 await UniTask.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken: cancellationToken);
 
                 if (_isBroken)
                     return;
 
+                PlayFX(_burnFX, transform.position);
+                GainScore(Mathf.RoundToInt(damagePerTick * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
                 ReduceHealth(damagePerTick);
             }
+
+            StopBurning();
         }
 
         void StopBurning()
@@ -173,6 +185,7 @@ namespace Pinball.Ingame.Map
                 _burnTokenSource = null;
             }
 
+            _burnFX = PoolableFX.EFXType.NonePooling;
             ApplyBurningTint(false);
         }
 

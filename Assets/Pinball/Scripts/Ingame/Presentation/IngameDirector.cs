@@ -66,6 +66,20 @@ namespace Pinball.Ingame.Presentation
             _cameraShaker?.Invoke(presentation.CameraShakeType, presentation.CameraShakeDelay);
         }
 
+        public void PlayLineFX(PoolableFX.EFXType fxType, Vector2 startPoint, Vector2 endPoint)
+        {
+            if (fxType == PoolableFX.EFXType.NonePooling)
+                return;
+
+            PoolableLineFX lineFX = StaticPool<PoolableFX.EFXType, PoolableFX>.GetObject(fxType) as PoolableLineFX;
+            if (null == lineFX)
+                return;
+
+            lineFX.transform.position = startPoint;
+            lineFX.SetPoints(startPoint, endPoint);
+            lineFX.PlayFX();
+        }
+
         public void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
         {
             if (fxType == PoolableFX.EFXType.NonePooling)

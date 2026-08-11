@@ -14,8 +14,13 @@ namespace Pinball.Ingame
         [SerializeField] float _minWidth = 0.04f;
         [SerializeField] float _maxWidth = 0.2f;
 
+        Color _baseStartColor = Color.white;
+        Color _baseEndColor = Color.white;
+        bool _isBaseColorCached = false;
+
         public void Init()
         {
+            CacheBaseColor();
             ApplySpeedRatio(0f);
             _trail.Clear();
             _trail.emitting = true;
@@ -23,8 +28,35 @@ namespace Pinball.Ingame
 
         public void Release()
         {
+            RestoreBaseColor();
             _trail.emitting = false;
             _trail.Clear();
+        }
+
+        public void SetColor(Color color)
+        {
+            CacheBaseColor();
+            _trail.startColor = new Color(color.r, color.g, color.b, _baseStartColor.a);
+            _trail.endColor = new Color(color.r, color.g, color.b, _baseEndColor.a);
+        }
+
+        void CacheBaseColor()
+        {
+            if (_isBaseColorCached)
+                return;
+
+            _baseStartColor = _trail.startColor;
+            _baseEndColor = _trail.endColor;
+            _isBaseColorCached = true;
+        }
+
+        void RestoreBaseColor()
+        {
+            if (!_isBaseColorCached)
+                return;
+
+            _trail.startColor = _baseStartColor;
+            _trail.endColor = _baseEndColor;
         }
 
         public void Clear()

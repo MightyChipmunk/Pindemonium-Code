@@ -25,6 +25,11 @@ namespace Pinball.Ingame
             _rigidbody.mass = mass;
         }
 
+        public void SetTrailColor(Color color)
+        {
+            _trail.SetColor(color);
+        }
+
         public void SetKinematic(bool isKinematic)
         {
             if (isKinematic)

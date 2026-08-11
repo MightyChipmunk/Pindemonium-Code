@@ -18,15 +18,21 @@ namespace Pinball.Ingame.Map
             Lane = 6,
         }
 
+        public enum EScoreSource
+        {
+            BallHit = 0,
+            PassiveEffect = 1,
+        }
+
         [SerializeField] LayerMask _ballLayerMask = default;
 
-        Action<EGimmickType, int, Vector2> _onScoreGained = null;
+        Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
         Func<float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
 
         public abstract EGimmickType GimmickType { get; }
 
-        public void Init(Action<EGimmickType, int, Vector2> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
+        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
@@ -61,15 +67,20 @@ namespace Pinball.Ingame.Map
 
         protected void GainScore(int score)
         {
-            GainScore(score, transform.position);
+            GainScore(score, transform.position, EScoreSource.BallHit);
         }
 
         protected void GainScore(int score, Vector2 worldPoint)
         {
+            GainScore(score, worldPoint, EScoreSource.BallHit);
+        }
+
+        protected void GainScore(int score, Vector2 worldPoint, EScoreSource scoreSource)
+        {
             if (score <= 0)
                 return;
 
-            _onScoreGained?.Invoke(GimmickType, score, worldPoint);
+            _onScoreGained?.Invoke(GimmickType, score, worldPoint, scoreSource);
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)

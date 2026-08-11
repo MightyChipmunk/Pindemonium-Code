@@ -31,6 +31,10 @@ namespace Pinball.Ingame
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
         const int PASSIVE_OWNED_COUNT = 1;
 
+        static readonly Color DEFAULT_TRAIL_COLOR = Color.white;
+        static readonly Color FIREBALL_TRAIL_COLOR = new Color(1f, 0.55f, 0.2f, 1f);
+        static readonly Color LIGHTNING_BALL_TRAIL_COLOR = new Color(0.45f, 0.85f, 1f, 1f);
+
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
         [SerializeField] BallDrainZone _drainZone = null;
@@ -232,10 +236,13 @@ namespace Pinball.Ingame
             _comboTracker.Tick(Time.deltaTime);
         }
 
-        void OnMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint)
+        void OnMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint, MapInteractable.EScoreSource scoreSource)
         {
             int finalScore = Mathf.RoundToInt(score * (1f + GetGimmickScoreRatio(gimmickType) + GetLoadoutEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)));
-            _comboTracker.AddBounce(finalScore);
+
+            if (scoreSource == MapInteractable.EScoreSource.BallHit)
+                _comboTracker.AddBounce(finalScore);
+
             _scoreCounter.Add(finalScore);
             _uiRoot.PlayScorePopup(finalScore, worldPoint);
         }
@@ -259,8 +266,8 @@ namespace Pinball.Ingame
         {
             if (_loadout.HasEffect(ShopItemData.EEffectType.BumperBurn))
             {
-                float burnDamage = GetBallAttackPower() * _loadout.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
-                bumper.Ignite(burnDamage, _loadout.GetEffectSub(ShopItemData.EEffectType.BumperBurn));
+                float burnDamage = damage * _loadout.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
+                bumper.Ignite(burnDamage, _loadout.GetEffectSub(ShopItemData.EEffectType.BumperBurn), PoolableFX.EFXType.Fireball);
             }
 
             if (!_loadout.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
@@ -268,7 +275,7 @@ namespace Pinball.Ingame
 
             float chainRatio = _loadout.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
             int maxChainCount = Mathf.RoundToInt(_loadout.GetEffectSub(ShopItemData.EEffectType.BumperChainLightning));
-            _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount);
+            _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount, PoolableFX.EFXType.LightningBall, PoolableFX.EFXType.LightningChainLink);
         }
 
         void CountBallCollision()
@@ -427,7 +434,7 @@ namespace Pinball.Ingame
             if (null == _currentMap)
                 return;
 
-            _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX);
+            _currentMap.Init(OnMapScoreGained, _damageCalculator.Calculate, GetFlipPower, GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX);
         }
 
         void LoadBallOnSpring()
@@ -440,10 +447,22 @@ namespace Pinball.Ingame
                 return;
 
             ball.SetMass(_statData.BallMass);
+            ball.SetTrailColor(GetBallTrailColor());
             ball.SetCollisionCallback(CountBallCollision);
             _activeBall = ball;
             _ballCollisionCount = 0;
             _currentMap.LoadBall(ball);
+        }
+
+        Color GetBallTrailColor()
+        {
+            if (_loadout.HasEffect(ShopItemData.EEffectType.BumperBurn))
+                return FIREBALL_TRAIL_COLOR;
+
+            if (_loadout.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
+                return LIGHTNING_BALL_TRAIL_COLOR;
+
+            return DEFAULT_TRAIL_COLOR;
         }
 
         void EndGame()
