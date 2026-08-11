@@ -27,6 +27,7 @@ namespace Pinball.Ingame
         }
 
         [SerializeField] string _displayName = string.Empty;
+        [SerializeField, TextArea] string _description = string.Empty;
         [SerializeField] int _price = 1;
         [SerializeField] EItemKind _kind = EItemKind.Upgrade;
         [SerializeField] EEffectType _effectType = EEffectType.BallAttackPowerAdd;
@@ -44,6 +45,11 @@ namespace Pinball.Ingame
         public string GetDisplayName()
         {
             return _displayName;
+        }
+
+        public string GetDescription()
+        {
+            return _description;
         }
     }
 }

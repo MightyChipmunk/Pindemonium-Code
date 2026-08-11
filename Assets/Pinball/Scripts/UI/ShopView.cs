@@ -1,5 +1,6 @@
-using System.Text;
+using System.Collections.Generic;
 using Pinball.Ingame;
+using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,47 +19,89 @@ namespace Pinball.UI
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
 
-        public record PassivesArgs(int SlotCount, int ItemIndex0, int ItemIndex1, int ItemIndex2) : UIViewArgs
+        public record OwnedResetArgs(int PassiveCount, int PassiveSlotCount, int UpgradeCount) : UIViewArgs
+        {
+            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
+        }
+
+        public record OwnedItemArgs(int ItemIndex, int Count) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
 
         const string MONEY_FORMAT = "MONEY {0}";
         const string REROLL_FORMAT = "REROLL {0}";
-        const string OFFER_FORMAT = "{0}\n{1}";
+        const string PRICE_FORMAT = "COST {0}";
+        const string PASSIVE_HEADER_FORMAT = "PASSIVE  {0}/{1}";
+        const string UPGRADE_HEADER_FORMAT = "UPGRADE  {0}";
+        const string OWNED_COUNT_FORMAT = "x{0}";
+        const string PASSIVE_KIND_LABEL = "PASSIVE";
+        const string UPGRADE_KIND_LABEL = "UPGRADE";
         const string SOLD_LABEL = "SOLD";
-        const string PASSIVES_HEADER_FORMAT = "PASSIVES {0}/{1}";
-        const string PASSIVE_NAME_SEPARATOR = "  |  ";
+        const int OWNED_SLOT_CAPACITY = 8;
+        const int STACKED_COUNT_MIN = 2;
+        const float CARD_COLOR_RATIO = 0.4f;
+
+        static readonly Color SOLD_CARD_COLOR = new Color(0.34f, 0.35f, 0.4f, 1f);
 
         [SerializeField] ShopCatalogData _catalog = null;
+        [SerializeField] Color _passiveColor = new Color(0.68f, 0.53f, 1f, 1f);
+        [SerializeField] Color _upgradeColor = new Color(0.35f, 0.82f, 0.68f, 1f);
         [SerializeField] TMP_Text _moneyLabel = null;
-        [SerializeField] TMP_Text _passivesLabel = null;
-        [SerializeField] Button _offerButton0 = null;
-        [SerializeField] TMP_Text _offerLabel0 = null;
-        [SerializeField] Button _offerButton1 = null;
-        [SerializeField] TMP_Text _offerLabel1 = null;
-        [SerializeField] Button _offerButton2 = null;
-        [SerializeField] TMP_Text _offerLabel2 = null;
+        [SerializeField] ShopOfferSlotView _offerSlot0 = null;
+        [SerializeField] ShopOfferSlotView _offerSlot1 = null;
+        [SerializeField] ShopOfferSlotView _offerSlot2 = null;
+        [SerializeField] TMP_Text _passiveHeaderLabel = null;
+        [SerializeField] TMP_Text _upgradeHeaderLabel = null;
+        [SerializeField] RectTransform _passiveContent = null;
+        [SerializeField] RectTransform _upgradeContent = null;
+        [SerializeField] ShopOwnedSlotView _ownedSlotOrigin = null;
+        [SerializeField] ShopTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
         [SerializeField] TMP_Text _rerollLabel = null;
         [SerializeField] Button _startButton = null;
 
+        ObjectPool<ShopOwnedSlotView> _ownedSlotPool = null;
+        List<ShopOwnedSlotView> _activeOwnedSlots = null;
+
         public override void OnGenerate()
         {
-            _offerButton0.onClick.AddListener(OnOffer0Clicked);
-            _offerButton1.onClick.AddListener(OnOffer1Clicked);
-            _offerButton2.onClick.AddListener(OnOffer2Clicked);
+            _activeOwnedSlots = new List<ShopOwnedSlotView>();
+            _ownedSlotPool = new ObjectPool<ShopOwnedSlotView>(_ownedSlotOrigin, CreateOwnedSlot, OWNED_SLOT_CAPACITY);
+
+            _offerSlot0.Init(0, OnOfferClicked, OnTooltipHovered);
+            _offerSlot1.Init(1, OnOfferClicked, OnTooltipHovered);
+            _offerSlot2.Init(2, OnOfferClicked, OnTooltipHovered);
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
+            _tooltip.Hide();
         }
 
         public override void OnTerminate()
         {
-            _offerButton0.onClick.RemoveListener(OnOffer0Clicked);
-            _offerButton1.onClick.RemoveListener(OnOffer1Clicked);
-            _offerButton2.onClick.RemoveListener(OnOffer2Clicked);
+            _offerSlot0.Release();
+            _offerSlot1.Release();
+            _offerSlot2.Release();
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
+
+            if (null != _ownedSlotPool)
+            {
+                _ownedSlotPool.Clear();
+                _ownedSlotPool = null;
+            }
+
+            if (null != _activeOwnedSlots)
+            {
+                _activeOwnedSlots.Clear();
+                _activeOwnedSlots = null;
+            }
+        }
+
+        public override void OnReturn()
+        {
+            ClearOwnedSlots();
+            _tooltip.Hide();
         }
 
         public override void Bind(UIViewArgs args)
@@ -77,9 +120,16 @@ namespace Pinball.UI
                 return;
             }
 
-            PassivesArgs passivesArgs = args as PassivesArgs;
-            if (null != passivesArgs)
-                BindPassives(passivesArgs);
+            OwnedResetArgs ownedResetArgs = args as OwnedResetArgs;
+            if (null != ownedResetArgs)
+            {
+                BindOwnedReset(ownedResetArgs);
+                return;
+            }
+
+            OwnedItemArgs ownedItemArgs = args as OwnedItemArgs;
+            if (null != ownedItemArgs)
+                BindOwnedItem(ownedItemArgs);
         }
 
         void BindMain(Args args)
@@ -90,98 +140,122 @@ namespace Pinball.UI
 
         void BindOffer(OfferArgs args)
         {
-            Button button = GetOfferButton(args.SlotIndex);
-            TMP_Text label = GetOfferLabel(args.SlotIndex);
-            if (null == button || null == label)
+            ShopOfferSlotView slot = GetOfferSlot(args.SlotIndex);
+            if (null == slot)
                 return;
 
-            ShopItemData item = null == _catalog ? null : _catalog.GetItem(args.ItemIndex);
+            ShopItemData item = GetItem(args.ItemIndex);
             if (null == item)
             {
-                button.interactable = false;
-                label.text = SOLD_LABEL;
+                slot.BindEmpty(ShopCatalogData.INVALID_INDEX, SOLD_LABEL, SOLD_CARD_COLOR);
                 return;
             }
 
-            button.interactable = true;
-            label.text = string.Format(OFFER_FORMAT, item.GetDisplayName(), item.Price);
+            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
+            Color accentColor = GetAccentColor(isPassive);
+            slot.BindItem(args.ItemIndex, isPassive ? PASSIVE_KIND_LABEL : UPGRADE_KIND_LABEL, item.GetDisplayName(), string.Format(PRICE_FORMAT, item.Price), GetCardColor(accentColor), accentColor);
         }
 
-        void BindPassives(PassivesArgs args)
+        void BindOwnedReset(OwnedResetArgs args)
         {
-            StringBuilder builder = new StringBuilder();
-            int passiveCount = 0;
-            AppendPassiveName(builder, args.ItemIndex0, ref passiveCount);
-            AppendPassiveName(builder, args.ItemIndex1, ref passiveCount);
-            AppendPassiveName(builder, args.ItemIndex2, ref passiveCount);
-
-            StringBuilder header = new StringBuilder();
-            header.AppendFormat(PASSIVES_HEADER_FORMAT, passiveCount, args.SlotCount);
-            if (builder.Length > 0)
-            {
-                header.Append(PASSIVE_NAME_SEPARATOR);
-                header.Append(builder);
-            }
-
-            _passivesLabel.text = header.ToString();
+            _passiveHeaderLabel.text = string.Format(PASSIVE_HEADER_FORMAT, args.PassiveCount, args.PassiveSlotCount);
+            _upgradeHeaderLabel.text = string.Format(UPGRADE_HEADER_FORMAT, args.UpgradeCount);
+            ClearOwnedSlots();
+            _tooltip.Hide();
         }
 
-        void AppendPassiveName(StringBuilder builder, int itemIndex, ref int passiveCount)
+        void BindOwnedItem(OwnedItemArgs args)
         {
-            ShopItemData item = null == _catalog ? null : _catalog.GetItem(itemIndex);
+            ShopItemData item = GetItem(args.ItemIndex);
             if (null == item)
                 return;
 
-            if (builder.Length > 0)
-                builder.Append(PASSIVE_NAME_SEPARATOR);
+            ShopOwnedSlotView slot = _ownedSlotPool.Get();
+            if (null == slot)
+                return;
 
-            builder.Append(item.GetDisplayName());
-            ++passiveCount;
+            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
+            slot.transform.SetParent(isPassive ? _passiveContent : _upgradeContent, false);
+            slot.transform.SetAsLastSibling();
+
+            Color accentColor = GetAccentColor(isPassive);
+            slot.Bind(args.ItemIndex, item.GetDisplayName(), GetCountText(args.Count), GetCardColor(accentColor), accentColor, OnTooltipHovered);
+            _activeOwnedSlots.Add(slot);
         }
 
-        Button GetOfferButton(int slotIndex)
+        void ClearOwnedSlots()
+        {
+            if (null == _activeOwnedSlots)
+                return;
+
+            for (int i = 0; i < _activeOwnedSlots.Count; ++i)
+                _ownedSlotPool.Return(_activeOwnedSlots[i]);
+
+            _activeOwnedSlots.Clear();
+        }
+
+        ShopOwnedSlotView CreateOwnedSlot(ShopOwnedSlotView origin)
+        {
+            return Instantiate(origin, _passiveContent);
+        }
+
+        void OnTooltipHovered(int itemIndex, Vector3 anchorPosition, bool isEntered)
+        {
+            ShopItemData item = isEntered ? GetItem(itemIndex) : null;
+            if (null == item)
+            {
+                _tooltip.Hide();
+                return;
+            }
+
+            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
+            _tooltip.Show(item.GetDisplayName(), item.GetDescription(), GetAccentColor(isPassive), anchorPosition);
+        }
+
+        Color GetAccentColor(bool isPassive)
+        {
+            return isPassive ? _passiveColor : _upgradeColor;
+        }
+
+        Color GetCardColor(Color accentColor)
+        {
+            return new Color(accentColor.r * CARD_COLOR_RATIO, accentColor.g * CARD_COLOR_RATIO, accentColor.b * CARD_COLOR_RATIO, 1f);
+        }
+
+        string GetCountText(int count)
+        {
+            if (count < STACKED_COUNT_MIN)
+                return string.Empty;
+
+            return string.Format(OWNED_COUNT_FORMAT, count);
+        }
+
+        ShopItemData GetItem(int itemIndex)
+        {
+            if (null == _catalog)
+                return null;
+
+            return _catalog.GetItem(itemIndex);
+        }
+
+        ShopOfferSlotView GetOfferSlot(int slotIndex)
         {
             switch (slotIndex)
             {
                 case 0:
-                    return _offerButton0;
+                    return _offerSlot0;
                 case 1:
-                    return _offerButton1;
+                    return _offerSlot1;
                 case 2:
-                    return _offerButton2;
+                    return _offerSlot2;
                 default:
                     return null;
             }
         }
 
-        TMP_Text GetOfferLabel(int slotIndex)
+        void OnOfferClicked(int slotIndex)
         {
-            switch (slotIndex)
-            {
-                case 0:
-                    return _offerLabel0;
-                case 1:
-                    return _offerLabel1;
-                case 2:
-                    return _offerLabel2;
-                default:
-                    return null;
-            }
-        }
-
-        void OnOffer0Clicked()
-        {
-            UIManager.RaiseEvent(UIManager.EEvent.ShopBuyRequested, 0);
-        }
-
-        void OnOffer1Clicked()
-        {
-            UIManager.RaiseEvent(UIManager.EEvent.ShopBuyRequested, 1);
-        }
-
-        void OnOffer2Clicked()
-        {
-            UIManager.RaiseEvent(UIManager.EEvent.ShopBuyRequested, 2);
+            UIManager.RaiseEvent(UIManager.EEvent.ShopBuyRequested, slotIndex);
         }
 
         void OnRerollClicked()

@@ -5,17 +5,25 @@ namespace Pinball.Ingame
 {
     public class PlayerLoadout
     {
+        const int FIRST_UPGRADE_COUNT = 1;
+
         List<ShopItemData> _passives = null;
+        List<ShopItemData> _upgrades = null;
+        List<int> _upgradeCounts = null;
         Dictionary<ShopItemData.EEffectType, float> _upgradeSums = null;
         Dictionary<MapInteractable.EGimmickType, float> _gimmickScoreSums = null;
         int _passiveSlotCount = 0;
 
         public int PassiveSlotCount => _passiveSlotCount;
+        public int PassiveCount => null == _passives ? 0 : _passives.Count;
+        public int UpgradeKindCount => null == _upgrades ? 0 : _upgrades.Count;
 
         public void Init(int passiveSlotCount)
         {
             _passiveSlotCount = passiveSlotCount;
             _passives = new List<ShopItemData>();
+            _upgrades = new List<ShopItemData>();
+            _upgradeCounts = new List<int>();
             _upgradeSums = new Dictionary<ShopItemData.EEffectType, float>();
             _gimmickScoreSums = new Dictionary<MapInteractable.EGimmickType, float>();
         }
@@ -26,6 +34,18 @@ namespace Pinball.Ingame
             {
                 _passives.Clear();
                 _passives = null;
+            }
+
+            if (null != _upgrades)
+            {
+                _upgrades.Clear();
+                _upgrades = null;
+            }
+
+            if (null != _upgradeCounts)
+            {
+                _upgradeCounts.Clear();
+                _upgradeCounts = null;
             }
 
             if (null != _upgradeSums)
@@ -75,6 +95,28 @@ namespace Pinball.Ingame
             return true;
         }
 
+        public ShopItemData GetUpgrade(int index)
+        {
+            if (null == _upgrades)
+                return null;
+
+            if (index < 0 || index >= _upgrades.Count)
+                return null;
+
+            return _upgrades[index];
+        }
+
+        public int GetUpgradeCount(int index)
+        {
+            if (null == _upgradeCounts)
+                return 0;
+
+            if (index < 0 || index >= _upgradeCounts.Count)
+                return 0;
+
+            return _upgradeCounts[index];
+        }
+
         public void AddUpgrade(ShopItemData item)
         {
             if (null == _upgradeSums)
@@ -82,6 +124,8 @@ namespace Pinball.Ingame
 
             if (null == item)
                 return;
+
+            RecordUpgrade(item);
 
             if (item.EffectType == ShopItemData.EEffectType.GimmickScoreRatioAdd)
             {
@@ -92,6 +136,19 @@ namespace Pinball.Ingame
 
             _upgradeSums.TryGetValue(item.EffectType, out float sum);
             _upgradeSums[item.EffectType] = sum + item.EffectValue;
+        }
+
+        void RecordUpgrade(ShopItemData item)
+        {
+            int index = _upgrades.IndexOf(item);
+            if (index < 0)
+            {
+                _upgrades.Add(item);
+                _upgradeCounts.Add(FIRST_UPGRADE_COUNT);
+                return;
+            }
+
+            ++_upgradeCounts[index];
         }
 
         public float GetEffectSum(ShopItemData.EEffectType effectType)

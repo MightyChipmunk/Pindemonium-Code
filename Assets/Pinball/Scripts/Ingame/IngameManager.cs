@@ -29,6 +29,7 @@ namespace Pinball.Ingame
         const int STAGE_CLEAR_BASE_MONEY = 3;
         const int FIRST_STAGE_NUMBER = 1;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
+        const int PASSIVE_OWNED_COUNT = 1;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -530,7 +531,18 @@ namespace Pinball.Ingame
             for (int i = 0; i < ShopSession.OFFER_SLOT_COUNT; ++i)
                 UIManager.Show(new ShopView.OfferArgs(i, GetOfferItemIndex(i)));
 
-            UIManager.Show(new ShopView.PassivesArgs(_loadout.PassiveSlotCount, GetPassiveItemIndex(0), GetPassiveItemIndex(1), GetPassiveItemIndex(2)));
+            RefreshOwnedView();
+        }
+
+        void RefreshOwnedView()
+        {
+            UIManager.Show(new ShopView.OwnedResetArgs(_loadout.PassiveCount, _loadout.PassiveSlotCount, _loadout.UpgradeKindCount));
+
+            for (int i = 0; i < _loadout.PassiveCount; ++i)
+                UIManager.Show(new ShopView.OwnedItemArgs(GetPassiveItemIndex(i), PASSIVE_OWNED_COUNT));
+
+            for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
+                UIManager.Show(new ShopView.OwnedItemArgs(GetUpgradeItemIndex(i), _loadout.GetUpgradeCount(i)));
         }
 
         int GetOfferItemIndex(int slotIndex)
@@ -547,6 +559,14 @@ namespace Pinball.Ingame
                 return ShopCatalogData.INVALID_INDEX;
 
             return _shopCatalog.IndexOf(_loadout.GetPassive(passiveIndex));
+        }
+
+        int GetUpgradeItemIndex(int upgradeIndex)
+        {
+            if (null == _shopCatalog || null == _loadout)
+                return ShopCatalogData.INVALID_INDEX;
+
+            return _shopCatalog.IndexOf(_loadout.GetUpgrade(upgradeIndex));
         }
 
         void TryBuyOffer(int slotIndex)
