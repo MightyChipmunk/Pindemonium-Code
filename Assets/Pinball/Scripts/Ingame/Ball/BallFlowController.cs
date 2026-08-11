@@ -7,10 +7,6 @@ namespace Pinball.Ingame
 {
     public class BallFlowController
     {
-        static readonly Color DEFAULT_TRAIL_COLOR = Color.white;
-        static readonly Color FIREBALL_TRAIL_COLOR = new Color(1f, 0.55f, 0.2f, 1f);
-        static readonly Color LIGHTNING_BALL_TRAIL_COLOR = new Color(0.45f, 0.85f, 1f, 1f);
-
         BallSpawner _spawner = null;
         BallDrainZone _drainZone = null;
         BallStockCounter _ballStock = null;
@@ -88,7 +84,7 @@ namespace Pinball.Ingame
                 return;
 
             ball.SetMass(_ballMass);
-            ball.SetTrailColor(GetBallTrailColor());
+            ApplyPassiveAura(ball);
             ball.SetCollisionCallback(CountBallCollision);
             _activeBall = ball;
             _ballCollisionCount = 0;
@@ -170,15 +166,10 @@ namespace Pinball.Ingame
             HandleBallLost();
         }
 
-        Color GetBallTrailColor()
+        void ApplyPassiveAura(Ball ball)
         {
-            if (_stats.HasEffect(ShopItemData.EEffectType.BumperBurn))
-                return FIREBALL_TRAIL_COLOR;
-
-            if (_stats.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
-                return LIGHTNING_BALL_TRAIL_COLOR;
-
-            return DEFAULT_TRAIL_COLOR;
+            ball.SetAura(BallAura.EAuraType.Fire, _stats.HasEffect(ShopItemData.EEffectType.BumperBurn));
+            ball.SetAura(BallAura.EAuraType.Lightning, _stats.HasEffect(ShopItemData.EEffectType.BumperChainLightning));
         }
 
         bool IsControlBlocked()

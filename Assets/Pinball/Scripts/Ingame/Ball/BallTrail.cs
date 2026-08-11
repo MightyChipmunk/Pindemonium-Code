@@ -28,7 +28,7 @@ namespace Pinball.Ingame
 
         public void Release()
         {
-            RestoreBaseColor();
+            ResetColor();
             _trail.emitting = false;
             _trail.Clear();
         }
@@ -50,7 +50,7 @@ namespace Pinball.Ingame
             _isBaseColorCached = true;
         }
 
-        void RestoreBaseColor()
+        public void ResetColor()
         {
             if (!_isBaseColorCached)
                 return;

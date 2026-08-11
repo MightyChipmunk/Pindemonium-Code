@@ -9,6 +9,7 @@ namespace Pinball.Ingame
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
         [SerializeField] BallTrail _trail = null;
+        [SerializeField] BallAuraController _auraController = null;
 
         Action _onCollided = null;
 
@@ -25,9 +26,10 @@ namespace Pinball.Ingame
             _rigidbody.mass = mass;
         }
 
-        public void SetTrailColor(Color color)
+        public void SetAura(BallAura.EAuraType auraType, bool isActive)
         {
-            _trail.SetColor(color);
+            _auraController.SetAuraActive(auraType, isActive);
+            RefreshTrailColor();
         }
 
         public void SetKinematic(bool isKinematic)
@@ -48,6 +50,7 @@ namespace Pinball.Ingame
         {
             transform.position = position;
             _trail.Clear();
+            _auraController.ClearParticles();
         }
 
         public void AddImpulse(Vector2 impulse)
@@ -61,11 +64,13 @@ namespace Pinball.Ingame
         {
             gameObject.SetActive(true);
             _trail.Init();
+            _auraController.Init();
         }
 
         public void OnReturn()
         {
             SetKinematic(true);
+            _auraController.Release();
             _trail.Release();
             _onCollided = null;
         }
@@ -73,6 +78,17 @@ namespace Pinball.Ingame
         public void OnTerminate()
         {
             _onCollided = null;
+        }
+
+        void RefreshTrailColor()
+        {
+            if (_auraController.TryGetBlendedColor(out Color blendedColor))
+            {
+                _trail.SetColor(blendedColor);
+                return;
+            }
+
+            _trail.ResetColor();
         }
 
         void OnCollisionEnter2D(Collision2D collision)
