@@ -40,6 +40,7 @@ namespace Pinball.Ingame
 
         public void MoveTo(Vector3 position)
         {
+            _rigidbody.position = position;
             transform.position = position;
             _trail.Clear();
             _auraController.ClearParticles();
