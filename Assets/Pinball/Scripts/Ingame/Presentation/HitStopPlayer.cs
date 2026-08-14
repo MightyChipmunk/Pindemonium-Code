@@ -33,14 +33,17 @@ namespace Pinball.Ingame.Presentation
             Time.timeScale = DEFAULT_TIME_SCALE;
         }
 
-        public void Play(float timeScale, float holdDuration, float recoverDuration, EaseType recoverEase)
+        public void Play(HitPresentationData presentation)
         {
             if (null == _lifetimeTokenSource)
                 return;
 
+            if (!presentation.IsHitStopEnabled)
+                return;
+
             CancelPlaying();
             _playTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeTokenSource.Token);
-            PlayAsync(Mathf.Clamp01(timeScale), holdDuration, recoverDuration, recoverEase, _playTokenSource.Token).Forget();
+            PlayAsync(presentation, _playTokenSource.Token).Forget();
         }
 
         void CancelPlaying()
@@ -53,20 +56,21 @@ namespace Pinball.Ingame.Presentation
             _playTokenSource = null;
         }
 
-        async UniTaskVoid PlayAsync(float timeScale, float holdDuration, float recoverDuration, EaseType recoverEase, CancellationToken cancellationToken)
+        async UniTaskVoid PlayAsync(HitPresentationData presentation, CancellationToken cancellationToken)
         {
+            float timeScale = Mathf.Clamp01(presentation.HitStopTimeScale);
             Time.timeScale = timeScale;
 
-            if (holdDuration >= MIN_DURATION)
-                await UniTask.Delay(TimeSpan.FromSeconds(holdDuration), DelayType.UnscaledDeltaTime, cancellationToken: cancellationToken);
+            if (presentation.HitStopDuration >= MIN_DURATION)
+                await UniTask.Delay(TimeSpan.FromSeconds(presentation.HitStopDuration), DelayType.UnscaledDeltaTime, cancellationToken: cancellationToken);
 
             float elapsed = 0f;
-            while (elapsed < recoverDuration)
+            while (elapsed < presentation.RecoverDuration)
             {
                 await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
 
                 elapsed += Time.unscaledDeltaTime;
-                float ratio = EaseUtil.Interpolate(recoverEase, Mathf.Clamp01(elapsed / recoverDuration));
+                float ratio = EaseUtil.Interpolate(presentation.RecoverEase, Mathf.Clamp01(elapsed / presentation.RecoverDuration));
                 Time.timeScale = Mathf.Lerp(timeScale, DEFAULT_TIME_SCALE, ratio);
             }
 

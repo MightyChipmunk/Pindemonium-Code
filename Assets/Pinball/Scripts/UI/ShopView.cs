@@ -153,7 +153,13 @@ namespace Pinball.UI
 
             bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
             Color accentColor = GetAccentColor(isPassive);
-            slot.BindItem(args.ItemIndex, isPassive ? PASSIVE_KIND_LABEL : UPGRADE_KIND_LABEL, item.GetDisplayName(), string.Format(PRICE_FORMAT, item.Price), GetCardColor(accentColor), accentColor);
+            slot.BindItem(new ShopOfferSlotView.BindParam(
+                ItemIndex: args.ItemIndex,
+                KindText: isPassive ? PASSIVE_KIND_LABEL : UPGRADE_KIND_LABEL,
+                DisplayName: item.GetDisplayName(),
+                PriceText: string.Format(PRICE_FORMAT, item.Price),
+                CardColor: GetCardColor(accentColor),
+                AccentColor: accentColor));
         }
 
         void BindOwnedReset(OwnedResetArgs args)
@@ -179,7 +185,13 @@ namespace Pinball.UI
             slot.transform.SetAsLastSibling();
 
             Color accentColor = GetAccentColor(isPassive);
-            slot.Bind(args.ItemIndex, item.GetDisplayName(), GetCountText(args.Count), GetCardColor(accentColor), accentColor, OnTooltipHovered);
+            slot.Bind(new ShopOwnedSlotView.BindParam(
+                ItemIndex: args.ItemIndex,
+                DisplayName: item.GetDisplayName(),
+                CountText: GetCountText(args.Count),
+                CardColor: GetCardColor(accentColor),
+                AccentColor: accentColor,
+                HoverCallback: OnTooltipHovered));
             _activeOwnedSlots.Add(slot);
         }
 

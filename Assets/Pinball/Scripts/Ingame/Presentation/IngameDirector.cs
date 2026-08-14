@@ -43,11 +43,7 @@ namespace Pinball.Ingame.Presentation
             HitPresentationData presentation = _config.GetFlipperHit(grade);
             PlayFX(presentation.FXType, worldPoint);
             PlayCameraShake(presentation);
-
-            if (!presentation.IsHitStopEnabled)
-                return;
-
-            _hitStopPlayer.Play(presentation.HitStopTimeScale, presentation.HitStopDuration, presentation.RecoverDuration, presentation.RecoverEase);
+            _hitStopPlayer.Play(presentation);
         }
 
         public void PlaySpringCharge(Spring.EChargeEvent chargeEvent, Vector2 worldPoint)
