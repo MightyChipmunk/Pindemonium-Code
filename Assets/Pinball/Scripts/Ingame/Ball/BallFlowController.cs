@@ -23,8 +23,10 @@ namespace Pinball.Ingame
         MapRoot _map = null;
         Ball _activeBall = null;
         int _gimmickHitCount = 0;
+        int _usedBallCount = 0;
 
         public int RemainingBalls => _ballStock.Remaining;
+        public int UsedBallCount => _usedBallCount;
 
         public event Action<int> OnBallCountChanged;
         public event Action OnBallLost;
@@ -38,6 +40,7 @@ namespace Pinball.Ingame
             _stats = param.Stats;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
+            _usedBallCount = 0;
             _ballStock = new BallStockCounter();
             _ballStock.Init(_stats.GetInitialBallCount());
             _ballStock.OnChanged += HandleBallCountChanged;
@@ -144,6 +147,7 @@ namespace Pinball.Ingame
                 return;
 
             _ballStock.Consume();
+            ++_usedBallCount;
 
             if (_ballStock.Remaining <= 0)
             {

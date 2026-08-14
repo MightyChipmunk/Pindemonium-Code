@@ -24,6 +24,7 @@ namespace Pinball.Ingame
             Playing = 1,
             GameOver = 2,
             Shopping = 3,
+            Cleared = 4,
         }
 
         const int DEFAULT_MAP_INDEX = 0;
@@ -64,7 +65,7 @@ namespace Pinball.Ingame
         EGameState _gameState = EGameState.Ready;
         bool _isExitingToLobby = false;
 
-        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping;
+        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared;
 
         void Awake()
         {
@@ -159,6 +160,7 @@ namespace Pinball.Ingame
             _stageTracker.Init(_stageCatalog, startStageNumber, startScore);
             _stageTracker.OnStageStarted += OnStageStarted;
             _stageTracker.OnStageCleared += OnStageCleared;
+            _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
             _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
             _stageTracker.StartFirstStage();
@@ -351,6 +353,16 @@ namespace Pinball.Ingame
             UIManager.Show(new StageClearView.Args(stageNumber));
         }
 
+        void OnAllStagesCleared()
+        {
+            _gameState = EGameState.Cleared;
+            _playerController.ResetControlStates();
+            _scoreCounter.EndCombo();
+            _ballFlow.DespawnActiveBall();
+            _saveHandler.ClearPlayData();
+            ShowGameResult(GameResultView.EResult.Clear);
+        }
+
         void OnStageScoreChanged(int stageScore)
         {
             StageData stage = _stageTracker.GetCurrentStage();
@@ -428,8 +440,32 @@ namespace Pinball.Ingame
         {
             _gameState = EGameState.GameOver;
             _playerController.ResetControlStates();
-            _saveHandler.ClearOnGameOver();
-            Debug.Log("[IngameManager] Game Over");
+            _saveHandler.ClearPlayData();
+            ShowGameResult(GameResultView.EResult.GameOver);
+        }
+
+        void ShowGameResult(GameResultView.EResult result)
+        {
+            UIManager.Show(new GameResultView.Args(result, BuildResultStats()));
+        }
+
+        ResultStatsView.Args BuildResultStats()
+        {
+            string[] passiveNames = new string[_loadout.PassiveCount];
+            for (int i = 0; i < passiveNames.Length; ++i)
+                passiveNames[i] = _loadout.GetPassive(i).GetDisplayName();
+
+            ResultStatsView.ItemCountEntry[] upgrades = new ResultStatsView.ItemCountEntry[_loadout.UpgradeKindCount];
+            for (int i = 0; i < upgrades.Length; ++i)
+                upgrades[i] = new ResultStatsView.ItemCountEntry(_loadout.GetUpgrade(i).GetDisplayName(), _loadout.GetUpgradeCount(i));
+
+            return new ResultStatsView.Args(
+                StageNumber: _stageTracker.StageNumber,
+                Score: _scoreCounter.Current,
+                Money: _wallet.Current,
+                UsedBallCount: _ballFlow.UsedBallCount,
+                PassiveNames: passiveNames,
+                Upgrades: upgrades);
         }
 
         void SaveProgress()
@@ -465,7 +501,7 @@ namespace Pinball.Ingame
 
         void TogglePausePopup()
         {
-            if (_gameState == EGameState.Shopping)
+            if (IsControlBlocked)
                 return;
 
             if (UIManager.IsOpen(UIViewCatalogData.EViewType.Settings))

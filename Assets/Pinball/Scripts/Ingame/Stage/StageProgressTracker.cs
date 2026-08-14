@@ -16,6 +16,7 @@ namespace Pinball.Ingame.Stage
 
         public event Action<int, StageData> OnStageStarted;
         public event Action<int, StageData> OnStageCleared;
+        public event Action OnAllStagesCleared;
         public event Action<int> OnStageScoreChanged;
 
         public void Init(StageCatalogData catalog, int startStageNumber, int startTotalScore)
@@ -31,6 +32,7 @@ namespace Pinball.Ingame.Stage
         {
             OnStageStarted = null;
             OnStageCleared = null;
+            OnAllStagesCleared = null;
             OnStageScoreChanged = null;
             _catalog = null;
         }
@@ -87,7 +89,22 @@ namespace Pinball.Ingame.Stage
         void ClearCurrentStage()
         {
             _isCleared = true;
+
+            if (IsFinalStage())
+            {
+                OnAllStagesCleared?.Invoke();
+                return;
+            }
+
             OnStageCleared?.Invoke(StageNumber, GetCurrentStage());
+        }
+
+        bool IsFinalStage()
+        {
+            if (null == _catalog)
+                return false;
+
+            return StageNumber >= _catalog.Count;
         }
     }
 }

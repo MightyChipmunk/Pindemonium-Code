@@ -43,7 +43,7 @@ namespace Pinball.Ingame
             SaveManager.SaveUser();
         }
 
-        public void ClearOnGameOver()
+        public void ClearPlayData()
         {
             SaveManager.ClearIngame();
         }
