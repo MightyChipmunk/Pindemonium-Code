@@ -39,13 +39,13 @@ namespace Pinball.Ingame
             return Instantiate(origin, transform);
         }
 
-        public Ball Spawn(Vector3 position)
+        public Ball Spawn()
         {
             Ball ball = _pool.Get();
             if (null == ball)
                 return null;
 
-            ball.MoveTo(position);
+            ball.MoveTo(transform.position);
             _colliderRegistry.Register(ball.ColliderInstanceID, ball);
             return ball;
         }

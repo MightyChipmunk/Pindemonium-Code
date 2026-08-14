@@ -26,6 +26,8 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _flipperRightLabel = null;
         [SerializeField] Button _launchButton = null;
         [SerializeField] TMP_Text _launchLabel = null;
+        [SerializeField] Button _nudgeButton = null;
+        [SerializeField] TMP_Text _nudgeLabel = null;
         [SerializeField] Button _resolutionPrevButton = null;
         [SerializeField] Button _resolutionNextButton = null;
         [SerializeField] TMP_Text _resolutionLabel = null;
@@ -43,6 +45,7 @@ namespace Pinball.UI
             _flipperLeftButton.onClick.AddListener(OnFlipperLeftClicked);
             _flipperRightButton.onClick.AddListener(OnFlipperRightClicked);
             _launchButton.onClick.AddListener(OnLaunchClicked);
+            _nudgeButton.onClick.AddListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.AddListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
             _fullscreenButton.onClick.AddListener(OnFullscreenClicked);
@@ -54,6 +57,7 @@ namespace Pinball.UI
             _flipperLeftButton.onClick.RemoveListener(OnFlipperLeftClicked);
             _flipperRightButton.onClick.RemoveListener(OnFlipperRightClicked);
             _launchButton.onClick.RemoveListener(OnLaunchClicked);
+            _nudgeButton.onClick.RemoveListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.RemoveListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
             _fullscreenButton.onClick.RemoveListener(OnFullscreenClicked);
@@ -78,6 +82,7 @@ namespace Pinball.UI
             SetKeyLabel(_flipperLeftLabel, GameSettings.GetKey(EKeyAction.FlipperLeft));
             SetKeyLabel(_flipperRightLabel, GameSettings.GetKey(EKeyAction.FlipperRight));
             SetKeyLabel(_launchLabel, GameSettings.GetKey(EKeyAction.Launch));
+            SetKeyLabel(_nudgeLabel, GameSettings.GetKey(EKeyAction.Nudge));
             _resolutionLabel.text = GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
             _fullscreenLabel.text = GameSettings.IsFullscreen ? FULLSCREEN_LABEL : WINDOWED_LABEL;
         }
@@ -122,6 +127,11 @@ namespace Pinball.UI
         void OnLaunchClicked()
         {
             StartCapture(EKeyAction.Launch, _launchLabel);
+        }
+
+        void OnNudgeClicked()
+        {
+            StartCapture(EKeyAction.Nudge, _nudgeLabel);
         }
 
         void OnResolutionPrevClicked()

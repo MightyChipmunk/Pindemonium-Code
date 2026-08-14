@@ -8,6 +8,8 @@ namespace Pinball.Ingame.Presentation
 {
     public class IngameDirector
     {
+        const float NUDGE_SHAKE_DELAY = 0f;
+
         PresentationConfigData _config = null;
         HitStopPlayer _hitStopPlayer = null;
         Action<CameraController.ECameraShakeType, float> _cameraShaker = null;
@@ -52,6 +54,11 @@ namespace Pinball.Ingame.Presentation
                 return;
 
             PlayFX(_config.GetSpringChargeFX(chargeEvent), worldPoint);
+        }
+
+        public void PlayNudge()
+        {
+            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
         }
 
         void PlayCameraShake(HitPresentationData presentation)

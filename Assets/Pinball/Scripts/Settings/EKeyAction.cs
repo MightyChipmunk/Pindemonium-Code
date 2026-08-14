@@ -5,5 +5,6 @@ namespace Pinball.Settings
         FlipperLeft = 0,
         FlipperRight = 1,
         Launch = 2,
+        Nudge = 3,
     }
 }

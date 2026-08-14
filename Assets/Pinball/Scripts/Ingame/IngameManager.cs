@@ -113,14 +113,24 @@ namespace Pinball.Ingame
             _cameraController.Init();
             _director = new IngameDirector();
             _director.Init(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
-            _playerController = new PlayerController();
-            _playerController.Init(_inputRouter, GetIsControlBlocked);
-            _playerController.OnLaunched += OnBallLaunched;
             _ballFlow = new BallFlowController();
-            _ballFlow.Init(_ballSpawner, _drainZone, _statProvider, _statData.InitialBallCount, _statData.BallMass, transform.position, GetIsControlBlocked, GetIsPlaying);
+            _ballFlow.Init(new BallFlowController.InitParam(
+                Spawner: _ballSpawner,
+                DrainZone: _drainZone,
+                Stats: _statProvider,
+                IsControlBlockedGetter: GetIsControlBlocked,
+                IsPlayingGetter: GetIsPlaying));
             _ballFlow.OnBallLost += OnBallLost;
             _ballFlow.OnBallReady += OnBallReady;
             _ballFlow.OnAllBallsLost += EndGame;
+            _playerController = new PlayerController();
+            _playerController.Init(new PlayerController.InitParam(
+                InputRouter: _inputRouter,
+                IsControlBlockedGetter: GetIsControlBlocked,
+                IsPlayingGetter: GetIsPlaying,
+                NudgeImpulseApplier: _ballFlow.TryApplyImpulseToActiveBall,
+                NudgePresenter: _director.PlayNudge));
+            _playerController.OnLaunched += OnBallLaunched;
 
             LoadMap();
 
@@ -239,6 +249,7 @@ namespace Pinball.Ingame
                 return;
 
             _scoreCounter.Tick(Time.deltaTime);
+            _playerController.Tick(Time.deltaTime);
         }
 
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
@@ -320,6 +331,7 @@ namespace Pinball.Ingame
         void OnBallLaunched()
         {
             _gameState = EGameState.Playing;
+            _playerController.ResetNudgeCooldown();
         }
 
         void OnBallLost()

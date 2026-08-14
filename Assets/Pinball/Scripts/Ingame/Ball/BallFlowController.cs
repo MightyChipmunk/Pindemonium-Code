@@ -7,6 +7,13 @@ namespace Pinball.Ingame
 {
     public class BallFlowController
     {
+        public record InitParam(
+            BallSpawner Spawner,
+            BallDrainZone DrainZone,
+            StatProvider Stats,
+            Func<bool> IsControlBlockedGetter,
+            Func<bool> IsPlayingGetter);
+
         BallSpawner _spawner = null;
         BallDrainZone _drainZone = null;
         BallStockCounter _ballStock = null;
@@ -15,9 +22,6 @@ namespace Pinball.Ingame
         Func<bool> _isPlayingGetter = null;
         MapRoot _map = null;
         Ball _activeBall = null;
-        Vector3 _spawnPosition = Vector3.zero;
-        float _ballMass = 0f;
-        int _initialBallCount = 0;
         int _gimmickHitCount = 0;
 
         public int RemainingBalls => _ballStock.Remaining;
@@ -27,18 +31,15 @@ namespace Pinball.Ingame
         public event Action OnBallReady;
         public event Action OnAllBallsLost;
 
-        public void Init(BallSpawner spawner, BallDrainZone drainZone, StatProvider stats, int initialBallCount, float ballMass, Vector3 spawnPosition, Func<bool> isControlBlockedGetter, Func<bool> isPlayingGetter)
+        public void Init(InitParam param)
         {
-            _spawner = spawner;
-            _drainZone = drainZone;
-            _stats = stats;
-            _initialBallCount = initialBallCount;
-            _ballMass = ballMass;
-            _spawnPosition = spawnPosition;
-            _isControlBlockedGetter = isControlBlockedGetter;
-            _isPlayingGetter = isPlayingGetter;
+            _spawner = param.Spawner;
+            _drainZone = param.DrainZone;
+            _stats = param.Stats;
+            _isControlBlockedGetter = param.IsControlBlockedGetter;
+            _isPlayingGetter = param.IsPlayingGetter;
             _ballStock = new BallStockCounter();
-            _ballStock.Init(initialBallCount);
+            _ballStock.Init(_stats.GetInitialBallCount());
             _ballStock.OnChanged += HandleBallCountChanged;
             _drainZone.OnColliderEntered += HandleBallDrained;
         }
@@ -79,11 +80,11 @@ namespace Pinball.Ingame
             if (null == _map)
                 return;
 
-            Ball ball = _spawner.Spawn(_spawnPosition);
+            Ball ball = _spawner.Spawn();
             if (null == ball)
                 return;
 
-            ball.SetMass(_ballMass);
+            ball.SetMass(_stats.GetBallMass());
             ApplyPassiveAura(ball);
             _activeBall = ball;
             _gimmickHitCount = 0;
@@ -99,9 +100,18 @@ namespace Pinball.Ingame
             _activeBall = null;
         }
 
+        public bool TryApplyImpulseToActiveBall(Vector2 impulse)
+        {
+            if (null == _activeBall)
+                return false;
+
+            _activeBall.AddImpulse(impulse);
+            return true;
+        }
+
         public void RefillStock()
         {
-            _ballStock.Init(_initialBallCount);
+            _ballStock.Init(_stats.GetInitialBallCount());
             OnBallCountChanged?.Invoke(_ballStock.Remaining);
         }
 
