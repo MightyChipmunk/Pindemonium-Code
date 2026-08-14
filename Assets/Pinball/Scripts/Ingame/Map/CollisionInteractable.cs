@@ -4,6 +4,8 @@ namespace Pinball.Ingame.Map
 {
     public abstract class CollisionInteractable : MapInteractable
     {
+        protected const float DEFAULT_DAMAGE_MULTIPLIER = 1f;
+
         [SerializeField] float _scoreMultiplier = 1f;
         [SerializeField] float _bounceForce = 5f;
 
@@ -18,7 +20,7 @@ namespace Pinball.Ingame.Map
             NotifyBallHit();
 
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
-            float damage = EvaluateDamage(collisionImpulse);
+            float damage = EvaluateDamage(collisionImpulse) * GetDamageMultiplier();
             GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), collision.GetContact(0).point);
 
             collision.rigidbody.AddForce(GetBounceDirection(collision) * GetBounceForce(), ForceMode2D.Impulse);
@@ -35,6 +37,11 @@ namespace Pinball.Ingame.Map
         protected virtual float GetBounceForce()
         {
             return _bounceForce;
+        }
+
+        protected virtual float GetDamageMultiplier()
+        {
+            return DEFAULT_DAMAGE_MULTIPLIER;
         }
 
         protected virtual void OnBallHit(Collision2D collision, float damage) { }

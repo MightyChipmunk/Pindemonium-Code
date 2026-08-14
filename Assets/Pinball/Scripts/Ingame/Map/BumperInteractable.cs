@@ -19,6 +19,7 @@ namespace Pinball.Ingame.Map
         const float BURN_DURATION = 3f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
+        static readonly Color FROZEN_TINT = new Color(0.5f, 0.85f, 1f, 1f);
 
         [SerializeField] BumperGradeData _gradeData = null;
         [SerializeField] BumperGradeData.EGrade _grade = BumperGradeData.EGrade.Yellow;
@@ -34,7 +35,9 @@ namespace Pinball.Ingame.Map
         Vector3 _visualBaseScale = Vector3.one;
         Color _visualBaseColor = Color.white;
         float _currentHealth = 0f;
+        float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
         bool _isBroken = false;
+        bool _isFrozen = false;
 
         public override EGimmickType GimmickType => EGimmickType.Bumper;
         public bool IsBroken => _isBroken;
@@ -59,6 +62,7 @@ namespace Pinball.Ingame.Map
 
             _currentHealth = _spec.MaxHealth;
             _isBroken = false;
+            ClearFrozen();
             _collider.enabled = true;
         }
 
@@ -67,6 +71,7 @@ namespace Pinball.Ingame.Map
             OnBroken = null;
             OnBallDamaged = null;
             StopBurning();
+            ClearFrozen();
 
             if (null != _cancellationTokenSource)
             {
@@ -98,6 +103,14 @@ namespace Pinball.Ingame.Map
                 return base.GetBounceForce();
 
             return _spec.BounceForce;
+        }
+
+        protected override float GetDamageMultiplier()
+        {
+            if (!_isFrozen)
+                return DEFAULT_DAMAGE_MULTIPLIER;
+
+            return _frozenDamageMultiplier;
         }
 
         protected override void OnBallHit(Collision2D collision, float damage)
@@ -144,9 +157,34 @@ namespace Pinball.Ingame.Map
             StopBurning();
             _burnFX = burnFX;
             _burnTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
-            ApplyBurningTint(true);
+            RefreshVisualTint();
             PlayFX(_burnFX, transform.position);
             BurnAsync(damagePerTick, Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds), _burnTokenSource.Token).Forget();
+        }
+
+        public void ApplyFrostHit(float shatterDamageMultiplier, PoolableFX.EFXType freezeFX, PoolableFX.EFXType shatterFX)
+        {
+            if (_isBroken)
+                return;
+
+            if (_isFrozen)
+            {
+                PlayFX(shatterFX, transform.position);
+                ClearFrozen();
+                return;
+            }
+
+            _isFrozen = true;
+            _frozenDamageMultiplier = Mathf.Max(DEFAULT_DAMAGE_MULTIPLIER, shatterDamageMultiplier);
+            PlayFX(freezeFX, transform.position);
+            RefreshVisualTint();
+        }
+
+        void ClearFrozen()
+        {
+            _isFrozen = false;
+            _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
+            RefreshVisualTint();
         }
 
         void ReduceHealth(float damage)
@@ -186,15 +224,27 @@ namespace Pinball.Ingame.Map
             }
 
             _burnFX = PoolableFX.EFXType.NonePooling;
-            ApplyBurningTint(false);
+            RefreshVisualTint();
         }
 
-        void ApplyBurningTint(bool isBurning)
+        void RefreshVisualTint()
         {
             if (null == _visualRenderer)
                 return;
 
-            _visualRenderer.color = isBurning ? BURNING_TINT : _visualBaseColor;
+            if (_isFrozen)
+            {
+                _visualRenderer.color = FROZEN_TINT;
+                return;
+            }
+
+            if (null != _burnTokenSource)
+            {
+                _visualRenderer.color = BURNING_TINT;
+                return;
+            }
+
+            _visualRenderer.color = _visualBaseColor;
         }
 
         void ApplyGradeVisual()
@@ -215,6 +265,7 @@ namespace Pinball.Ingame.Map
         {
             _isBroken = true;
             StopBurning();
+            ClearFrozen();
             _collider.enabled = false;
             GainScore(_spec.BreakScore);
             PlayFX(_spec.BreakFX, transform.position);

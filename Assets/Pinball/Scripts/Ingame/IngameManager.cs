@@ -55,6 +55,7 @@ namespace Pinball.Ingame
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
         StatProvider _statProvider = null;
+        BreakMoneyGranter _breakMoneyGranter = null;
         IngameShopController _shopController = null;
         IngameSaveHandler _saveHandler = null;
         MapRoot _currentMap = null;
@@ -93,7 +94,9 @@ namespace Pinball.Ingame
             _loadout = new PlayerLoadout();
             _loadout.Init(null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount);
             _statProvider = new StatProvider();
-            _statProvider.Init(_statData, _loadout);
+            _statProvider.Init(_statData, _loadout, GetRemainingBallCount, GetComboCount);
+            _breakMoneyGranter = new BreakMoneyGranter();
+            _breakMoneyGranter.Init(_wallet, _statProvider);
             _damageCalculator = new DamageCalculator();
             _damageCalculator.Init(_statProvider.GetBallAttackPower);
             _scoreCounter = new ScoreCounter();
@@ -196,6 +199,12 @@ namespace Pinball.Ingame
                 _damageCalculator = null;
             }
 
+            if (null != _breakMoneyGranter)
+            {
+                _breakMoneyGranter.Release();
+                _breakMoneyGranter = null;
+            }
+
             if (null != _statProvider)
             {
                 _statProvider.Release();
@@ -255,7 +264,7 @@ namespace Pinball.Ingame
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
         {
             _director.PlayFlipperHit(grade, worldPoint);
-            _scoreCounter.HandlePerfectParry(grade, worldPoint);
+            _scoreCounter.HandleBallStruck(grade, worldPoint);
         }
 
         void OnBumperDamaged(BumperInteractable bumper, float damage)
@@ -266,12 +275,20 @@ namespace Pinball.Ingame
                 bumper.Ignite(burnDamage, _statProvider.GetEffectSub(ShopItemData.EEffectType.BumperBurn), PoolableFX.EFXType.Fireball);
             }
 
+            if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze))
+                bumper.ApplyFrostHit(_statProvider.GetEffectSum(ShopItemData.EEffectType.BumperFreeze), PoolableFX.EFXType.Frostbite, PoolableFX.EFXType.FrostShatter);
+
             if (!_statProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
                 return;
 
             float chainRatio = _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
             int maxChainCount = Mathf.RoundToInt(_statProvider.GetEffectSub(ShopItemData.EEffectType.BumperChainLightning));
-            _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount, PoolableFX.EFXType.LightningBall, PoolableFX.EFXType.LightningChainLink);
+            _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount);
+        }
+
+        void OnBumperBroken()
+        {
+            _breakMoneyGranter.HandleGimmickBroken();
         }
 
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
@@ -307,7 +324,10 @@ namespace Pinball.Ingame
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
             _ballFlow.DespawnActiveBall();
-            _wallet.Add(_ballFlow.RemainingBalls + STAGE_CLEAR_BASE_MONEY + _shopController.CalculateInterest());
+
+            int remainingBalls = _ballFlow.RemainingBalls;
+            int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney));
+            _wallet.Add(remainingBalls + STAGE_CLEAR_BASE_MONEY + _shopController.CalculateInterest() + resupplyMoney);
             SaveProgress();
 
             if (!UIManager.IsInitialized)
@@ -354,6 +374,22 @@ namespace Pinball.Ingame
             return _gameState == EGameState.Playing;
         }
 
+        int GetRemainingBallCount()
+        {
+            if (null == _ballFlow)
+                return 0;
+
+            return _ballFlow.RemainingBalls;
+        }
+
+        int GetComboCount()
+        {
+            if (null == _scoreCounter)
+                return 0;
+
+            return _scoreCounter.ComboCount;
+        }
+
         void LoadMap()
         {
             _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
@@ -362,7 +398,18 @@ namespace Pinball.Ingame
             if (null == _currentMap)
                 return;
 
-            _currentMap.Init(_scoreCounter.HandleMapScoreGained, _damageCalculator.Calculate, _statProvider.GetFlipPower, _statProvider.GetPerfectTimingRelax, OnBallStruck, OnBumperDamaged, _director.PlaySpringCharge, _director.PlayFX, _director.PlayLineFX, _ballFlow.CountGimmickHit);
+            _currentMap.Init(new MapRoot.InitParam(
+                OnScoreGained: _scoreCounter.HandleMapScoreGained,
+                DamageEvaluator: _damageCalculator.Calculate,
+                FlipPowerGetter: _statProvider.GetFlipPower,
+                PerfectTimingRelaxGetter: _statProvider.GetPerfectTimingRelax,
+                OnBallStruck: OnBallStruck,
+                OnBumperDamaged: OnBumperDamaged,
+                OnBumperBroken: OnBumperBroken,
+                OnSpringChargeEvent: _director.PlaySpringCharge,
+                FXPlayer: _director.PlayFX,
+                LineFXPlayer: _director.PlayLineFX,
+                OnGimmickBallHit: _ballFlow.CountGimmickHit));
         }
 
         void EndGame()
@@ -386,6 +433,7 @@ namespace Pinball.Ingame
 
         void RestartNextStage()
         {
+            _breakMoneyGranter.ResetStage();
             _ballFlow.RefillStock();
             _stageTracker.AdvanceToNextStage();
             LoadMap();

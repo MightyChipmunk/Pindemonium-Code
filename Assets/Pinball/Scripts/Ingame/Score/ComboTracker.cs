@@ -12,6 +12,8 @@ namespace Pinball.Ingame
         int _accumulatedScore = 0;
         float _timeoutRemaining = 0f;
 
+        public int ComboCount => _comboCount;
+
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, int> OnComboEnded;
 

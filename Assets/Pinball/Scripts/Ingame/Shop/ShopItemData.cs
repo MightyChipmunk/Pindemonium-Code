@@ -24,6 +24,12 @@ namespace Pinball.Ingame
             BumperBurn = 7,
             BumperChainLightning = 8,
             GimmickScoreRatioAdd = 9,
+            LowBallScoreRatio = 10,
+            HitGradeScoreRatio = 11,
+            ComboAttackPowerRatio = 12,
+            GimmickBreakMoney = 13,
+            BumperFreeze = 14,
+            BallResupplyMoney = 15,
         }
 
         [SerializeField] string _displayName = string.Empty;

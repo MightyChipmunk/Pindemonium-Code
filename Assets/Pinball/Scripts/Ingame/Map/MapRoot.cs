@@ -11,6 +11,21 @@ namespace Pinball.Ingame.Map
     public class MapRoot : BehaviourBase
     {
         const float CHAIN_INTERVAL = 0.1f;
+        const PoolableFX.EFXType CHAIN_FX = PoolableFX.EFXType.LightningBall;
+        const PoolableFX.EFXType CHAIN_LINK_FX = PoolableFX.EFXType.LightningChainLink;
+
+        public record InitParam(
+            Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
+            Func<float, float> DamageEvaluator,
+            Func<float> FlipPowerGetter,
+            Func<float> PerfectTimingRelaxGetter,
+            Action<Flipper.EHitGrade, Vector2> OnBallStruck,
+            Action<BumperInteractable, float> OnBumperDamaged,
+            Action OnBumperBroken,
+            Action<Spring.EChargeEvent, Vector2> OnSpringChargeEvent,
+            Action<PoolableFX.EFXType, Vector2> FXPlayer,
+            Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
+            Action OnGimmickBallHit);
 
         [SerializeField] MapInteractable[] _interactables = null;
         [SerializeField] Flipper _leftFlipper = null;
@@ -19,22 +34,24 @@ namespace Pinball.Ingame.Map
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
         Action<BumperInteractable, float> _onBumperDamaged = null;
+        Action _onBumperBroken = null;
         Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
         List<BumperInteractable> _bumpers = null;
         CancellationTokenSource _cancellationTokenSource = null;
 
-        public void Init(Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Action<Flipper.EHitGrade, Vector2> onBallStruck, Action<BumperInteractable, float> onBumperDamaged, Action<Spring.EChargeEvent, Vector2> onSpringChargeEvent, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<PoolableFX.EFXType, Vector2, Vector2> lineFXPlayer, Action onGimmickBallHit)
+        public void Init(InitParam param)
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _bumpers = new List<BumperInteractable>();
-            _onBumperDamaged = onBumperDamaged;
-            _lineFXPlayer = lineFXPlayer;
+            _onBumperDamaged = param.OnBumperDamaged;
+            _onBumperBroken = param.OnBumperBroken;
+            _lineFXPlayer = param.LineFXPlayer;
 
             if (null != _interactables)
             {
                 for (int i = 0; i < _interactables.Length; ++i)
                 {
-                    _interactables[i].Init(onScoreGained, damageEvaluator, fxPlayer, onGimmickBallHit);
+                    _interactables[i].Init(param.OnScoreGained, param.DamageEvaluator, param.FXPlayer, param.OnGimmickBallHit);
 
                     BumperInteractable bumper = _interactables[i] as BumperInteractable;
                     if (null == bumper)
@@ -42,15 +59,16 @@ namespace Pinball.Ingame.Map
 
                     _bumpers.Add(bumper);
                     bumper.OnBallDamaged += HandleBumperDamaged;
+                    bumper.OnBroken += HandleBumperBroken;
                 }
             }
 
-            _onBallStruck = onBallStruck;
-            _leftFlipper.Init(flipPowerGetter, perfectTimingRelaxGetter);
-            _rightFlipper.Init(flipPowerGetter, perfectTimingRelaxGetter);
+            _onBallStruck = param.OnBallStruck;
+            _leftFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter);
+            _rightFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter);
             _leftFlipper.OnBallStruck += OnFlipperBallStruck;
             _rightFlipper.OnBallStruck += OnFlipperBallStruck;
-            _spring.Init(onSpringChargeEvent);
+            _spring.Init(param.OnSpringChargeEvent);
         }
 
         public void Release()
@@ -70,11 +88,15 @@ namespace Pinball.Ingame.Map
             _leftFlipper.Release();
             _onBallStruck = null;
             _onBumperDamaged = null;
+            _onBumperBroken = null;
 
             if (null != _bumpers)
             {
                 for (int i = 0; i < _bumpers.Count; ++i)
+                {
                     _bumpers[i].OnBallDamaged -= HandleBumperDamaged;
+                    _bumpers[i].OnBroken -= HandleBumperBroken;
+                }
 
                 _bumpers.Clear();
                 _bumpers = null;
@@ -87,7 +109,7 @@ namespace Pinball.Ingame.Map
                 _interactables[i].Release();
         }
 
-        public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount, PoolableFX.EFXType chainFX, PoolableFX.EFXType chainLinkFX)
+        public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount)
         {
             if (null == _bumpers || null == _cancellationTokenSource)
                 return;
@@ -95,10 +117,10 @@ namespace Pinball.Ingame.Map
             if (maxChainCount <= 0 || chainRatio <= 0f)
                 return;
 
-            ChainDamageAsync(source, baseDamage, chainRatio, maxChainCount, chainFX, chainLinkFX, _cancellationTokenSource.Token).Forget();
+            ChainDamageAsync(source, baseDamage, chainRatio, maxChainCount, _cancellationTokenSource.Token).Forget();
         }
 
-        async UniTaskVoid ChainDamageAsync(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount, PoolableFX.EFXType chainFX, PoolableFX.EFXType chainLinkFX, CancellationToken cancellationToken)
+        async UniTaskVoid ChainDamageAsync(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount, CancellationToken cancellationToken)
         {
             List<BumperInteractable> chainedBumpers = new List<BumperInteractable>();
             chainedBumpers.Add(source);
@@ -117,9 +139,9 @@ namespace Pinball.Ingame.Map
 
                 chainedBumpers.Add(target);
                 Vector2 targetPoint = target.transform.position;
-                _lineFXPlayer?.Invoke(chainLinkFX, originPoint, targetPoint);
+                _lineFXPlayer?.Invoke(CHAIN_LINK_FX, originPoint, targetPoint);
                 originPoint = targetPoint;
-                target.ApplyDamage(chainDamage, chainFX);
+                target.ApplyDamage(chainDamage, CHAIN_FX);
             }
         }
 
@@ -151,6 +173,11 @@ namespace Pinball.Ingame.Map
         void HandleBumperDamaged(BumperInteractable bumper, float damage)
         {
             _onBumperDamaged?.Invoke(bumper, damage);
+        }
+
+        void HandleBumperBroken()
+        {
+            _onBumperBroken?.Invoke();
         }
 
         public void SetFlipperPressed(Flipper.ESide side, bool isPressed)

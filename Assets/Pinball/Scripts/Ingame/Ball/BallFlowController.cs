@@ -182,6 +182,8 @@ namespace Pinball.Ingame
         {
             ball.SetAura(BallAura.EAuraType.Fire, _stats.HasEffect(ShopItemData.EEffectType.BumperBurn));
             ball.SetAura(BallAura.EAuraType.Lightning, _stats.HasEffect(ShopItemData.EEffectType.BumperChainLightning));
+            ball.SetAura(BallAura.EAuraType.Frost, _stats.HasEffect(ShopItemData.EEffectType.BumperFreeze));
+            ball.SetAura(BallAura.EAuraType.Gold, _stats.HasEffect(ShopItemData.EEffectType.GimmickBreakMoney));
         }
 
         bool IsControlBlocked()

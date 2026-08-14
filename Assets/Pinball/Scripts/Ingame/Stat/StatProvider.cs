@@ -1,22 +1,32 @@
+using System;
 using Pinball.Ingame.Map;
+using UnityEngine;
 
 namespace Pinball.Ingame.Stat
 {
     public class StatProvider
     {
+        const int MIN_SCALING_BALL_COUNT = 1;
+
         PinballStatData _statData = null;
         PlayerLoadout _loadout = null;
+        Func<int> _remainingBallGetter = null;
+        Func<int> _comboCountGetter = null;
 
-        public void Init(PinballStatData statData, PlayerLoadout loadout)
+        public void Init(PinballStatData statData, PlayerLoadout loadout, Func<int> remainingBallGetter, Func<int> comboCountGetter)
         {
             _statData = statData;
             _loadout = loadout;
+            _remainingBallGetter = remainingBallGetter;
+            _comboCountGetter = comboCountGetter;
         }
 
         public void Release()
         {
             _statData = null;
             _loadout = null;
+            _remainingBallGetter = null;
+            _comboCountGetter = null;
         }
 
         public float GetFlipPower()
@@ -27,12 +37,58 @@ namespace Pinball.Ingame.Stat
             return _statData.FlipPower + GetEffectSum(ShopItemData.EEffectType.FlipPowerAdd);
         }
 
+        public int GetInitialBallCount()
+        {
+            if (null == _statData)
+                return 0;
+
+            return _statData.InitialBallCount;
+        }
+
+        public float GetBallMass()
+        {
+            if (null == _statData)
+                return 0f;
+
+            return _statData.BallMass;
+        }
+
         public float GetBallAttackPower()
         {
             if (null == _statData)
                 return 0f;
 
-            return _statData.BallAttackPower + GetEffectSum(ShopItemData.EEffectType.BallAttackPowerAdd);
+            float basePower = _statData.BallAttackPower + GetEffectSum(ShopItemData.EEffectType.BallAttackPowerAdd);
+            return basePower * (1f + GetComboAttackPowerRatio());
+        }
+
+        float GetComboAttackPowerRatio()
+        {
+            float ratioPerHit = GetEffectSum(ShopItemData.EEffectType.ComboAttackPowerRatio);
+            if (ratioPerHit <= 0f)
+                return 0f;
+
+            if (null == _comboCountGetter)
+                return 0f;
+
+            return ratioPerHit * _comboCountGetter();
+        }
+
+        public float GetLowBallScoreRatio()
+        {
+            float maxRatio = GetEffectSum(ShopItemData.EEffectType.LowBallScoreRatio);
+            if (maxRatio <= 0f)
+                return 0f;
+
+            if (null == _remainingBallGetter)
+                return 0f;
+
+            int initialCount = GetInitialBallCount();
+            if (initialCount <= MIN_SCALING_BALL_COUNT)
+                return maxRatio;
+
+            int remainingCount = Mathf.Clamp(_remainingBallGetter(), MIN_SCALING_BALL_COUNT, initialCount);
+            return maxRatio * (initialCount - remainingCount) / (initialCount - MIN_SCALING_BALL_COUNT);
         }
 
         public float GetPerfectTimingRelax()

@@ -7,12 +7,16 @@ namespace Pinball.Ingame
 {
     public class ScoreCounter
     {
+        const float DEFAULT_SCORE_MULTIPLIER = 1f;
+
         ComboTracker _comboTracker = null;
         StatProvider _stats = null;
         Action<int, Vector2> _scorePopupPlayer = null;
         int _current = 0;
+        float _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
 
         public int Current => _current;
+        public int ComboCount => null == _comboTracker ? 0 : _comboTracker.ComboCount;
         public event Action<int> OnChanged;
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, int> OnComboEnded;
@@ -22,6 +26,7 @@ namespace Pinball.Ingame
             _current = initialScore;
             _stats = stats;
             _scorePopupPlayer = scorePopupPlayer;
+            _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             _comboTracker = new ComboTracker();
             _comboTracker.Init(comboConfig, stats.GetComboMultiplierBonus, stats.GetComboTimeoutBonus);
             _comboTracker.OnComboChanged += HandleComboChanged;
@@ -36,6 +41,7 @@ namespace Pinball.Ingame
                 _comboTracker = null;
             }
 
+            _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             _stats = null;
             _scorePopupPlayer = null;
             OnChanged = null;
@@ -53,7 +59,10 @@ namespace Pinball.Ingame
 
         public void HandleMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint, MapInteractable.EScoreSource scoreSource)
         {
-            int finalScore = Mathf.RoundToInt(score * (1f + _stats.GetGimmickScoreRatio(gimmickType) + _stats.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)));
+            float bonusRatio = _stats.GetGimmickScoreRatio(gimmickType)
+                + _stats.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)
+                + _stats.GetLowBallScoreRatio();
+            int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * _hitGradeScoreMultiplier);
 
             if (scoreSource == MapInteractable.EScoreSource.BallHit)
                 _comboTracker.AddBounce(finalScore);
@@ -62,7 +71,33 @@ namespace Pinball.Ingame
             _scorePopupPlayer?.Invoke(finalScore, worldPoint);
         }
 
-        public void HandlePerfectParry(Flipper.EHitGrade grade, Vector2 worldPoint)
+        public void HandleBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
+        {
+            RefreshHitGradeMultiplier(grade);
+            AddParryScore(grade, worldPoint);
+        }
+
+        void RefreshHitGradeMultiplier(Flipper.EHitGrade grade)
+        {
+            if (!_stats.HasEffect(ShopItemData.EEffectType.HitGradeScoreRatio))
+                return;
+
+            if (grade == Flipper.EHitGrade.Perfect)
+            {
+                _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER + _stats.GetEffectSum(ShopItemData.EEffectType.HitGradeScoreRatio);
+                return;
+            }
+
+            if (grade == Flipper.EHitGrade.Normal)
+            {
+                _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER - _stats.GetEffectSub(ShopItemData.EEffectType.HitGradeScoreRatio);
+                return;
+            }
+
+            _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
+        }
+
+        void AddParryScore(Flipper.EHitGrade grade, Vector2 worldPoint)
         {
             if (grade != Flipper.EHitGrade.Perfect)
                 return;
@@ -77,6 +112,8 @@ namespace Pinball.Ingame
 
         public void EndCombo()
         {
+            _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
+
             if (null == _comboTracker)
                 return;
 
