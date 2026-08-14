@@ -11,38 +11,31 @@ namespace Pinball.Ingame.Presentation
         const float DEFAULT_TIME_SCALE = 1f;
         const float MIN_DURATION = 0.0001f;
 
-        CancellationTokenSource _lifetimeTokenSource = null;
+        bool _isActive = false;
         CancellationTokenSource _playTokenSource = null;
 
         public void Init()
         {
-            _lifetimeTokenSource = new CancellationTokenSource();
+            _isActive = true;
         }
 
         public void Release()
         {
             CancelPlaying();
-
-            if (null != _lifetimeTokenSource)
-            {
-                _lifetimeTokenSource.Cancel();
-                _lifetimeTokenSource.Dispose();
-                _lifetimeTokenSource = null;
-            }
-
+            _isActive = false;
             Time.timeScale = DEFAULT_TIME_SCALE;
         }
 
         public void Play(HitPresentationData presentation)
         {
-            if (null == _lifetimeTokenSource)
+            if (!_isActive)
                 return;
 
             if (!presentation.IsHitStopEnabled)
                 return;
 
             CancelPlaying();
-            _playTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeTokenSource.Token);
+            _playTokenSource = new CancellationTokenSource();
             PlayAsync(presentation, _playTokenSource.Token).Forget();
         }
 
