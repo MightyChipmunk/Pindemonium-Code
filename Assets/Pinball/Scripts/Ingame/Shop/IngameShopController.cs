@@ -53,6 +53,14 @@ namespace Pinball.Ingame
             return Mathf.Min(_wallet.Current / _config.InterestPerAmount, _config.InterestMax);
         }
 
+        public void RefreshOpenedView()
+        {
+            if (null == _session)
+                return;
+
+            RefreshShopView();
+        }
+
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)
         {
             switch (uiEvent)

@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Pinball.Core;
 using Pinball.FX;
+using Pinball.Ingame.Cheat;
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Presentation;
@@ -45,6 +46,7 @@ namespace Pinball.Ingame
         [SerializeField] ComboConfigData _comboConfig = null;
         [SerializeField] ShopConfigData _shopConfig = null;
         [SerializeField] ShopCatalogData _shopCatalog = null;
+        [SerializeField] IngameCheatHandler _cheatHandler = null;
 
         IngameDirector _director = null;
         PlayerController _playerController = null;
@@ -107,6 +109,13 @@ namespace Pinball.Ingame
             _shopController.Init(_shopConfig, _shopCatalog, _wallet, _loadout);
             _shopController.OnNextStageRequested += RestartNextStage;
 
+            if (null != _cheatHandler)
+                _cheatHandler.Init(new IngameCheatHandler.InitParam(
+                    Catalog: _shopCatalog,
+                    Wallet: _wallet,
+                    Loadout: _loadout,
+                    OnCheatApplied: _shopController.RefreshOpenedView));
+
             _inputRouter.Init();
             _inputRouter.OnEscapePressed += OnEscapePressed;
             _ballSpawner.Init();
@@ -162,6 +171,9 @@ namespace Pinball.Ingame
         {
             UIManager.OnEvent -= OnUIEvent;
             UIManager.HideAll();
+
+            if (null != _cheatHandler)
+                _cheatHandler.Release();
 
             if (null != _stageTracker)
             {
