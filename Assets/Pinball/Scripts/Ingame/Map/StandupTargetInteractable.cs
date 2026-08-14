@@ -53,9 +53,13 @@ namespace Pinball.Ingame.Map
             return transform.up;
         }
 
+        protected override void GainHitScore(float damage, Vector2 worldPoint)
+        {
+            GainScore(_scoreReward, worldPoint);
+        }
+
         protected override void OnBallHit(Collision2D collision, float damage)
         {
-            GainScore(_scoreReward);
             PlayHitMotion();
             CooldownAsync(_cancellationTokenSource.Token).Forget();
         }
