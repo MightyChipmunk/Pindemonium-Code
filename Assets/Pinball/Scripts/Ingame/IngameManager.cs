@@ -451,21 +451,29 @@ namespace Pinball.Ingame
 
         ResultStatsView.Args BuildResultStats()
         {
-            string[] passiveNames = new string[_loadout.PassiveCount];
-            for (int i = 0; i < passiveNames.Length; ++i)
-                passiveNames[i] = _loadout.GetPassive(i).GetDisplayName();
+            int[] passiveIndices = new int[_loadout.PassiveCount];
+            for (int i = 0; i < passiveIndices.Length; ++i)
+                passiveIndices[i] = GetCatalogIndex(_loadout.GetPassive(i));
 
             ResultStatsView.ItemCountEntry[] upgrades = new ResultStatsView.ItemCountEntry[_loadout.UpgradeKindCount];
             for (int i = 0; i < upgrades.Length; ++i)
-                upgrades[i] = new ResultStatsView.ItemCountEntry(_loadout.GetUpgrade(i).GetDisplayName(), _loadout.GetUpgradeCount(i));
+                upgrades[i] = new ResultStatsView.ItemCountEntry(GetCatalogIndex(_loadout.GetUpgrade(i)), _loadout.GetUpgradeCount(i));
 
             return new ResultStatsView.Args(
                 StageNumber: _stageTracker.StageNumber,
                 Score: _scoreCounter.Current,
                 Money: _wallet.Current,
                 UsedBallCount: _ballFlow.UsedBallCount,
-                PassiveNames: passiveNames,
+                PassiveIndices: passiveIndices,
                 Upgrades: upgrades);
+        }
+
+        int GetCatalogIndex(ShopItemData item)
+        {
+            if (null == _shopCatalog)
+                return ShopCatalogData.INVALID_INDEX;
+
+            return _shopCatalog.IndexOf(item);
         }
 
         void SaveProgress()
