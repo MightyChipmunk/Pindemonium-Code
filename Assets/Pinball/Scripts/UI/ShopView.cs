@@ -29,49 +29,42 @@ namespace Pinball.UI
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
 
-        const string MONEY_FORMAT = "MONEY {0}";
-        const string REROLL_FORMAT = "REROLL {0}";
-        const string PRICE_FORMAT = "COST {0}";
+        const string MONEY_FORMAT = "$ {0}";
+        const string REROLL_FORMAT = "REROLL ${0}";
+        const string PRICE_FORMAT = "${0}";
         const string PASSIVE_HEADER_FORMAT = "PASSIVE  {0}/{1}";
         const string UPGRADE_HEADER_FORMAT = "UPGRADE  {0}";
         const string OWNED_COUNT_FORMAT = "x{0}";
-        const string PASSIVE_KIND_LABEL = "PASSIVE";
-        const string UPGRADE_KIND_LABEL = "UPGRADE";
-        const string SOLD_LABEL = "SOLD";
-        const int OWNED_SLOT_CAPACITY = 8;
+        const int OWNED_SLOT_CAPACITY = 12;
         const int STACKED_COUNT_MIN = 2;
-        const float CARD_COLOR_RATIO = 0.4f;
-
-        static readonly Color SOLD_CARD_COLOR = new Color(0.34f, 0.35f, 0.4f, 1f);
 
         [SerializeField] ShopCatalogData _catalog = null;
-        [SerializeField] Color _passiveColor = new Color(0.68f, 0.53f, 1f, 1f);
-        [SerializeField] Color _upgradeColor = new Color(0.35f, 0.82f, 0.68f, 1f);
         [SerializeField] TMP_Text _moneyLabel = null;
-        [SerializeField] ShopOfferSlotView _offerSlot0 = null;
-        [SerializeField] ShopOfferSlotView _offerSlot1 = null;
-        [SerializeField] ShopOfferSlotView _offerSlot2 = null;
+        [SerializeField] ShopItemView _offerSlot0 = null;
+        [SerializeField] ShopItemView _offerSlot1 = null;
+        [SerializeField] ShopItemView _offerSlot2 = null;
         [SerializeField] TMP_Text _passiveHeaderLabel = null;
         [SerializeField] TMP_Text _upgradeHeaderLabel = null;
         [SerializeField] RectTransform _passiveContent = null;
         [SerializeField] RectTransform _upgradeContent = null;
-        [SerializeField] ShopOwnedSlotView _ownedSlotOrigin = null;
-        [SerializeField] ShopTooltipView _tooltip = null;
+        [SerializeField] ItemIconSlotView _ownedSlotOrigin = null;
+        [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
         [SerializeField] TMP_Text _rerollLabel = null;
         [SerializeField] Button _startButton = null;
 
-        ObjectPool<ShopOwnedSlotView> _ownedSlotPool = null;
-        List<ShopOwnedSlotView> _activeOwnedSlots = null;
+        ObjectPool<ItemIconSlotView> _ownedSlotPool = null;
+        List<ItemIconSlotView> _activeOwnedSlots = null;
+        int _boundPassiveCount = 0;
 
         public override void OnGenerate()
         {
-            _activeOwnedSlots = new List<ShopOwnedSlotView>();
-            _ownedSlotPool = new ObjectPool<ShopOwnedSlotView>(_ownedSlotOrigin, CreateOwnedSlot, OWNED_SLOT_CAPACITY);
+            _activeOwnedSlots = new List<ItemIconSlotView>();
+            _ownedSlotPool = new ObjectPool<ItemIconSlotView>(_ownedSlotOrigin, CreateOwnedSlot, OWNED_SLOT_CAPACITY);
 
-            _offerSlot0.Init(0, OnOfferClicked, OnTooltipHovered);
-            _offerSlot1.Init(1, OnOfferClicked, OnTooltipHovered);
-            _offerSlot2.Init(2, OnOfferClicked, OnTooltipHovered);
+            _offerSlot0.Init(0, OnOfferClicked);
+            _offerSlot1.Init(1, OnOfferClicked);
+            _offerSlot2.Init(2, OnOfferClicked);
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
             _tooltip.Hide();
@@ -140,26 +133,23 @@ namespace Pinball.UI
 
         void BindOffer(OfferArgs args)
         {
-            ShopOfferSlotView slot = GetOfferSlot(args.SlotIndex);
+            ShopItemView slot = GetOfferSlot(args.SlotIndex);
             if (null == slot)
                 return;
 
             ShopItemData item = GetItem(args.ItemIndex);
             if (null == item)
             {
-                slot.BindEmpty(ShopCatalogData.INVALID_INDEX, SOLD_LABEL, SOLD_CARD_COLOR);
+                slot.BindSold();
                 return;
             }
 
-            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
-            Color accentColor = GetAccentColor(isPassive);
-            slot.BindItem(new ShopOfferSlotView.BindParam(
-                ItemIndex: args.ItemIndex,
-                KindText: isPassive ? PASSIVE_KIND_LABEL : UPGRADE_KIND_LABEL,
-                DisplayName: item.GetDisplayName(),
-                PriceText: string.Format(PRICE_FORMAT, item.Price),
-                CardColor: GetCardColor(accentColor),
-                AccentColor: accentColor));
+            slot.BindItem(new ShopItemView.BindParam(
+                Kind: item.Kind,
+                Title: item.GetDisplayName(),
+                Icon: item.GetIcon(),
+                Description: item.GetDescription(),
+                PriceText: string.Format(PRICE_FORMAT, item.Price)));
         }
 
         void BindOwnedReset(OwnedResetArgs args)
@@ -168,6 +158,23 @@ namespace Pinball.UI
             _upgradeHeaderLabel.text = string.Format(UPGRADE_HEADER_FORMAT, args.UpgradeCount);
             ClearOwnedSlots();
             _tooltip.Hide();
+            _boundPassiveCount = 0;
+
+            int emptyCount = Mathf.Max(0, args.PassiveSlotCount - args.PassiveCount);
+            for (int i = 0; i < emptyCount; ++i)
+                BindEmptyPassiveSlot();
+        }
+
+        void BindEmptyPassiveSlot()
+        {
+            ItemIconSlotView slot = _ownedSlotPool.Get();
+            if (null == slot)
+                return;
+
+            slot.transform.SetParent(_passiveContent, false);
+            slot.transform.SetAsLastSibling();
+            slot.BindEmpty();
+            _activeOwnedSlots.Add(slot);
         }
 
         void BindOwnedItem(OwnedItemArgs args)
@@ -176,21 +183,21 @@ namespace Pinball.UI
             if (null == item)
                 return;
 
-            ShopOwnedSlotView slot = _ownedSlotPool.Get();
+            ItemIconSlotView slot = _ownedSlotPool.Get();
             if (null == slot)
                 return;
 
             bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
             slot.transform.SetParent(isPassive ? _passiveContent : _upgradeContent, false);
-            slot.transform.SetAsLastSibling();
+            if (isPassive)
+                slot.transform.SetSiblingIndex(_boundPassiveCount++);
+            else
+                slot.transform.SetAsLastSibling();
 
-            Color accentColor = GetAccentColor(isPassive);
-            slot.Bind(new ShopOwnedSlotView.BindParam(
+            slot.Bind(new ItemIconSlotView.BindParam(
                 ItemIndex: args.ItemIndex,
-                DisplayName: item.GetDisplayName(),
+                Icon: item.GetIcon(),
                 CountText: GetCountText(args.Count),
-                CardColor: GetCardColor(accentColor),
-                AccentColor: accentColor,
                 HoverCallback: OnTooltipHovered));
             _activeOwnedSlots.Add(slot);
         }
@@ -206,7 +213,7 @@ namespace Pinball.UI
             _activeOwnedSlots.Clear();
         }
 
-        ShopOwnedSlotView CreateOwnedSlot(ShopOwnedSlotView origin)
+        ItemIconSlotView CreateOwnedSlot(ItemIconSlotView origin)
         {
             return Instantiate(origin, _passiveContent);
         }
@@ -220,18 +227,7 @@ namespace Pinball.UI
                 return;
             }
 
-            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
-            _tooltip.Show(item.GetDisplayName(), item.GetDescription(), GetAccentColor(isPassive), anchorPosition);
-        }
-
-        Color GetAccentColor(bool isPassive)
-        {
-            return isPassive ? _passiveColor : _upgradeColor;
-        }
-
-        Color GetCardColor(Color accentColor)
-        {
-            return new Color(accentColor.r * CARD_COLOR_RATIO, accentColor.g * CARD_COLOR_RATIO, accentColor.b * CARD_COLOR_RATIO, 1f);
+            _tooltip.Show(item.GetDisplayName(), item.GetDescription(), anchorPosition);
         }
 
         string GetCountText(int count)
@@ -250,7 +246,7 @@ namespace Pinball.UI
             return _catalog.GetItem(itemIndex);
         }
 
-        ShopOfferSlotView GetOfferSlot(int slotIndex)
+        ShopItemView GetOfferSlot(int slotIndex)
         {
             switch (slotIndex)
             {
