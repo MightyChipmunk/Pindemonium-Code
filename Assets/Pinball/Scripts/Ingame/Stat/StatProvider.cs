@@ -91,6 +91,16 @@ namespace Pinball.Ingame.Stat
             return maxRatio * (initialCount - remainingCount) / (initialCount - MIN_SCALING_BALL_COUNT);
         }
 
+        public float GetHitFlatDamage()
+        {
+            return GetEffectSum(ShopItemData.EEffectType.HitFlatDamageAdd);
+        }
+
+        public float GetCloneDamageRatio()
+        {
+            return GetEffectSum(ShopItemData.EEffectType.BallCloneSpawn);
+        }
+
         public float GetPerfectTimingRelax()
         {
             return GetEffectSum(ShopItemData.EEffectType.PerfectTimingRelax);

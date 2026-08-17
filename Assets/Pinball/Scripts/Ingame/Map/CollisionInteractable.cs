@@ -17,10 +17,10 @@ namespace Pinball.Ingame.Map
             if (!IsBallLayer(collision.gameObject.layer))
                 return;
 
-            NotifyBallHit();
+            NotifyBallHit(collision.collider);
 
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
-            float damage = EvaluateDamage(collisionImpulse) * GetDamageMultiplier();
+            float damage = EvaluateDamage(collision.collider, collisionImpulse) * GetDamageMultiplier();
             GainHitScore(damage, collision.GetContact(0).point);
 
             collision.rigidbody.AddForce(GetBounceDirection(collision) * GetBounceForce(), ForceMode2D.Impulse);

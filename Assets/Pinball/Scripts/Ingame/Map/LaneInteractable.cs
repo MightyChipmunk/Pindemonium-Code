@@ -25,6 +25,7 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
 
         public override EGimmickType GimmickType => EGimmickType.Lane;
+        public override bool IsDeactivatable => false;
 
         protected override void OnInit()
         {

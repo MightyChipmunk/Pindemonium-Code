@@ -27,6 +27,7 @@ namespace Pinball.Ingame
         const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
 
         [SerializeField] Rigidbody2D _rigidbody = null;
+        [SerializeField] Collider2D _collider = null;
         [SerializeField] FlipperConfigData _config = null;
         [SerializeField] LayerMask _ballLayerMask = default;
         [SerializeField] ESide _side = ESide.Left;
@@ -80,6 +81,14 @@ namespace Pinball.Ingame
             _flipPowerGetter = null;
             _perfectTimingRelaxGetter = null;
             OnBallStruck = null;
+        }
+
+        public void SetBallCollisionIgnored(Ball ball, bool isIgnored)
+        {
+            if (null == ball)
+                return;
+
+            ball.SetCollisionIgnored(_collider, isIgnored);
         }
 
         public void SetPressed(bool isPressed)

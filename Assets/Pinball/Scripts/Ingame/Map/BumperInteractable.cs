@@ -38,12 +38,18 @@ namespace Pinball.Ingame.Map
         float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
         bool _isBroken = false;
         bool _isFrozen = false;
+        bool _isUnbreakable = false;
 
         public override EGimmickType GimmickType => EGimmickType.Bumper;
         public bool IsBroken => _isBroken;
 
         public event Action OnBroken;
         public event Action<BumperInteractable, float> OnBallDamaged;
+
+        public void SetUnbreakable(bool isUnbreakable)
+        {
+            _isUnbreakable = isUnbreakable;
+        }
 
         protected override void OnInit()
         {
@@ -82,6 +88,15 @@ namespace Pinball.Ingame.Map
 
             KillVisualTween(false);
             _isBroken = false;
+            _isUnbreakable = false;
+        }
+
+        protected override void OnDeactivated()
+        {
+            StopBurning();
+            ClearFrozen();
+            KillVisualTween(false);
+            base.OnDeactivated();
         }
 
         protected override Vector2 GetBounceDirection(Collision2D collision)
@@ -189,6 +204,9 @@ namespace Pinball.Ingame.Map
 
         void ReduceHealth(float damage)
         {
+            if (_isUnbreakable)
+                return;
+
             _currentHealth -= damage;
             if (_currentHealth >= 0f)
                 return;

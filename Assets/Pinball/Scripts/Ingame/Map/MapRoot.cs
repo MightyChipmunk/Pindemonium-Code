@@ -16,7 +16,7 @@ namespace Pinball.Ingame.Map
 
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
-            Func<float, float> DamageEvaluator,
+            Func<Collider2D, float, float> DamageEvaluator,
             Func<float> FlipPowerGetter,
             Func<float> PerfectTimingRelaxGetter,
             Action<Flipper.EHitGrade, Vector2> OnBallStruck,
@@ -25,7 +25,10 @@ namespace Pinball.Ingame.Map
             Action<Spring.EChargeEvent, Vector2> OnSpringChargeEvent,
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
-            Action OnGimmickBallHit);
+            Action<Collider2D> OnGimmickBallHit,
+            Func<MapInteractable.EGimmickType, bool> IsGimmickAbsentGetter,
+            Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter,
+            bool IsBumperUnbreakable);
 
         [SerializeField] MapInteractable[] _interactables = null;
         [SerializeField] Flipper _leftFlipper = null;
@@ -51,12 +54,18 @@ namespace Pinball.Ingame.Map
             {
                 for (int i = 0; i < _interactables.Length; ++i)
                 {
-                    _interactables[i].Init(param.OnScoreGained, param.DamageEvaluator, param.FXPlayer, param.OnGimmickBallHit);
+                    MapInteractable interactable = _interactables[i];
+                    int scoreGainLimit = interactable.IsDeactivatable ? param.ScoreGainLimitGetter(interactable.GimmickType) : MapInteractable.NO_SCORE_GAIN_LIMIT;
+                    interactable.Init(param.OnScoreGained, param.DamageEvaluator, param.FXPlayer, param.OnGimmickBallHit, scoreGainLimit);
 
-                    BumperInteractable bumper = _interactables[i] as BumperInteractable;
+                    if (interactable.IsDeactivatable && param.IsGimmickAbsentGetter(interactable.GimmickType))
+                        interactable.Deactivate();
+
+                    BumperInteractable bumper = interactable as BumperInteractable;
                     if (null == bumper)
                         continue;
 
+                    bumper.SetUnbreakable(param.IsBumperUnbreakable);
                     _bumpers.Add(bumper);
                     bumper.OnBallDamaged += HandleBumperDamaged;
                     bumper.OnBroken += HandleBumperBroken;
@@ -153,7 +162,7 @@ namespace Pinball.Ingame.Map
             for (int i = 0; i < _bumpers.Count; ++i)
             {
                 BumperInteractable bumper = _bumpers[i];
-                if (bumper.IsBroken)
+                if (bumper.IsBroken || bumper.IsDeactivated)
                     continue;
 
                 if (chainedBumpers.Contains(bumper))
@@ -191,6 +200,12 @@ namespace Pinball.Ingame.Map
         public void LoadBall(Ball ball)
         {
             _spring.LoadBall(ball);
+        }
+
+        public void SetFlipperCollisionIgnored(Ball ball, bool isIgnored)
+        {
+            _leftFlipper.SetBallCollisionIgnored(ball, isIgnored);
+            _rightFlipper.SetBallCollisionIgnored(ball, isIgnored);
         }
 
         public void SetSpringCharging(bool isCharging)

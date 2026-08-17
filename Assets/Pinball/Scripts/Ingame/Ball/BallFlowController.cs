@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Stat;
 using UnityEngine;
@@ -7,6 +8,10 @@ namespace Pinball.Ingame
 {
     public class BallFlowController
     {
+        const float CLONE_ALPHA = 0.6f;
+        const float CLONE_SPAWN_OFFSET = 0.4f;
+        const float MIN_CLONE_OFFSET_SQR_SPEED = 0.01f;
+
         public record InitParam(
             BallSpawner Spawner,
             BallDrainZone DrainZone,
@@ -22,8 +27,11 @@ namespace Pinball.Ingame
         Func<bool> _isPlayingGetter = null;
         MapRoot _map = null;
         Ball _activeBall = null;
+        List<Ball> _cloneBalls = null;
+        float _cloneSpawnElapsed = 0f;
         int _gimmickHitCount = 0;
         int _usedBallCount = 0;
+        bool _isSurgeCharged = false;
 
         public int RemainingBalls => _ballStock.Remaining;
         public int UsedBallCount => _usedBallCount;
@@ -41,6 +49,9 @@ namespace Pinball.Ingame
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
             _usedBallCount = 0;
+            _cloneBalls = new List<Ball>();
+            _cloneSpawnElapsed = 0f;
+            _isSurgeCharged = false;
             _ballStock = new BallStockCounter();
             _ballStock.Init(_stats.GetInitialBallCount());
             _ballStock.OnChanged += HandleBallCountChanged;
@@ -61,6 +72,12 @@ namespace Pinball.Ingame
                 _ballStock = null;
             }
 
+            if (null != _cloneBalls)
+            {
+                _cloneBalls.Clear();
+                _cloneBalls = null;
+            }
+
             OnBallCountChanged = null;
             OnBallLost = null;
             OnBallReady = null;
@@ -78,6 +95,11 @@ namespace Pinball.Ingame
             _map = map;
         }
 
+        public void Tick(float deltaTime)
+        {
+            TickCloneSpawn(deltaTime);
+        }
+
         public void LoadBallOnSpring()
         {
             if (null == _map)
@@ -89,18 +111,18 @@ namespace Pinball.Ingame
 
             ball.SetMass(_stats.GetBallMass());
             ApplyPassiveAura(ball);
+            ball.SetAura(BallAura.EAuraType.Surge, _isSurgeCharged);
+            _map.SetFlipperCollisionIgnored(ball, false);
             _activeBall = ball;
             _gimmickHitCount = 0;
+            _cloneSpawnElapsed = 0f;
             _map.LoadBall(ball);
         }
 
-        public void DespawnActiveBall()
+        public void DespawnBalls()
         {
-            if (null == _activeBall)
-                return;
-
-            _spawner.Despawn(_activeBall);
-            _activeBall = null;
+            DespawnActiveBall();
+            DespawnCloneBalls();
         }
 
         public bool TryApplyImpulseToActiveBall(Vector2 impulse)
@@ -118,6 +140,27 @@ namespace Pinball.Ingame
             OnBallCountChanged?.Invoke(_ballStock.Remaining);
         }
 
+        public void SetSurgeCharged(bool isCharged)
+        {
+            _isSurgeCharged = isCharged;
+
+            if (null == _activeBall)
+                return;
+
+            _activeBall.SetAura(BallAura.EAuraType.Surge, isCharged);
+        }
+
+        public bool IsCloneBall(Collider2D ballCollider)
+        {
+            if (null == _cloneBalls)
+                return false;
+
+            if (!_spawner.TryResolve(ballCollider, out Ball ball))
+                return false;
+
+            return _cloneBalls.Contains(ball);
+        }
+
         void HandleBallCountChanged(int remaining)
         {
             OnBallCountChanged?.Invoke(remaining);
@@ -125,10 +168,13 @@ namespace Pinball.Ingame
 
         void HandleBallDrained(Collider2D collider)
         {
-            if (IsControlBlocked())
+            if (!_spawner.TryResolve(collider, out Ball ball))
                 return;
 
-            if (!_spawner.TryResolve(collider, out Ball ball))
+            if (TryDespawnCloneBall(ball))
+                return;
+
+            if (IsControlBlocked())
                 return;
 
             _spawner.Despawn(ball);
@@ -141,6 +187,7 @@ namespace Pinball.Ingame
 
         void HandleBallLost()
         {
+            DespawnCloneBalls();
             OnBallLost?.Invoke();
 
             if (IsControlBlocked())
@@ -159,12 +206,12 @@ namespace Pinball.Ingame
             OnBallReady?.Invoke();
         }
 
-        public void CountGimmickHit()
+        public void CountGimmickHit(Collider2D ballCollider)
         {
             if (!IsPlaying())
                 return;
 
-            if (null == _activeBall)
+            if (!IsActiveBall(ballCollider))
                 return;
 
             if (!_stats.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
@@ -180,6 +227,88 @@ namespace Pinball.Ingame
 
             DespawnActiveBall();
             HandleBallLost();
+        }
+
+        void DespawnActiveBall()
+        {
+            if (null == _activeBall)
+                return;
+
+            _spawner.Despawn(_activeBall);
+            _activeBall = null;
+        }
+
+        void DespawnCloneBalls()
+        {
+            if (null == _cloneBalls)
+                return;
+
+            for (int i = 0; i < _cloneBalls.Count; ++i)
+                _spawner.Despawn(_cloneBalls[i]);
+
+            _cloneBalls.Clear();
+        }
+
+        bool TryDespawnCloneBall(Ball ball)
+        {
+            if (null == _cloneBalls)
+                return false;
+
+            if (!_cloneBalls.Remove(ball))
+                return false;
+
+            _spawner.Despawn(ball);
+            return true;
+        }
+
+        void TickCloneSpawn(float deltaTime)
+        {
+            if (!IsPlaying())
+                return;
+
+            if (null == _activeBall || null == _map)
+                return;
+
+            float spawnInterval = _stats.GetEffectSub(ShopItemData.EEffectType.BallCloneSpawn);
+            if (spawnInterval <= 0f)
+                return;
+
+            _cloneSpawnElapsed += deltaTime;
+            if (_cloneSpawnElapsed < spawnInterval)
+                return;
+
+            _cloneSpawnElapsed = 0f;
+            SpawnCloneBall();
+        }
+
+        void SpawnCloneBall()
+        {
+            Ball clone = _spawner.Spawn();
+            if (null == clone)
+                return;
+
+            _cloneBalls.Add(clone);
+            clone.SetMass(_stats.GetBallMass());
+            clone.MoveTo(GetCloneSpawnPosition());
+            clone.SetKinematic(false);
+            clone.SetAlpha(CLONE_ALPHA);
+            ApplyPassiveAura(clone);
+            _map.SetFlipperCollisionIgnored(clone, true);
+        }
+
+        Vector3 GetCloneSpawnPosition()
+        {
+            Vector2 velocity = _activeBall.GetVelocity();
+            Vector2 offsetDirection = velocity.sqrMagnitude > MIN_CLONE_OFFSET_SQR_SPEED ? -velocity.normalized : Vector2.down;
+            return _activeBall.transform.position + (Vector3)(offsetDirection * CLONE_SPAWN_OFFSET);
+        }
+
+        bool IsActiveBall(Collider2D ballCollider)
+        {
+            if (!_spawner.TryResolve(ballCollider, out Ball ball))
+                return false;
+
+            return ball == _activeBall;
         }
 
         void ApplyPassiveAura(Ball ball)

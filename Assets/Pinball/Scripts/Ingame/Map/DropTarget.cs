@@ -18,12 +18,12 @@ namespace Pinball.Ingame.Map
         [SerializeField] float _dropDistance = 0.25f;
 
         Func<int, bool> _ballLayerChecker = null;
-        Action _onDropped = null;
+        Action<Collider2D> _onDropped = null;
         Tween _moveTween = null;
         Vector3 _raisedLocalPosition = Vector3.zero;
         bool _isDropped = false;
 
-        public void Init(Func<int, bool> ballLayerChecker, Action onDropped)
+        public void Init(Func<int, bool> ballLayerChecker, Action<Collider2D> onDropped)
         {
             _ballLayerChecker = ballLayerChecker;
             _onDropped = onDropped;
@@ -71,7 +71,7 @@ namespace Pinball.Ingame.Map
             _moveTween = sequence;
         }
 
-        void Drop()
+        void Drop(Collider2D ballCollider)
         {
             _isDropped = true;
             _collider.enabled = false;
@@ -80,7 +80,7 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _moveTween = _visual.DOLocalMove(GetDroppedLocalPosition(), DROP_DURATION);
 
-            _onDropped?.Invoke();
+            _onDropped?.Invoke(ballCollider);
         }
 
         Vector3 GetDroppedLocalPosition()
@@ -108,7 +108,7 @@ namespace Pinball.Ingame.Map
             if (!_ballLayerChecker(collision.gameObject.layer))
                 return;
 
-            Drop();
+            Drop(collision.collider);
         }
 
 #if UNITY_EDITOR

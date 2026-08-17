@@ -24,21 +24,31 @@ namespace Pinball.Ingame.Map
             PassiveEffect = 1,
         }
 
+        public const int NO_SCORE_GAIN_LIMIT = 0;
+
         [SerializeField] LayerMask _ballLayerMask = default;
 
         Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
-        Func<float, float> _damageEvaluator = null;
+        Func<Collider2D, float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
-        Action _onBallHit = null;
+        Action<Collider2D> _onBallHit = null;
+        int _scoreGainLimit = NO_SCORE_GAIN_LIMIT;
+        int _scoreGainCount = 0;
+        bool _isDeactivated = false;
 
         public abstract EGimmickType GimmickType { get; }
+        public virtual bool IsDeactivatable => true;
+        public bool IsDeactivated => _isDeactivated;
 
-        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action onBallHit)
+        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<Collider2D, float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<Collider2D> onBallHit, int scoreGainLimit)
         {
             _onScoreGained = onScoreGained;
             _damageEvaluator = damageEvaluator;
             _fxPlayer = fxPlayer;
             _onBallHit = onBallHit;
+            _scoreGainLimit = scoreGainLimit;
+            _scoreGainCount = 0;
+            _isDeactivated = false;
             OnInit();
         }
 
@@ -51,21 +61,38 @@ namespace Pinball.Ingame.Map
             _onBallHit = null;
         }
 
+        public void Deactivate()
+        {
+            if (!IsDeactivatable)
+                return;
+
+            if (_isDeactivated)
+                return;
+
+            _isDeactivated = true;
+            OnDeactivated();
+        }
+
         protected virtual void OnInit() { }
 
         protected virtual void OnRelease() { }
+
+        protected virtual void OnDeactivated()
+        {
+            gameObject.SetActive(false);
+        }
 
         protected bool IsBallLayer(int layer)
         {
             return _ballLayerMask.HasLayer(layer);
         }
 
-        protected float EvaluateDamage(float collisionImpulse)
+        protected float EvaluateDamage(Collider2D ballCollider, float collisionImpulse)
         {
             if (null == _damageEvaluator)
                 return 0f;
 
-            return _damageEvaluator(collisionImpulse);
+            return _damageEvaluator(ballCollider, collisionImpulse);
         }
 
         protected void GainScore(int score)
@@ -80,15 +107,19 @@ namespace Pinball.Ingame.Map
 
         protected void GainScore(int score, Vector2 worldPoint, EScoreSource scoreSource)
         {
+            if (_isDeactivated)
+                return;
+
             if (score <= 0)
                 return;
 
             _onScoreGained?.Invoke(GimmickType, score, worldPoint, scoreSource);
+            CountScoreGain(scoreSource);
         }
 
-        protected void NotifyBallHit()
+        protected void NotifyBallHit(Collider2D ballCollider)
         {
-            _onBallHit?.Invoke();
+            _onBallHit?.Invoke(ballCollider);
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
@@ -97,6 +128,21 @@ namespace Pinball.Ingame.Map
                 return;
 
             _fxPlayer?.Invoke(fxType, worldPoint);
+        }
+
+        void CountScoreGain(EScoreSource scoreSource)
+        {
+            if (scoreSource != EScoreSource.BallHit)
+                return;
+
+            if (_scoreGainLimit <= NO_SCORE_GAIN_LIMIT)
+                return;
+
+            ++_scoreGainCount;
+            if (_scoreGainCount < _scoreGainLimit)
+                return;
+
+            Deactivate();
         }
     }
 }

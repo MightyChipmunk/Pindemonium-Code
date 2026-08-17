@@ -5,11 +5,12 @@ namespace Pinball.Ingame
 {
     public class IngameSaveHandler
     {
-        public bool TryLoad(out int stageNumber, out int money, out int totalScore)
+        public bool TryLoad(out int stageNumber, out int money, out int totalScore, out int[] gimmickIndices)
         {
             stageNumber = 0;
             money = 0;
             totalScore = 0;
+            gimmickIndices = null;
 
             IngamePlayData savedData = SceneFlow.IsContinueRequested ? SaveManager.GetIngameData() : null;
             if (null == savedData)
@@ -18,15 +19,17 @@ namespace Pinball.Ingame
             stageNumber = savedData.StageNumber;
             money = savedData.Money;
             totalScore = savedData.TotalScore;
+            gimmickIndices = savedData.GimmickIndices;
             return true;
         }
 
-        public void Save(int stageNumber, int money, int totalScore)
+        public void Save(int stageNumber, int money, int totalScore, int[] gimmickIndices)
         {
             IngamePlayData data = new IngamePlayData();
             data.StageNumber = stageNumber;
             data.Money = money;
             data.TotalScore = totalScore;
+            data.GimmickIndices = gimmickIndices;
             SaveManager.SaveIngame(data);
         }
 

@@ -5,8 +5,11 @@ namespace Pinball.Ingame
 {
     public class Ball : MonoBehaviour, IPoolObject
     {
+        const float OPAQUE_ALPHA = 1f;
+
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
+        [SerializeField] SpriteRenderer _renderer = null;
         [SerializeField] BallTrail _trail = null;
         [SerializeField] BallAuraController _auraController = null;
 
@@ -16,6 +19,26 @@ namespace Pinball.Ingame
         public void SetMass(float mass)
         {
             _rigidbody.mass = mass;
+        }
+
+        public void SetAlpha(float alpha)
+        {
+            Color color = _renderer.color;
+            color.a = alpha;
+            _renderer.color = color;
+        }
+
+        public void SetCollisionIgnored(Collider2D other, bool isIgnored)
+        {
+            if (null == other)
+                return;
+
+            Physics2D.IgnoreCollision(_collider, other, isIgnored);
+        }
+
+        public Vector2 GetVelocity()
+        {
+            return _rigidbody.linearVelocity;
         }
 
         public void SetAura(BallAura.EAuraType auraType, bool isActive)
@@ -56,6 +79,7 @@ namespace Pinball.Ingame
         public void OnGet()
         {
             gameObject.SetActive(true);
+            SetAlpha(OPAQUE_ALPHA);
             _trail.Init();
             _auraController.Init();
         }

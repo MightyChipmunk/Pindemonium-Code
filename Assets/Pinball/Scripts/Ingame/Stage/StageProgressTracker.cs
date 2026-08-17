@@ -5,27 +5,50 @@ namespace Pinball.Ingame.Stage
 {
     public class StageProgressTracker
     {
+        const float NO_TIME_LIMIT = 0f;
+
         StageCatalogData _catalog = null;
+        StageGimmickResolver _gimmickResolver = null;
         int _stageIndex = 0;
         int _stageStartScore = 0;
         int _totalScore = 0;
+        float _timeLimit = NO_TIME_LIMIT;
+        float _remainingTime = NO_TIME_LIMIT;
         bool _isCleared = false;
+        bool _isTimeExpired = false;
 
         public int StageNumber => _stageIndex + 1;
         public int StageScore => _totalScore - _stageStartScore;
+        public bool HasTimeLimit => _timeLimit > NO_TIME_LIMIT;
+        public int RemainingSeconds => Mathf.CeilToInt(_remainingTime);
+
+        public int TargetScore
+        {
+            get
+            {
+                StageData stage = GetCurrentStage();
+                if (null == stage)
+                    return 0;
+
+                return _gimmickResolver.GetTargetScore(stage.TargetScore);
+            }
+        }
 
         public event Action<int, StageData> OnStageStarted;
         public event Action<int, StageData> OnStageCleared;
         public event Action OnAllStagesCleared;
         public event Action<int> OnStageScoreChanged;
+        public event Action<int> OnRemainingSecondsChanged;
+        public event Action OnTimeExpired;
 
-        public void Init(StageCatalogData catalog, int startStageNumber, int startTotalScore)
+        public void Init(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver)
         {
             _catalog = catalog;
+            _gimmickResolver = gimmickResolver;
             _stageIndex = Mathf.Max(0, startStageNumber - 1);
             _stageStartScore = startTotalScore;
             _totalScore = startTotalScore;
-            _isCleared = false;
+            ResetStageState();
         }
 
         public void Release()
@@ -34,6 +57,9 @@ namespace Pinball.Ingame.Stage
             OnStageCleared = null;
             OnAllStagesCleared = null;
             OnStageScoreChanged = null;
+            OnRemainingSecondsChanged = null;
+            OnTimeExpired = null;
+            _gimmickResolver = null;
             _catalog = null;
         }
 
@@ -45,8 +71,11 @@ namespace Pinball.Ingame.Stage
             return _catalog.GetStage(_stageIndex);
         }
 
-        public void StartFirstStage()
+        public void StartCurrentStage()
         {
+            _timeLimit = _gimmickResolver.GetTimeLimit();
+            _remainingTime = _timeLimit;
+            _isTimeExpired = false;
             OnStageStarted?.Invoke(StageNumber, GetCurrentStage());
         }
 
@@ -54,7 +83,7 @@ namespace Pinball.Ingame.Stage
         {
             _totalScore = totalScore;
 
-            if (_isCleared)
+            if (_isCleared || _isTimeExpired)
                 return;
 
             OnStageScoreChanged?.Invoke(StageScore);
@@ -63,27 +92,52 @@ namespace Pinball.Ingame.Stage
                 ClearCurrentStage();
         }
 
+        public void Tick(float deltaTime)
+        {
+            if (!HasTimeLimit)
+                return;
+
+            if (_isCleared || _isTimeExpired)
+                return;
+
+            int previousSeconds = RemainingSeconds;
+            _remainingTime = Mathf.Max(NO_TIME_LIMIT, _remainingTime - deltaTime);
+
+            if (RemainingSeconds != previousSeconds)
+                OnRemainingSecondsChanged?.Invoke(RemainingSeconds);
+
+            if (_remainingTime > NO_TIME_LIMIT)
+                return;
+
+            _isTimeExpired = true;
+            OnTimeExpired?.Invoke();
+        }
+
         public void AdvanceToNextStage()
         {
             if (!_isCleared)
                 return;
 
-            _isCleared = false;
             ++_stageIndex;
             _stageStartScore = _totalScore;
-            OnStageStarted?.Invoke(StageNumber, GetCurrentStage());
+            ResetStageState();
+        }
+
+        void ResetStageState()
+        {
+            _isCleared = false;
+            _isTimeExpired = false;
+            _timeLimit = NO_TIME_LIMIT;
+            _remainingTime = NO_TIME_LIMIT;
         }
 
         bool CanClearByScore()
         {
-            StageData stage = GetCurrentStage();
-            if (null == stage)
+            int targetScore = TargetScore;
+            if (targetScore <= 0)
                 return false;
 
-            if (stage.TargetScore <= 0)
-                return false;
-
-            return StageScore >= stage.TargetScore;
+            return StageScore >= targetScore;
         }
 
         void ClearCurrentStage()

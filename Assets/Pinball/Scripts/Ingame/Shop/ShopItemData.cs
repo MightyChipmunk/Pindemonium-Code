@@ -30,6 +30,9 @@ namespace Pinball.Ingame
             GimmickBreakMoney = 13,
             BumperFreeze = 14,
             BallResupplyMoney = 15,
+            TimedAttackPowerSurge = 16,
+            HitFlatDamageAdd = 17,
+            BallCloneSpawn = 18,
         }
 
         [SerializeField] string _displayName = string.Empty;

@@ -12,6 +12,7 @@ namespace Pinball.Ingame
         ComboTracker _comboTracker = null;
         StatProvider _stats = null;
         Action<int, Vector2> _scorePopupPlayer = null;
+        Func<MapInteractable.EGimmickType, float> _stageGimmickScoreMultiplierGetter = null;
         int _current = 0;
         float _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
 
@@ -21,11 +22,12 @@ namespace Pinball.Ingame
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, int> OnComboEnded;
 
-        public void Init(int initialScore, ComboConfigData comboConfig, StatProvider stats, Action<int, Vector2> scorePopupPlayer)
+        public void Init(int initialScore, ComboConfigData comboConfig, StatProvider stats, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter)
         {
             _current = initialScore;
             _stats = stats;
             _scorePopupPlayer = scorePopupPlayer;
+            _stageGimmickScoreMultiplierGetter = stageGimmickScoreMultiplierGetter;
             _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             _comboTracker = new ComboTracker();
             _comboTracker.Init(comboConfig, stats.GetComboMultiplierBonus, stats.GetComboTimeoutBonus);
@@ -44,6 +46,7 @@ namespace Pinball.Ingame
             _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             _stats = null;
             _scorePopupPlayer = null;
+            _stageGimmickScoreMultiplierGetter = null;
             OnChanged = null;
             OnComboChanged = null;
             OnComboEnded = null;
@@ -62,7 +65,7 @@ namespace Pinball.Ingame
             float bonusRatio = _stats.GetGimmickScoreRatio(gimmickType)
                 + _stats.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)
                 + _stats.GetLowBallScoreRatio();
-            int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * _hitGradeScoreMultiplier);
+            int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * _hitGradeScoreMultiplier * GetStageGimmickScoreMultiplier(gimmickType));
 
             if (scoreSource == MapInteractable.EScoreSource.BallHit)
                 _comboTracker.AddBounce(finalScore);
@@ -75,6 +78,14 @@ namespace Pinball.Ingame
         {
             RefreshHitGradeMultiplier(grade);
             AddParryScore(grade, worldPoint);
+        }
+
+        float GetStageGimmickScoreMultiplier(MapInteractable.EGimmickType gimmickType)
+        {
+            if (null == _stageGimmickScoreMultiplierGetter)
+                return DEFAULT_SCORE_MULTIPLIER;
+
+            return _stageGimmickScoreMultiplierGetter(gimmickType);
         }
 
         void RefreshHitGradeMultiplier(Flipper.EHitGrade grade)

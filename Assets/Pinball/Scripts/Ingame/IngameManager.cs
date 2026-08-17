@@ -25,6 +25,7 @@ namespace Pinball.Ingame
             GameOver = 2,
             Shopping = 3,
             Cleared = 4,
+            StageSelecting = 5,
         }
 
         const int DEFAULT_MAP_INDEX = 0;
@@ -42,6 +43,7 @@ namespace Pinball.Ingame
         [SerializeField] PresentationConfigData _presentationConfig = null;
         [SerializeField] FXPoolData _fxPoolData = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
+        [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
         [SerializeField] SettingsConfigData _settingsConfig = null;
         [SerializeField] ComboConfigData _comboConfig = null;
@@ -55,9 +57,13 @@ namespace Pinball.Ingame
         ScoreCounter _scoreCounter = null;
         DamageCalculator _damageCalculator = null;
         StageProgressTracker _stageTracker = null;
+        StageGimmickResolver _gimmickResolver = null;
+        StageGimmickRoller _gimmickRoller = null;
+        IngameStageSelectController _stageSelectController = null;
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
         StatProvider _statProvider = null;
+        PowerSurgeCharger _powerSurgeCharger = null;
         BreakMoneyGranter _breakMoneyGranter = null;
         IngameShopController _shopController = null;
         IngameSaveHandler _saveHandler = null;
@@ -65,7 +71,7 @@ namespace Pinball.Ingame
         EGameState _gameState = EGameState.Ready;
         bool _isExitingToLobby = false;
 
-        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared;
+        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared || _gameState == EGameState.StageSelecting;
 
         void Awake()
         {
@@ -85,11 +91,13 @@ namespace Pinball.Ingame
             int startStageNumber = FIRST_STAGE_NUMBER;
             int startMoney = 0;
             int startScore = 0;
-            if (_saveHandler.TryLoad(out int savedStageNumber, out int savedMoney, out int savedScore))
+            int[] startGimmickIndices = null;
+            if (_saveHandler.TryLoad(out int savedStageNumber, out int savedMoney, out int savedScore, out int[] savedGimmickIndices))
             {
                 startStageNumber = savedStageNumber;
                 startMoney = savedMoney;
                 startScore = savedScore;
+                startGimmickIndices = savedGimmickIndices;
             }
 
             _wallet = new MoneyWallet();
@@ -98,24 +106,48 @@ namespace Pinball.Ingame
             _loadout.Init(null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount);
             _statProvider = new StatProvider();
             _statProvider.Init(_statData, _loadout, GetRemainingBallCount, GetComboCount);
+            _powerSurgeCharger = new PowerSurgeCharger();
+            _powerSurgeCharger.Init(_statProvider, GetIsPlaying);
             _breakMoneyGranter = new BreakMoneyGranter();
             _breakMoneyGranter.Init(_wallet, _statProvider);
-            _damageCalculator = new DamageCalculator();
-            _damageCalculator.Init(_statProvider.GetBallAttackPower);
+            _gimmickRoller = new StageGimmickRoller();
+            _gimmickRoller.Init(_gimmickCatalog);
+            _gimmickResolver = new StageGimmickResolver();
+            _gimmickResolver.Init(_gimmickRoller);
+            _stageTracker = new StageProgressTracker();
+            _stageTracker.Init(_stageCatalog, startStageNumber, startScore, _gimmickResolver);
+            RestoreCurrentStageGimmicks(startGimmickIndices);
+            _stageTracker.OnStageStarted += OnStageStarted;
+            _stageTracker.OnStageCleared += OnStageCleared;
+            _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
+            _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
+            _stageTracker.OnRemainingSecondsChanged += OnStageRemainingSecondsChanged;
+            _stageTracker.OnTimeExpired += OnStageTimeExpired;
             _scoreCounter = new ScoreCounter();
-            _scoreCounter.Init(startScore, _comboConfig, _statProvider, _uiRoot.PlayScorePopup);
+            _scoreCounter.Init(startScore, _comboConfig, _statProvider, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier);
             _scoreCounter.OnComboChanged += OnComboChanged;
             _scoreCounter.OnComboEnded += OnComboEnded;
             _shopController = new IngameShopController();
             _shopController.Init(_shopConfig, _shopCatalog, _wallet, _loadout);
-            _shopController.OnNextStageRequested += RestartNextStage;
+            _shopController.OnNextStageRequested += OpenNextStageSelect;
+            _stageSelectController = new IngameStageSelectController();
+            _stageSelectController.Init(new IngameStageSelectController.InitParam(
+                StageCatalog: _stageCatalog,
+                Tracker: _stageTracker,
+                Roller: _gimmickRoller,
+                Resolver: _gimmickResolver,
+                Wallet: _wallet,
+                RemainingBallGetter: GetRemainingBallCount,
+                StageClearBaseMoney: STAGE_CLEAR_BASE_MONEY));
+            _stageSelectController.OnStageStartRequested += StartCurrentStage;
+            _stageSelectController.OnGimmickRerolled += SaveProgress;
 
             if (null != _cheatHandler)
                 _cheatHandler.Init(new IngameCheatHandler.InitParam(
                     Catalog: _shopCatalog,
                     Wallet: _wallet,
                     Loadout: _loadout,
-                    OnCheatApplied: _shopController.RefreshOpenedView));
+                    OnCheatApplied: OnCheatApplied));
 
             _inputRouter.Init();
             _inputRouter.OnEscapePressed += OnEscapePressed;
@@ -136,6 +168,14 @@ namespace Pinball.Ingame
             _ballFlow.OnBallLost += OnBallLost;
             _ballFlow.OnBallReady += OnBallReady;
             _ballFlow.OnAllBallsLost += EndGame;
+            _damageCalculator = new DamageCalculator();
+            _damageCalculator.Init(new DamageCalculator.InitParam(
+                AttackPowerGetter: _statProvider.GetBallAttackPower,
+                FlatDamageGetter: _statProvider.GetHitFlatDamage,
+                SurgeMultiplierConsumer: _powerSurgeCharger.ConsumeMultiplier,
+                IsCloneBallGetter: _ballFlow.IsCloneBall,
+                CloneDamageRatioGetter: _statProvider.GetCloneDamageRatio));
+            _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
             _playerController = new PlayerController();
             _playerController.Init(new PlayerController.InitParam(
                 InputRouter: _inputRouter,
@@ -144,8 +184,6 @@ namespace Pinball.Ingame
                 NudgeImpulseApplier: _ballFlow.TryApplyImpulseToActiveBall,
                 NudgePresenter: _director.PlayNudge));
             _playerController.OnLaunched += OnBallLaunched;
-
-            LoadMap();
 
             _scoreCounter.OnChanged += _uiRoot.SetScore;
             _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
@@ -156,17 +194,9 @@ namespace Pinball.Ingame
             UIManager.EnsureInit(_viewCatalog);
             UIManager.OnEvent += OnUIEvent;
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
-            _stageTracker = new StageProgressTracker();
-            _stageTracker.Init(_stageCatalog, startStageNumber, startScore);
-            _stageTracker.OnStageStarted += OnStageStarted;
-            _stageTracker.OnStageCleared += OnStageCleared;
-            _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
-            _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
-            _stageTracker.StartFirstStage();
 
-            _ballFlow.LoadBallOnSpring();
-            _gameState = EGameState.Ready;
+            OpenStageSelect();
         }
 
         public void Release()
@@ -177,10 +207,28 @@ namespace Pinball.Ingame
             if (null != _cheatHandler)
                 _cheatHandler.Release();
 
+            if (null != _stageSelectController)
+            {
+                _stageSelectController.Release();
+                _stageSelectController = null;
+            }
+
             if (null != _stageTracker)
             {
                 _stageTracker.Release();
                 _stageTracker = null;
+            }
+
+            if (null != _gimmickResolver)
+            {
+                _gimmickResolver.Release();
+                _gimmickResolver = null;
+            }
+
+            if (null != _gimmickRoller)
+            {
+                _gimmickRoller.Release();
+                _gimmickRoller = null;
             }
 
             if (null != _ballFlow)
@@ -217,6 +265,12 @@ namespace Pinball.Ingame
             {
                 _breakMoneyGranter.Release();
                 _breakMoneyGranter = null;
+            }
+
+            if (null != _powerSurgeCharger)
+            {
+                _powerSurgeCharger.Release();
+                _powerSurgeCharger = null;
             }
 
             if (null != _statProvider)
@@ -273,6 +327,11 @@ namespace Pinball.Ingame
 
             _scoreCounter.Tick(Time.deltaTime);
             _playerController.Tick(Time.deltaTime);
+            _powerSurgeCharger.Tick(Time.deltaTime);
+            _ballFlow.Tick(Time.deltaTime);
+
+            if (!IsControlBlocked)
+                _stageTracker.Tick(Time.deltaTime);
         }
 
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
@@ -325,11 +384,7 @@ namespace Pinball.Ingame
         {
             _saveHandler.UpdateBestStage(stageNumber);
             SaveProgress();
-
-            if (null == stage)
-                return;
-
-            UIManager.Show(new StageInfoView.Args(stageNumber, stage.TargetScore, 0));
+            ShowStageInfo();
         }
 
         void OnStageCleared(int stageNumber, StageData stage)
@@ -337,7 +392,7 @@ namespace Pinball.Ingame
             _gameState = EGameState.Shopping;
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
-            _ballFlow.DespawnActiveBall();
+            _ballFlow.DespawnBalls();
 
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney));
@@ -346,7 +401,8 @@ namespace Pinball.Ingame
 
             if (!UIManager.IsInitialized)
             {
-                RestartNextStage();
+                OpenNextStageSelect();
+                StartCurrentStage();
                 return;
             }
 
@@ -358,18 +414,35 @@ namespace Pinball.Ingame
             _gameState = EGameState.Cleared;
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
-            _ballFlow.DespawnActiveBall();
+            _ballFlow.DespawnBalls();
             _saveHandler.ClearPlayData();
             ShowGameResult(GameResultView.EResult.Clear);
         }
 
         void OnStageScoreChanged(int stageScore)
         {
-            StageData stage = _stageTracker.GetCurrentStage();
-            if (null == stage)
+            ShowStageInfo();
+        }
+
+        void OnStageRemainingSecondsChanged(int remainingSeconds)
+        {
+            ShowStageInfo();
+        }
+
+        void OnStageTimeExpired()
+        {
+            _scoreCounter.EndCombo();
+            _ballFlow.DespawnBalls();
+            EndGame();
+        }
+
+        void ShowStageInfo()
+        {
+            if (null == _stageTracker.GetCurrentStage())
                 return;
 
-            UIManager.Show(new StageInfoView.Args(_stageTracker.StageNumber, stage.TargetScore, stageScore));
+            int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
+            UIManager.Show(new StageInfoView.Args(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds));
         }
 
         void OnBallLaunched()
@@ -433,7 +506,10 @@ namespace Pinball.Ingame
                 OnSpringChargeEvent: _director.PlaySpringCharge,
                 FXPlayer: _director.PlayFX,
                 LineFXPlayer: _director.PlayLineFX,
-                OnGimmickBallHit: _ballFlow.CountGimmickHit));
+                OnGimmickBallHit: _ballFlow.CountGimmickHit,
+                IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
+                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit,
+                IsBumperUnbreakable: _gimmickResolver.IsBumperUnbreakable()));
         }
 
         void EndGame()
@@ -478,7 +554,24 @@ namespace Pinball.Ingame
 
         void SaveProgress()
         {
-            _saveHandler.Save(_stageTracker.StageNumber, _wallet.Current, _scoreCounter.Current);
+            _saveHandler.Save(_stageTracker.StageNumber, _wallet.Current, _scoreCounter.Current, _gimmickRoller.GetCatalogIndices());
+        }
+
+        void RestoreCurrentStageGimmicks(int[] savedGimmickIndices)
+        {
+            if (null == savedGimmickIndices || savedGimmickIndices.Length <= 0)
+            {
+                _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+                return;
+            }
+
+            _gimmickRoller.RestoreGimmicks(savedGimmickIndices);
+        }
+
+        void OnCheatApplied()
+        {
+            _shopController.RefreshOpenedView();
+            _stageSelectController.RefreshOpenedView();
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)
@@ -487,11 +580,25 @@ namespace Pinball.Ingame
                 OnLobbyExitRequested();
         }
 
-        void RestartNextStage()
+        void OpenNextStageSelect()
         {
             _breakMoneyGranter.ResetStage();
             _ballFlow.RefillStock();
             _stageTracker.AdvanceToNextStage();
+            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            OpenStageSelect();
+        }
+
+        void OpenStageSelect()
+        {
+            _gameState = EGameState.StageSelecting;
+            _playerController.ResetControlStates();
+            _stageSelectController.Open();
+        }
+
+        void StartCurrentStage()
+        {
+            _stageTracker.StartCurrentStage();
             LoadMap();
             _ballFlow.LoadBallOnSpring();
             _gameState = EGameState.Ready;
