@@ -1,10 +1,6 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Localization;
-using Pinball.Save;
-using Pinball.Settings;
-using Pinball.UI;
 using Pinball.Util;
 using UnityEngine;
 
@@ -14,10 +10,7 @@ namespace Pinball.Core
     {
         const float MIN_DISPLAY_SECONDS = 0.5f;
 
-        [SerializeField] SettingsConfigData _settingsConfig = null;
-        [SerializeField] LocalizationTableData _localizationTable = null;
-        [SerializeField] UIViewCatalogData _viewCatalog = null;
-        [SerializeField] BlockerView _blockerPrefab = null;
+        [SerializeField] GameBootStrapConfig _bootStrapConfig = null;
 
         void Start()
         {
@@ -26,12 +19,7 @@ namespace Pinball.Core
 
         async UniTaskVoid BootAsync(CancellationToken cancellationToken)
         {
-            SaveManager.EnsureInit();
-            GameSettings.EnsureInit(_settingsConfig);
-            LocalizationManager.EnsureInit();
-            LocalizationTable.EnsureInit(_localizationTable);
-            UIManager.EnsureInit(_viewCatalog);
-            Blocker.EnsureInit(_blockerPrefab);
+            GameBootStrap.EnsureInit(_bootStrapConfig);
             await UniTask.Delay(TimeSpan.FromSeconds(MIN_DISPLAY_SECONDS), cancellationToken: cancellationToken);
             await SceneFlow.LoadLobbyAsync();
         }
