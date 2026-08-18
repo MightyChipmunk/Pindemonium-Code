@@ -28,8 +28,11 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _comboLabel = null;
         [SerializeField] TMP_Text _multiplierLabel = null;
         [SerializeField] TMP_Text _bonusLabel = null;
+        [SerializeField] UIScalePunch _punch = null;
+        [SerializeField] ComboFlameEffect _flameEffect = null;
 
         CancellationTokenSource _hideTokenSource = null;
+        int _lastComboCount = 0;
 
         public override void Bind(UIViewArgs args)
         {
@@ -49,6 +52,9 @@ namespace Pinball.UI
         {
             CancelScheduledHide();
             _bonusLabel.gameObject.SetActive(false);
+            _lastComboCount = 0;
+            _flameEffect.Release();
+            _punch.Release();
         }
 
         void OnDestroy()
@@ -61,6 +67,12 @@ namespace Pinball.UI
             CancelScheduledHide();
             _comboLabel.text = LocalizationTable.Format(COMBO_KEY, COMBO_FORMAT, args.ComboCount);
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, args.Multiplier);
+
+            if (args.ComboCount > _lastComboCount)
+                _punch.Play();
+
+            _lastComboCount = args.ComboCount;
+            _flameEffect.SetCombo(args.ComboCount);
 
             if (args.PendingBonus <= 0)
             {
