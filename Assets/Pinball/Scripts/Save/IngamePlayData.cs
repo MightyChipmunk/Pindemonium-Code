@@ -13,6 +13,7 @@ namespace Pinball.Save
         }
 
         public int StageNumber = 1;
+        public bool IsShopPending = false;
         public int Money = 0;
         public int TotalScore = 0;
         public int[] GimmickIndices = null;

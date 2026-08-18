@@ -102,8 +102,11 @@ namespace Pinball.Ingame
             }
         }
 
-        void Open()
+        public void Open()
         {
+            if (null != _session)
+                _session.Release();
+
             _session = new ShopSession();
             _session.Init(_config, _catalog, CanOfferItem, _offerSlotCount);
             RefreshShopView();

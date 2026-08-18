@@ -7,6 +7,7 @@ namespace Pinball.Ingame
     {
         public record SaveParam(
             int StageNumber,
+            bool IsShopPending,
             int Money,
             int TotalScore,
             int[] GimmickIndices,
@@ -24,6 +25,7 @@ namespace Pinball.Ingame
         {
             IngamePlayData data = new IngamePlayData();
             data.StageNumber = param.StageNumber;
+            data.IsShopPending = param.IsShopPending;
             data.Money = param.Money;
             data.TotalScore = param.TotalScore;
             data.GimmickIndices = param.GimmickIndices;

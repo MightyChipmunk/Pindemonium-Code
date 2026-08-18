@@ -83,6 +83,7 @@ namespace Pinball.Ingame
         MapRoot _currentMap = null;
         EGameState _gameState = EGameState.Ready;
         bool _isPaused = false;
+        bool _isShopPending = false;
         bool _isExitingToLobby = false;
 
         bool IsControlBlocked => _isPaused || _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared || _gameState == EGameState.StageSelecting;
@@ -119,6 +120,7 @@ namespace Pinball.Ingame
                 startScore = savedData.TotalScore;
                 startGimmickIndices = savedData.GimmickIndices;
                 flipperIndex = ResolveSavedFlipperIndex(savedData.FlipperId);
+                _isShopPending = savedData.IsShopPending;
             }
 
             _selectedFlipper = ResolveFlipper(flipperIndex);
@@ -241,7 +243,10 @@ namespace Pinball.Ingame
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
 
-            OpenStageSelect();
+            if (_isShopPending)
+                OpenShop();
+            else
+                OpenStageSelect();
         }
 
         public void Release()
@@ -466,14 +471,11 @@ namespace Pinball.Ingame
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetBallResupplyMoney());
             _wallet.Add(remainingBalls + _stageClearMoney + _shopController.CalculateInterest() + resupplyMoney);
             AudioManager.Play(AudioStorage.EAudioClipType.StageClear);
-            SaveProgress();
 
-            if (!UIManager.IsInitialized)
-            {
-                OpenNextStageSelect();
-                StartCurrentStage();
-                return;
-            }
+            _stageTracker.AdvanceToNextStage();
+            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            _isShopPending = true;
+            SaveProgress();
 
             UIManager.Show(new StageClearView.Args(stageNumber));
         }
@@ -637,6 +639,9 @@ namespace Pinball.Ingame
 
         void ShowStageInfo()
         {
+            if (_gameState != EGameState.Ready && _gameState != EGameState.Playing)
+                return;
+
             if (null == _stageTracker.GetCurrentStage())
                 return;
 
@@ -769,6 +774,7 @@ namespace Pinball.Ingame
         {
             _saveHandler.Save(new IngameSaveHandler.SaveParam(
                 StageNumber: _stageTracker.StageNumber,
+                IsShopPending: _isShopPending,
                 Money: _wallet.Current,
                 TotalScore: _scoreCounter.Current,
                 GimmickIndices: _gimmickRoller.GetCatalogIndices(),
@@ -811,9 +817,16 @@ namespace Pinball.Ingame
         {
             _breakMoneyGranter.ResetStage();
             _ballFlow.RefillStock();
-            _stageTracker.AdvanceToNextStage();
-            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            _isShopPending = false;
+            SaveProgress();
             OpenStageSelect();
+        }
+
+        void OpenShop()
+        {
+            _gameState = EGameState.Shopping;
+            _playerController.ResetControlStates();
+            _shopController.Open();
         }
 
         void OpenStageSelect()
@@ -825,10 +838,10 @@ namespace Pinball.Ingame
 
         void StartCurrentStage()
         {
+            _gameState = EGameState.Ready;
             _stageTracker.StartCurrentStage();
             LoadMap();
             _ballFlow.LoadBallOnSpring();
-            _gameState = EGameState.Ready;
         }
 
         void OnEscapePressed()
