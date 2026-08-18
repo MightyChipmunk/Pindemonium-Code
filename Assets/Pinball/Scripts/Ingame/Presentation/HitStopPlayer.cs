@@ -9,26 +9,43 @@ namespace Pinball.Ingame.Presentation
     public class HitStopPlayer
     {
         const float DEFAULT_TIME_SCALE = 1f;
+        const float PAUSED_TIME_SCALE = 0f;
         const float MIN_DURATION = 0.0001f;
 
         bool _isActive = false;
+        bool _isPaused = false;
         CancellationTokenSource _playTokenSource = null;
 
         public void Init()
         {
             _isActive = true;
+            _isPaused = false;
         }
 
         public void Release()
         {
             CancelPlaying();
             _isActive = false;
+            _isPaused = false;
             Time.timeScale = DEFAULT_TIME_SCALE;
+        }
+
+        public void SetPaused(bool isPaused)
+        {
+            if (!_isActive)
+                return;
+
+            _isPaused = isPaused;
+            CancelPlaying();
+            Time.timeScale = isPaused ? PAUSED_TIME_SCALE : DEFAULT_TIME_SCALE;
         }
 
         public void Play(HitPresentationData presentation)
         {
             if (!_isActive)
+                return;
+
+            if (_isPaused)
                 return;
 
             if (!presentation.IsHitStopEnabled)

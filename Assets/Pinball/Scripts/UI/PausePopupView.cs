@@ -43,7 +43,7 @@ namespace Pinball.UI
 
         void OnResumeClicked()
         {
-            UIManager.Hide(UIViewCatalogData.EViewType.PausePopup);
+            UIManager.RaiseEvent(UIManager.EEvent.PauseResumeRequested);
         }
     }
 }
