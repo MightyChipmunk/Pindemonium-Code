@@ -14,6 +14,13 @@ namespace Pinball.Ingame
             Perfect = 2,
         }
 
+        public record InitParam(
+            Func<float> FlipPowerGetter,
+            Func<float> PerfectTimingRelaxGetter,
+            Func<float> PerfectImpulseScaleGetter,
+            Func<float> LengthScaleGetter,
+            Func<float> RotateSpeedScaleGetter);
+
         public enum ESide
         {
             Left = 0,
@@ -37,6 +44,8 @@ namespace Pinball.Ingame
         Func<float> _flipPowerGetter = null;
         Func<float> _perfectTimingRelaxGetter = null;
         Func<float> _perfectImpulseScaleGetter = null;
+        Vector3 _baseLocalScale = Vector3.one;
+        float _rotateSpeedScale = NORMAL_MULTIPLIER;
         List<Rigidbody2D> _touchingBodies = null;
         List<Rigidbody2D> _struckBodies = null;
         bool _isPressed = false;
@@ -49,11 +58,14 @@ namespace Pinball.Ingame
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;
 
-        public void Init(Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Func<float> perfectImpulseScaleGetter)
+        public void Init(InitParam param)
         {
-            _flipPowerGetter = flipPowerGetter;
-            _perfectTimingRelaxGetter = perfectTimingRelaxGetter;
-            _perfectImpulseScaleGetter = perfectImpulseScaleGetter;
+            _flipPowerGetter = param.FlipPowerGetter;
+            _perfectTimingRelaxGetter = param.PerfectTimingRelaxGetter;
+            _perfectImpulseScaleGetter = param.PerfectImpulseScaleGetter;
+            _baseLocalScale = transform.localScale;
+            _rotateSpeedScale = null == param.RotateSpeedScaleGetter ? NORMAL_MULTIPLIER : param.RotateSpeedScaleGetter();
+            ApplyLengthScale(null == param.LengthScaleGetter ? NORMAL_MULTIPLIER : param.LengthScaleGetter());
             _touchingBodies = new List<Rigidbody2D>();
             _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
@@ -80,6 +92,8 @@ namespace Pinball.Ingame
                 _struckBodies = null;
             }
 
+            transform.localScale = _baseLocalScale;
+            _rotateSpeedScale = NORMAL_MULTIPLIER;
             _flipPowerGetter = null;
             _perfectTimingRelaxGetter = null;
             _perfectImpulseScaleGetter = null;
@@ -139,7 +153,7 @@ namespace Pinball.Ingame
                 _pressedElapsed += Time.deltaTime;
 
             float targetAngle = _isPressed || _isSwingActive ? PressedAngle : RestAngle;
-            float nextAngle = Mathf.MoveTowards(_rigidbody.rotation, targetAngle, _config.RotateSpeed * Time.deltaTime);
+            float nextAngle = Mathf.MoveTowards(_rigidbody.rotation, targetAngle, _config.RotateSpeed * _rotateSpeedScale * Time.deltaTime);
             _rigidbody.MoveRotation(nextAngle);
 
             if (_isSwingActive && Mathf.Abs(Mathf.DeltaAngle(nextAngle, PressedAngle)) <= SWING_ANGLE_EPSILON)
@@ -306,6 +320,11 @@ namespace Pinball.Ingame
                 return 0f;
 
             return _flipPowerGetter();
+        }
+
+        void ApplyLengthScale(float lengthScale)
+        {
+            transform.localScale = new Vector3(_baseLocalScale.x * lengthScale, _baseLocalScale.y, _baseLocalScale.z);
         }
 
         float GetPerfectImpulseScale()

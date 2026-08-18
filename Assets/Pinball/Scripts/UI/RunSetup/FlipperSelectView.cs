@@ -29,6 +29,7 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _pageLabel = null;
         [SerializeField] TMP_Text _flipperNameLabel = null;
         [SerializeField] TMP_Text _abilityLabel = null;
+        [SerializeField] TMP_Text _drawbackLabel = null;
         [SerializeField] TMP_Text _unlockLineLabel = null;
         [SerializeField] Button _playButton = null;
         [SerializeField] Button _backButton = null;
@@ -82,6 +83,7 @@ namespace Pinball.UI
             _pageLabel.text = string.Format(PAGE_FORMAT, _selectedIndex + 1, GetFlipperCount());
             _flipperNameLabel.text = isUnlocked ? GetDisplayName(flipper) : LOCKED_NAME;
             _abilityLabel.text = isUnlocked ? GetAbilityDescription(flipper) : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
+            BindDrawback(isUnlocked ? GetDrawbackDescription(flipper) : string.Empty);
             _unlockLineLabel.text = GetUnlockLine(isUnlocked, hint);
             _playButton.interactable = isUnlocked;
 
@@ -98,6 +100,17 @@ namespace Pinball.UI
         static string GetAbilityDescription(FlipperData flipper)
         {
             return null == flipper ? string.Empty : flipper.GetAbilityDescription();
+        }
+
+        void BindDrawback(string drawback)
+        {
+            _drawbackLabel.gameObject.SetActive(!string.IsNullOrEmpty(drawback));
+            _drawbackLabel.text = drawback;
+        }
+
+        static string GetDrawbackDescription(FlipperData flipper)
+        {
+            return null == flipper ? string.Empty : flipper.GetDrawbackDescription();
         }
 
         static string GetUnlockLine(bool isUnlocked, string hint)

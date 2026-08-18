@@ -13,7 +13,9 @@ namespace Pinball.Ingame
             ShopCatalogData Catalog,
             MoneyWallet Wallet,
             PlayerLoadout Loadout,
-            Func<ShopItemData, bool> IsItemUnlockedGetter);
+            Func<ShopItemData, bool> IsItemUnlockedGetter,
+            int OfferSlotCount,
+            bool IsInterestDisabled);
 
         ShopConfigData _config = null;
         ShopCatalogData _catalog = null;
@@ -21,8 +23,11 @@ namespace Pinball.Ingame
         PlayerLoadout _loadout = null;
         Func<ShopItemData, bool> _isItemUnlockedGetter = null;
         ShopSession _session = null;
+        int _offerSlotCount = ShopSession.DEFAULT_OFFER_SLOT_COUNT;
+        bool _isInterestDisabled = false;
 
         public event Action OnNextStageRequested;
+        public event Action OnLoadoutChanged;
 
         public void Init(InitParam param)
         {
@@ -31,6 +36,8 @@ namespace Pinball.Ingame
             _wallet = param.Wallet;
             _loadout = param.Loadout;
             _isItemUnlockedGetter = param.IsItemUnlockedGetter;
+            _offerSlotCount = param.OfferSlotCount;
+            _isInterestDisabled = param.IsInterestDisabled;
             UIManager.OnEvent += HandleUIEvent;
         }
 
@@ -38,6 +45,7 @@ namespace Pinball.Ingame
         {
             UIManager.OnEvent -= HandleUIEvent;
             OnNextStageRequested = null;
+            OnLoadoutChanged = null;
 
             if (null != _session)
             {
@@ -54,6 +62,9 @@ namespace Pinball.Ingame
 
         public int CalculateInterest()
         {
+            if (_isInterestDisabled)
+                return 0;
+
             if (null == _config)
                 return 0;
 
@@ -93,7 +104,7 @@ namespace Pinball.Ingame
         void Open()
         {
             _session = new ShopSession();
-            _session.Init(_config, _catalog, CanOfferItem);
+            _session.Init(_config, _catalog, CanOfferItem, _offerSlotCount);
             RefreshShopView();
         }
 
@@ -113,9 +124,9 @@ namespace Pinball.Ingame
             if (null == _session)
                 return;
 
-            UIManager.Show(new ShopView.Args(_wallet.Current, _session.CurrentRerollPrice));
+            UIManager.Show(new ShopView.Args(_wallet.Current, _session.CurrentRerollPrice, _session.OfferSlotCount));
 
-            for (int i = 0; i < ShopSession.OFFER_SLOT_COUNT; ++i)
+            for (int i = 0; i < _session.OfferSlotCount; ++i)
                 UIManager.Show(new ShopView.OfferArgs(i, GetOfferItemIndex(i)));
 
             RefreshOwnedView();
@@ -173,6 +184,7 @@ namespace Pinball.Ingame
 
             ApplyItem(item);
             _session.MarkSold(slotIndex);
+            OnLoadoutChanged?.Invoke();
             RefreshShopView();
         }
 

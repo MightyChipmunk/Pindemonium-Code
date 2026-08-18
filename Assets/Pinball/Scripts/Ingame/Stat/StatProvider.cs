@@ -7,11 +7,11 @@ namespace Pinball.Ingame.Stat
     public class StatProvider
     {
         const int MIN_SCALING_BALL_COUNT = 1;
-        const float DEFAULT_PERFECT_IMPULSE_SCALE = 1f;
 
         PinballStatData _statData = null;
         PlayerLoadout _loadout = null;
-        FlipperData _flipper = null;
+        FlipperData.Tuning _tuning = null;
+        FlipperData.RunSetup _runSetup = null;
         Func<int> _remainingBallGetter = null;
         Func<int> _comboCountGetter = null;
 
@@ -19,7 +19,8 @@ namespace Pinball.Ingame.Stat
         {
             _statData = statData;
             _loadout = loadout;
-            _flipper = flipper;
+            _tuning = null == flipper ? FlipperData.DEFAULT_TUNING : flipper.GetTuning();
+            _runSetup = null == flipper ? FlipperData.DEFAULT_RUN_SETUP : flipper.GetRunSetup();
             _remainingBallGetter = remainingBallGetter;
             _comboCountGetter = comboCountGetter;
         }
@@ -28,20 +29,30 @@ namespace Pinball.Ingame.Stat
         {
             _statData = null;
             _loadout = null;
-            _flipper = null;
+            _tuning = null;
+            _runSetup = null;
             _remainingBallGetter = null;
             _comboCountGetter = null;
         }
 
+        public FlipperData.RunSetup GetRunSetup()
+        {
+            return _runSetup;
+        }
+
         public float GetPerfectImpulseScale()
         {
-            if (null == _flipper)
-                return DEFAULT_PERFECT_IMPULSE_SCALE;
+            return _tuning.PerfectImpulseScale;
+        }
 
-            if (_flipper.AbilityType != FlipperData.EAbilityType.PerfectImpulseScale)
-                return DEFAULT_PERFECT_IMPULSE_SCALE;
+        public float GetFlipperLengthScale()
+        {
+            return _tuning.LengthScale;
+        }
 
-            return _flipper.AbilityValue;
+        public float GetFlipperRotateSpeedScale()
+        {
+            return _tuning.RotateSpeedScale;
         }
 
         public float GetFlipPower()
@@ -49,7 +60,7 @@ namespace Pinball.Ingame.Stat
             if (null == _statData)
                 return 0f;
 
-            return _statData.FlipPower + GetEffectSum(ShopItemData.EEffectType.FlipPowerAdd);
+            return (_statData.FlipPower + GetEffectSum(ShopItemData.EEffectType.FlipPowerAdd)) * _tuning.FlipPowerScale;
         }
 
         public int GetInitialBallCount()
@@ -57,7 +68,7 @@ namespace Pinball.Ingame.Stat
             if (null == _statData)
                 return 0;
 
-            return _statData.InitialBallCount;
+            return Mathf.Max(MIN_SCALING_BALL_COUNT, _statData.InitialBallCount + _runSetup.StartBallAdd);
         }
 
         public float GetBallMass()
@@ -118,7 +129,12 @@ namespace Pinball.Ingame.Stat
 
         public float GetPerfectTimingRelax()
         {
-            return GetEffectSum(ShopItemData.EEffectType.PerfectTimingRelax);
+            return GetEffectSum(ShopItemData.EEffectType.PerfectTimingRelax) + _tuning.PerfectTimingWindowAdd;
+        }
+
+        public float GetBallResupplyMoney()
+        {
+            return GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney) + _runSetup.BallResupplyMoneyAdd;
         }
 
         public float GetComboMultiplierBonus()

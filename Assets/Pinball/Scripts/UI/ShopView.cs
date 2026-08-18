@@ -10,7 +10,7 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record Args(int Money, int RerollPrice) : UIViewArgs
+        public record Args(int Money, int RerollPrice, int VisibleOfferCount) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
@@ -40,13 +40,17 @@ namespace Pinball.UI
         const string UPGRADE_HEADER_KEY = "ui.shop.upgrade_header";
         const string OWNED_COUNT_FORMAT = "x{0}";
         const int OWNED_SLOT_CAPACITY = 12;
+        const float OFFER_ROW_WIDTH = 1260f;
+        const float OFFER_SLOT_WIDTH = 380f;
+        const float OFFER_SLOT_WIDE_SPACING = 60f;
+        const float OFFER_SLOT_TIGHT_SPACING = 30f;
+        const int OFFER_SLOT_WIDE_COUNT = 3;
         const int STACKED_COUNT_MIN = 2;
 
         [SerializeField] ShopCatalogData _catalog = null;
         [SerializeField] TMP_Text _moneyLabel = null;
-        [SerializeField] ShopItemView _offerSlot0 = null;
-        [SerializeField] ShopItemView _offerSlot1 = null;
-        [SerializeField] ShopItemView _offerSlot2 = null;
+        [SerializeField] ShopItemView[] _offerSlots = null;
+        [SerializeField] HorizontalLayoutGroup _offerRow = null;
         [SerializeField] TMP_Text _passiveHeaderLabel = null;
         [SerializeField] TMP_Text _upgradeHeaderLabel = null;
         [SerializeField] RectTransform _passiveContent = null;
@@ -66,9 +70,8 @@ namespace Pinball.UI
             _activeOwnedSlots = new List<ItemIconSlotView>();
             _ownedSlotPool = new ObjectPool<ItemIconSlotView>(_ownedSlotOrigin, CreateOwnedSlot, OWNED_SLOT_CAPACITY);
 
-            _offerSlot0.Init(0, OnOfferClicked);
-            _offerSlot1.Init(1, OnOfferClicked);
-            _offerSlot2.Init(2, OnOfferClicked);
+            for (int i = 0; i < _offerSlots.Length; ++i)
+                _offerSlots[i].Init(i, OnOfferClicked);
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
             _tooltip.Hide();
@@ -76,9 +79,8 @@ namespace Pinball.UI
 
         public override void OnTerminate()
         {
-            _offerSlot0.Release();
-            _offerSlot1.Release();
-            _offerSlot2.Release();
+            for (int i = 0; i < _offerSlots.Length; ++i)
+                _offerSlots[i].Release();
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
 
@@ -133,6 +135,7 @@ namespace Pinball.UI
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
             _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, args.RerollPrice);
+            ApplyOfferLayout(args.VisibleOfferCount);
         }
 
         void BindOffer(OfferArgs args)
@@ -252,17 +255,33 @@ namespace Pinball.UI
 
         ShopItemView GetOfferSlot(int slotIndex)
         {
-            switch (slotIndex)
-            {
-                case 0:
-                    return _offerSlot0;
-                case 1:
-                    return _offerSlot1;
-                case 2:
-                    return _offerSlot2;
-                default:
-                    return null;
-            }
+            if (null == _offerSlots)
+                return null;
+
+            if (slotIndex < 0 || slotIndex >= _offerSlots.Length)
+                return null;
+
+            return _offerSlots[slotIndex];
+        }
+
+        void ApplyOfferLayout(int visibleCount)
+        {
+            int shownCount = Mathf.Clamp(visibleCount, 0, _offerSlots.Length);
+            for (int i = 0; i < _offerSlots.Length; ++i)
+                _offerSlots[i].gameObject.SetActive(i < shownCount);
+
+            if (shownCount <= 0)
+                return;
+
+            float spacing = shownCount > OFFER_SLOT_WIDE_COUNT ? OFFER_SLOT_TIGHT_SPACING : OFFER_SLOT_WIDE_SPACING;
+            _offerRow.spacing = spacing;
+
+            float requiredWidth = OFFER_SLOT_WIDTH * shownCount + spacing * (shownCount - 1);
+            RectTransform rowRect = _offerRow.transform as RectTransform;
+            rowRect.sizeDelta = new Vector2(requiredWidth, rowRect.sizeDelta.y);
+
+            float rowScale = Mathf.Min(1f, OFFER_ROW_WIDTH / requiredWidth);
+            rowRect.localScale = new Vector3(rowScale, rowScale, 1f);
         }
 
         void OnOfferClicked(int slotIndex)

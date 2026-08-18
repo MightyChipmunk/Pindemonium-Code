@@ -5,7 +5,14 @@ namespace Pinball.Ingame
 {
     public class IngameSaveHandler
     {
-        public record SaveParam(int StageNumber, int Money, int TotalScore, int[] GimmickIndices, string FlipperId);
+        public record SaveParam(
+            int StageNumber,
+            int Money,
+            int TotalScore,
+            int[] GimmickIndices,
+            string FlipperId,
+            string[] PassiveIds,
+            IngamePlayData.UpgradeEntry[] Upgrades);
 
         public bool TryLoad(out IngamePlayData savedData)
         {
@@ -21,6 +28,8 @@ namespace Pinball.Ingame
             data.TotalScore = param.TotalScore;
             data.GimmickIndices = param.GimmickIndices;
             data.FlipperId = param.FlipperId;
+            data.PassiveIds = param.PassiveIds;
+            data.Upgrades = param.Upgrades;
             SaveManager.SaveIngame(data);
         }
 

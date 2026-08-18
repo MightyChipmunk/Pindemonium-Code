@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Pinball.Ingame
 {
     public class ShopSession
     {
-        public const int OFFER_SLOT_COUNT = 3;
+        public const int DEFAULT_OFFER_SLOT_COUNT = 3;
+        public const int MAX_OFFER_SLOT_COUNT = 4;
 
         ShopConfigData _config = null;
         ShopCatalogData _catalog = null;
@@ -13,14 +15,15 @@ namespace Pinball.Ingame
         ShopItemData[] _offers = null;
         int _rerollCount = 0;
 
+        public int OfferSlotCount => null == _offers ? 0 : _offers.Length;
         public int CurrentRerollPrice => null == _config ? 0 : _config.RerollBasePrice + _config.RerollPriceIncrement * _rerollCount;
 
-        public void Init(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter)
+        public void Init(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter, int offerSlotCount)
         {
             _config = config;
             _catalog = catalog;
             _offerFilter = offerFilter;
-            _offers = new ShopItemData[OFFER_SLOT_COUNT];
+            _offers = new ShopItemData[Mathf.Clamp(offerSlotCount, 1, MAX_OFFER_SLOT_COUNT)];
             _rerollCount = 0;
             RollOffers();
         }

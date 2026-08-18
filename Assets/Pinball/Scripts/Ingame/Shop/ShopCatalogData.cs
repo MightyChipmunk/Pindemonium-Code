@@ -19,6 +19,18 @@ namespace Pinball.Ingame
             return _items[index];
         }
 
+        public ShopItemData FindById(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId))
+                return null;
+
+            for (int i = 0; i < Count; ++i)
+                if (null != _items[i] && _items[i].GetId() == itemId)
+                    return _items[i];
+
+            return null;
+        }
+
         public int IndexOf(ShopItemData item)
         {
             if (null == item)
