@@ -21,6 +21,7 @@ namespace Pinball.UI
 
         Vector2 _basePosition = Vector2.zero;
         float _progress = 0f;
+        bool _isInited = false;
         bool _isInteractable = true;
         bool _isHovered = false;
         CancellationTokenSource _tweenTokenSource = null;
@@ -28,14 +29,28 @@ namespace Pinball.UI
         public void Init()
         {
             _basePosition = _visual.anchoredPosition;
+            _isInited = true;
             ApplyProgress(0f);
         }
 
         public void Release()
         {
+            ResetState();
+            _isInited = false;
+        }
+
+        void OnDisable()
+        {
+            ResetState();
+        }
+
+        void ResetState()
+        {
             CancelTween();
             _isHovered = false;
-            ApplyProgress(0f);
+
+            if (_isInited)
+                ApplyProgress(0f);
         }
 
         public void SetInteractable(bool isInteractable)
