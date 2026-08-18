@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Localization;
 using Pinball.Util;
 using TMPro;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace Pinball.UI
         }
 
         const string CLEAR_FORMAT = "STAGE {0} CLEAR!";
+        const string CLEAR_KEY = "ui.stage_clear.title";
         const float SCALE_DURATION = 0.35f;
         const float HOLD_DURATION = 1.2f;
 
@@ -31,7 +33,7 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            _label.text = string.Format(CLEAR_FORMAT, viewArgs.StageNumber);
+            _label.text = LocalizationTable.Format(CLEAR_KEY, CLEAR_FORMAT, viewArgs.StageNumber);
             _panel.localScale = Vector3.zero;
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             PlayAsync(_cancellationTokenSource.Token).Forget();

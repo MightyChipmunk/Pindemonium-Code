@@ -1,3 +1,4 @@
+using Pinball.Localization;
 using Pinball.Settings;
 using TMPro;
 using UnityEngine;
@@ -15,10 +16,13 @@ namespace Pinball.UI
         }
 
         const string CAPTURE_WAITING_LABEL = "PRESS ANY KEY";
-        const int RESOLUTION_PREV_DIRECTION = -1;
-        const int RESOLUTION_NEXT_DIRECTION = 1;
+        const string CAPTURE_WAITING_KEY = "ui.settings.press_any_key";
+        const int PREV_DIRECTION = -1;
+        const int NEXT_DIRECTION = 1;
         const string FULLSCREEN_LABEL = "FULLSCREEN";
+        const string FULLSCREEN_KEY = "ui.settings.fullscreen";
         const string WINDOWED_LABEL = "WINDOWED";
+        const string WINDOWED_KEY = "ui.settings.windowed";
 
         [SerializeField] Button _flipperLeftButton = null;
         [SerializeField] TMP_Text _flipperLeftLabel = null;
@@ -33,6 +37,9 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _resolutionLabel = null;
         [SerializeField] Button _fullscreenButton = null;
         [SerializeField] TMP_Text _fullscreenLabel = null;
+        [SerializeField] Button _languagePrevButton = null;
+        [SerializeField] Button _languageNextButton = null;
+        [SerializeField] TMP_Text _languageLabel = null;
         [SerializeField] Button _closeButton = null;
 
         TMP_Text _capturingLabel = null;
@@ -49,6 +56,8 @@ namespace Pinball.UI
             _resolutionPrevButton.onClick.AddListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
             _fullscreenButton.onClick.AddListener(OnFullscreenClicked);
+            _languagePrevButton.onClick.AddListener(OnLanguagePrevClicked);
+            _languageNextButton.onClick.AddListener(OnLanguageNextClicked);
             _closeButton.onClick.AddListener(OnCloseClicked);
         }
 
@@ -61,6 +70,8 @@ namespace Pinball.UI
             _resolutionPrevButton.onClick.RemoveListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
             _fullscreenButton.onClick.RemoveListener(OnFullscreenClicked);
+            _languagePrevButton.onClick.RemoveListener(OnLanguagePrevClicked);
+            _languageNextButton.onClick.RemoveListener(OnLanguageNextClicked);
             _closeButton.onClick.RemoveListener(OnCloseClicked);
         }
 
@@ -71,20 +82,22 @@ namespace Pinball.UI
 
         public override void Bind(UIViewArgs args)
         {
-            if (!GameSettings.IsInitialized)
-                return;
-
             RefreshLabels();
         }
 
         void RefreshLabels()
         {
+            _languageLabel.text = LocalizationManager.GetDisplayName(LocalizationManager.CurrentLanguage);
+
+            if (!GameSettings.IsInitialized)
+                return;
+
             SetKeyLabel(_flipperLeftLabel, GameSettings.GetKey(EKeyAction.FlipperLeft));
             SetKeyLabel(_flipperRightLabel, GameSettings.GetKey(EKeyAction.FlipperRight));
             SetKeyLabel(_launchLabel, GameSettings.GetKey(EKeyAction.Launch));
             SetKeyLabel(_nudgeLabel, GameSettings.GetKey(EKeyAction.Nudge));
             _resolutionLabel.text = GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
-            _fullscreenLabel.text = GameSettings.IsFullscreen ? FULLSCREEN_LABEL : WINDOWED_LABEL;
+            _fullscreenLabel.text = GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
         }
 
         static void SetKeyLabel(TMP_Text label, Key key)
@@ -136,13 +149,30 @@ namespace Pinball.UI
 
         void OnResolutionPrevClicked()
         {
-            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + RESOLUTION_PREV_DIRECTION);
+            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + PREV_DIRECTION);
             RefreshLabels();
         }
 
         void OnResolutionNextClicked()
         {
-            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + RESOLUTION_NEXT_DIRECTION);
+            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnLanguagePrevClicked()
+        {
+            ShiftLanguage(PREV_DIRECTION);
+        }
+
+        void OnLanguageNextClicked()
+        {
+            ShiftLanguage(NEXT_DIRECTION);
+        }
+
+        void ShiftLanguage(int direction)
+        {
+            int index = LocalizationManager.GetLanguageIndex(LocalizationManager.CurrentLanguage) + direction;
+            LocalizationManager.SetLanguage(LocalizationManager.GetLanguage(index));
             RefreshLabels();
         }
 
@@ -166,7 +196,7 @@ namespace Pinball.UI
             _capturingAction = action;
             _capturingLabel = label;
             _capturingLabelBackup = label.text;
-            label.text = CAPTURE_WAITING_LABEL;
+            label.text = LocalizationTable.Get(CAPTURE_WAITING_KEY, CAPTURE_WAITING_LABEL);
         }
 
         void FinishCapture(Key capturedKey)

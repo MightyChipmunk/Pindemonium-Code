@@ -1,4 +1,5 @@
 using System;
+using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,9 +14,13 @@ namespace Pinball.Ingame.UI
 
         public event Action OnPauseClicked;
 
+        int _score = 0;
+        int _ballCount = 0;
+
         public void Init()
         {
             _scorePopupSpawner.Init();
+            LocalizationManager.OnLanguageChanged += RefreshLabels;
 
             if (null != _pauseButton)
                 _pauseButton.onClick.AddListener(HandlePauseClicked);
@@ -23,6 +28,8 @@ namespace Pinball.Ingame.UI
 
         public void Release()
         {
+            LocalizationManager.OnLanguageChanged -= RefreshLabels;
+
             if (null != _pauseButton)
                 _pauseButton.onClick.RemoveListener(HandlePauseClicked);
 
@@ -32,12 +39,20 @@ namespace Pinball.Ingame.UI
 
         public void SetScore(int score)
         {
+            _score = score;
             _scoreView.SetValue(score);
         }
 
         public void SetBallCount(int count)
         {
+            _ballCount = count;
             _ballCountView.SetValue(count);
+        }
+
+        void RefreshLabels()
+        {
+            _scoreView.SetValue(_score);
+            _ballCountView.SetValue(_ballCount);
         }
 
         public void PlayScorePopup(int score, Vector2 worldPoint)

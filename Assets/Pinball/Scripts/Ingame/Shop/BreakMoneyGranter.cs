@@ -37,7 +37,7 @@ namespace Pinball.Ingame
             if (amount <= 0)
                 return;
 
-            int stageLimit = Mathf.RoundToInt(_stats.GetEffectSub(ShopItemData.EEffectType.GimmickBreakMoney));
+            int stageLimit = Mathf.RoundToInt(_stats.GetEffectValue(ShopItemData.EEffectType.GimmickBreakMoney, ShopItemData.SUB_VALUE_INDEX));
             if (stageLimit > 0)
             {
                 if (_stageEarnedMoney >= stageLimit)

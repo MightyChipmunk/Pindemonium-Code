@@ -217,7 +217,7 @@ namespace Pinball.Ingame
             if (!_stats.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
                 return;
 
-            int hitLimit = Mathf.RoundToInt(_stats.GetEffectSub(ShopItemData.EEffectType.FragileBallScoreRatio));
+            int hitLimit = Mathf.RoundToInt(_stats.GetEffectValue(ShopItemData.EEffectType.FragileBallScoreRatio, ShopItemData.SUB_VALUE_INDEX));
             if (hitLimit <= 0)
                 return;
 
@@ -269,7 +269,7 @@ namespace Pinball.Ingame
             if (null == _activeBall || null == _map)
                 return;
 
-            float spawnInterval = _stats.GetEffectSub(ShopItemData.EEffectType.BallCloneSpawn);
+            float spawnInterval = _stats.GetEffectValue(ShopItemData.EEffectType.BallCloneSpawn, ShopItemData.SUB_VALUE_INDEX);
             if (spawnInterval <= 0f)
                 return;
 

@@ -19,6 +19,7 @@ namespace Pinball.Ingame.Map
             Func<Collider2D, float, float> DamageEvaluator,
             Func<float> FlipPowerGetter,
             Func<float> PerfectTimingRelaxGetter,
+            Func<float> PerfectImpulseScaleGetter,
             Action<Flipper.EHitGrade, Vector2> OnBallStruck,
             Action<BumperInteractable, float> OnBumperDamaged,
             Action OnBumperBroken,
@@ -73,8 +74,8 @@ namespace Pinball.Ingame.Map
             }
 
             _onBallStruck = param.OnBallStruck;
-            _leftFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter);
-            _rightFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter);
+            _leftFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter, param.PerfectImpulseScaleGetter);
+            _rightFlipper.Init(param.FlipPowerGetter, param.PerfectTimingRelaxGetter, param.PerfectImpulseScaleGetter);
             _leftFlipper.OnBallStruck += OnFlipperBallStruck;
             _rightFlipper.OnBallStruck += OnFlipperBallStruck;
             _spring.Init(param.OnSpringChargeEvent);

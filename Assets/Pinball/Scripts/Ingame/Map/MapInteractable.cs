@@ -16,6 +16,7 @@ namespace Pinball.Ingame.Map
             StandupTarget = 4,
             LampBank = 5,
             Lane = 6,
+            Saucer = 7,
         }
 
         public enum EScoreSource

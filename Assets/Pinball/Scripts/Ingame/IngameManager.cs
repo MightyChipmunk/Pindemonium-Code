@@ -5,10 +5,12 @@ using Pinball.Ingame.Cheat;
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Presentation;
+using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.UI;
 using Pinball.Save;
+using Pinball.Localization;
 using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
@@ -46,9 +48,12 @@ namespace Pinball.Ingame
         [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
         [SerializeField] SettingsConfigData _settingsConfig = null;
+        [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] ComboConfigData _comboConfig = null;
         [SerializeField] ShopConfigData _shopConfig = null;
         [SerializeField] ShopCatalogData _shopCatalog = null;
+        [SerializeField] FlipperCatalogData _flipperCatalog = null;
+        [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] IngameCheatHandler _cheatHandler = null;
 
         IngameDirector _director = null;
@@ -67,6 +72,8 @@ namespace Pinball.Ingame
         BreakMoneyGranter _breakMoneyGranter = null;
         IngameShopController _shopController = null;
         IngameSaveHandler _saveHandler = null;
+        UnlockProgress _unlockProgress = null;
+        FlipperData _selectedFlipper = null;
         MapRoot _currentMap = null;
         EGameState _gameState = EGameState.Ready;
         bool _isExitingToLobby = false;
@@ -87,25 +94,30 @@ namespace Pinball.Ingame
         {
             SaveManager.EnsureInit();
             _saveHandler = new IngameSaveHandler();
+            _unlockProgress = new UnlockProgress();
+            _unlockProgress.Init(_rewardCatalog);
 
             int startStageNumber = FIRST_STAGE_NUMBER;
             int startMoney = 0;
             int startScore = 0;
             int[] startGimmickIndices = null;
-            if (_saveHandler.TryLoad(out int savedStageNumber, out int savedMoney, out int savedScore, out int[] savedGimmickIndices))
+            int flipperIndex = SceneFlow.RequestedFlipperIndex;
+            if (_saveHandler.TryLoad(out IngamePlayData savedData))
             {
-                startStageNumber = savedStageNumber;
-                startMoney = savedMoney;
-                startScore = savedScore;
-                startGimmickIndices = savedGimmickIndices;
+                startStageNumber = savedData.StageNumber;
+                startMoney = savedData.Money;
+                startScore = savedData.TotalScore;
+                startGimmickIndices = savedData.GimmickIndices;
+                flipperIndex = ResolveSavedFlipperIndex(savedData.FlipperId);
             }
 
+            _selectedFlipper = ResolveFlipper(flipperIndex);
             _wallet = new MoneyWallet();
             _wallet.Init(startMoney);
             _loadout = new PlayerLoadout();
             _loadout.Init(null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount);
             _statProvider = new StatProvider();
-            _statProvider.Init(_statData, _loadout, GetRemainingBallCount, GetComboCount);
+            _statProvider.Init(_statData, _loadout, _selectedFlipper, GetRemainingBallCount, GetComboCount);
             _powerSurgeCharger = new PowerSurgeCharger();
             _powerSurgeCharger.Init(_statProvider, GetIsPlaying);
             _breakMoneyGranter = new BreakMoneyGranter();
@@ -128,7 +140,12 @@ namespace Pinball.Ingame
             _scoreCounter.OnComboChanged += OnComboChanged;
             _scoreCounter.OnComboEnded += OnComboEnded;
             _shopController = new IngameShopController();
-            _shopController.Init(_shopConfig, _shopCatalog, _wallet, _loadout);
+            _shopController.Init(new IngameShopController.InitParam(
+                Config: _shopConfig,
+                Catalog: _shopCatalog,
+                Wallet: _wallet,
+                Loadout: _loadout,
+                IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked));
             _shopController.OnNextStageRequested += OpenNextStageSelect;
             _stageSelectController = new IngameStageSelectController();
             _stageSelectController.Init(new IngameStageSelectController.InitParam(
@@ -191,6 +208,8 @@ namespace Pinball.Ingame
             _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
 
             GameSettings.EnsureInit(_settingsConfig);
+            LocalizationManager.EnsureInit();
+            LocalizationTable.EnsureInit(_localizationTable);
             UIManager.EnsureInit(_viewCatalog);
             UIManager.OnEvent += OnUIEvent;
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
@@ -291,6 +310,14 @@ namespace Pinball.Ingame
                 _wallet = null;
             }
 
+            if (null != _unlockProgress)
+            {
+                _unlockProgress.Release();
+                _unlockProgress = null;
+            }
+
+            _selectedFlipper = null;
+
             if (null != _drainZone)
                 _drainZone.Release();
 
@@ -345,7 +372,7 @@ namespace Pinball.Ingame
             if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperBurn))
             {
                 float burnDamage = damage * _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
-                bumper.Ignite(burnDamage, _statProvider.GetEffectSub(ShopItemData.EEffectType.BumperBurn), PoolableFX.EFXType.Fireball);
+                bumper.Ignite(burnDamage, _statProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.SUB_VALUE_INDEX), PoolableFX.EFXType.Fireball);
             }
 
             if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze))
@@ -355,7 +382,7 @@ namespace Pinball.Ingame
                 return;
 
             float chainRatio = _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
-            int maxChainCount = Mathf.RoundToInt(_statProvider.GetEffectSub(ShopItemData.EEffectType.BumperChainLightning));
+            int maxChainCount = Mathf.RoundToInt(_statProvider.GetEffectValue(ShopItemData.EEffectType.BumperChainLightning, ShopItemData.SUB_VALUE_INDEX));
             _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount);
         }
 
@@ -416,7 +443,57 @@ namespace Pinball.Ingame
             _scoreCounter.EndCombo();
             _ballFlow.DespawnBalls();
             _saveHandler.ClearPlayData();
+            ClearRewardData reward = _unlockProgress.GrantClearReward();
             ShowGameResult(GameResultView.EResult.Clear);
+            ShowRewardUnlock(reward);
+        }
+
+        void ShowRewardUnlock(ClearRewardData reward)
+        {
+            if (null == reward)
+                return;
+
+            int entryCount = reward.FlipperCount + reward.ItemCount;
+            if (entryCount <= 0)
+                return;
+
+            RewardUnlockView.Entry[] entries = new RewardUnlockView.Entry[entryCount];
+            for (int i = 0; i < reward.FlipperCount; ++i)
+                entries[i] = new RewardUnlockView.Entry(RewardUnlockView.ERewardKind.Flipper, GetFlipperCatalogIndex(reward.GetFlipper(i)));
+
+            for (int i = 0; i < reward.ItemCount; ++i)
+                entries[reward.FlipperCount + i] = new RewardUnlockView.Entry(RewardUnlockView.ERewardKind.ShopItem, GetCatalogIndex(reward.GetItem(i)));
+
+            UIManager.Show(new RewardUnlockView.Args(entries));
+        }
+
+        int GetFlipperCatalogIndex(FlipperData flipper)
+        {
+            if (null == _flipperCatalog)
+                return FlipperCatalogData.INVALID_INDEX;
+
+            return _flipperCatalog.IndexOf(flipper);
+        }
+
+        int ResolveSavedFlipperIndex(string flipperId)
+        {
+            if (null == _flipperCatalog)
+                return FlipperCatalogData.DEFAULT_INDEX;
+
+            int index = _flipperCatalog.IndexOfId(flipperId);
+            return index == FlipperCatalogData.INVALID_INDEX ? FlipperCatalogData.DEFAULT_INDEX : index;
+        }
+
+        FlipperData ResolveFlipper(int flipperIndex)
+        {
+            if (null == _flipperCatalog)
+                return null;
+
+            FlipperData flipper = _flipperCatalog.GetFlipper(flipperIndex);
+            if (null != flipper && _unlockProgress.IsFlipperUnlocked(flipper))
+                return flipper;
+
+            return _flipperCatalog.GetFlipper(FlipperCatalogData.DEFAULT_INDEX);
         }
 
         void OnStageScoreChanged(int stageScore)
@@ -500,6 +577,7 @@ namespace Pinball.Ingame
                 DamageEvaluator: _damageCalculator.Calculate,
                 FlipPowerGetter: _statProvider.GetFlipPower,
                 PerfectTimingRelaxGetter: _statProvider.GetPerfectTimingRelax,
+                PerfectImpulseScaleGetter: _statProvider.GetPerfectImpulseScale,
                 OnBallStruck: OnBallStruck,
                 OnBumperDamaged: OnBumperDamaged,
                 OnBumperBroken: OnBumperBroken,
@@ -554,7 +632,12 @@ namespace Pinball.Ingame
 
         void SaveProgress()
         {
-            _saveHandler.Save(_stageTracker.StageNumber, _wallet.Current, _scoreCounter.Current, _gimmickRoller.GetCatalogIndices());
+            _saveHandler.Save(new IngameSaveHandler.SaveParam(
+                StageNumber: _stageTracker.StageNumber,
+                Money: _wallet.Current,
+                TotalScore: _scoreCounter.Current,
+                GimmickIndices: _gimmickRoller.GetCatalogIndices(),
+                FlipperId: null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId()));
         }
 
         void RestoreCurrentStageGimmicks(int[] savedGimmickIndices)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Pinball.Ingame;
+using Pinball.Localization;
 using Pinball.Util;
 using TMPro;
 using UnityEngine;
@@ -31,9 +32,12 @@ namespace Pinball.UI
 
         const string MONEY_FORMAT = "$ {0}";
         const string REROLL_FORMAT = "REROLL ${0}";
+        const string REROLL_KEY = "ui.shop.reroll";
         const string PRICE_FORMAT = "${0}";
         const string PASSIVE_HEADER_FORMAT = "PASSIVE  {0}/{1}";
+        const string PASSIVE_HEADER_KEY = "ui.shop.passive_header";
         const string UPGRADE_HEADER_FORMAT = "UPGRADE  {0}";
+        const string UPGRADE_HEADER_KEY = "ui.shop.upgrade_header";
         const string OWNED_COUNT_FORMAT = "x{0}";
         const int OWNED_SLOT_CAPACITY = 12;
         const int STACKED_COUNT_MIN = 2;
@@ -128,7 +132,7 @@ namespace Pinball.UI
         void BindMain(Args args)
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
-            _rerollLabel.text = string.Format(REROLL_FORMAT, args.RerollPrice);
+            _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, args.RerollPrice);
         }
 
         void BindOffer(OfferArgs args)
@@ -154,8 +158,8 @@ namespace Pinball.UI
 
         void BindOwnedReset(OwnedResetArgs args)
         {
-            _passiveHeaderLabel.text = string.Format(PASSIVE_HEADER_FORMAT, args.PassiveCount, args.PassiveSlotCount);
-            _upgradeHeaderLabel.text = string.Format(UPGRADE_HEADER_FORMAT, args.UpgradeCount);
+            _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, args.PassiveCount, args.PassiveSlotCount);
+            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, args.UpgradeCount);
             ClearOwnedSlots();
             _tooltip.Hide();
             _boundPassiveCount = 0;

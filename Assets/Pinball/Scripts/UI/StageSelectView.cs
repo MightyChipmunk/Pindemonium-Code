@@ -1,3 +1,4 @@
+using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 
@@ -30,8 +31,11 @@ namespace Pinball.UI
 
         const string MONEY_FORMAT = "$ {0}";
         const string BALLS_FORMAT = "BALLS {0}";
+        const string BALLS_KEY = "ui.stage_select.balls";
         const string PROGRESS_RANGE_FORMAT = "STAGE {0} - {1} OF {2}";
+        const string PROGRESS_RANGE_KEY = "ui.stage_select.progress_range";
         const string PROGRESS_SINGLE_FORMAT = "STAGE {0} OF {1}";
+        const string PROGRESS_SINGLE_KEY = "ui.stage_select.progress_single";
 
         [SerializeField] TMP_Text _progressLabel = null;
         [SerializeField] TMP_Text _moneyLabel = null;
@@ -67,13 +71,13 @@ namespace Pinball.UI
         void BindMain(Args args)
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
-            _ballsLabel.text = string.Format(BALLS_FORMAT, args.RemainingBalls);
+            _ballsLabel.text = LocalizationTable.Format(BALLS_KEY, BALLS_FORMAT, args.RemainingBalls);
 
             int lastPreviewNumber = Mathf.Min(args.CurrentStageNumber + CARD_COUNT - 1, args.TotalStageCount);
             if (lastPreviewNumber > args.CurrentStageNumber)
-                _progressLabel.text = string.Format(PROGRESS_RANGE_FORMAT, args.CurrentStageNumber, lastPreviewNumber, args.TotalStageCount);
+                _progressLabel.text = LocalizationTable.Format(PROGRESS_RANGE_KEY, PROGRESS_RANGE_FORMAT, args.CurrentStageNumber, lastPreviewNumber, args.TotalStageCount);
             else
-                _progressLabel.text = string.Format(PROGRESS_SINGLE_FORMAT, args.CurrentStageNumber, args.TotalStageCount);
+                _progressLabel.text = LocalizationTable.Format(PROGRESS_SINGLE_KEY, PROGRESS_SINGLE_FORMAT, args.CurrentStageNumber, args.TotalStageCount);
         }
 
         void BindCard(CardArgs args)

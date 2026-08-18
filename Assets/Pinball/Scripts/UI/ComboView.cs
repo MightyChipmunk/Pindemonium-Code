@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 
@@ -19,6 +20,7 @@ namespace Pinball.UI
         }
 
         const string COMBO_FORMAT = "{0} COMBO";
+        const string COMBO_KEY = "ui.combo.count";
         const string MULTIPLIER_FORMAT = "x{0:0.##}";
         const string BONUS_FORMAT = "+{0}";
         const float BONUS_DISPLAY_SECONDS = 1.2f;
@@ -57,7 +59,7 @@ namespace Pinball.UI
         void BindCombo(Args args)
         {
             CancelScheduledHide();
-            _comboLabel.text = string.Format(COMBO_FORMAT, args.ComboCount);
+            _comboLabel.text = LocalizationTable.Format(COMBO_KEY, COMBO_FORMAT, args.ComboCount);
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, args.Multiplier);
 
             if (args.PendingBonus <= 0)

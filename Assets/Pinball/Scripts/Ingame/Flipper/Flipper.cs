@@ -36,6 +36,7 @@ namespace Pinball.Ingame
 
         Func<float> _flipPowerGetter = null;
         Func<float> _perfectTimingRelaxGetter = null;
+        Func<float> _perfectImpulseScaleGetter = null;
         List<Rigidbody2D> _touchingBodies = null;
         List<Rigidbody2D> _struckBodies = null;
         bool _isPressed = false;
@@ -48,10 +49,11 @@ namespace Pinball.Ingame
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;
 
-        public void Init(Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter)
+        public void Init(Func<float> flipPowerGetter, Func<float> perfectTimingRelaxGetter, Func<float> perfectImpulseScaleGetter)
         {
             _flipPowerGetter = flipPowerGetter;
             _perfectTimingRelaxGetter = perfectTimingRelaxGetter;
+            _perfectImpulseScaleGetter = perfectImpulseScaleGetter;
             _touchingBodies = new List<Rigidbody2D>();
             _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
@@ -80,6 +82,7 @@ namespace Pinball.Ingame
 
             _flipPowerGetter = null;
             _perfectTimingRelaxGetter = null;
+            _perfectImpulseScaleGetter = null;
             OnBallStruck = null;
         }
 
@@ -246,7 +249,7 @@ namespace Pinball.Ingame
             switch (grade)
             {
                 case EHitGrade.Perfect:
-                    return _config.PerfectBonusMultiplier;
+                    return _config.PerfectBonusMultiplier * GetPerfectImpulseScale();
                 case EHitGrade.SweetSpot:
                     return _config.SweetSpotBonusMultiplier * GetTimingScale(_config.SweetSpotTimingMinScale);
                 default:
@@ -303,6 +306,14 @@ namespace Pinball.Ingame
                 return 0f;
 
             return _flipPowerGetter();
+        }
+
+        float GetPerfectImpulseScale()
+        {
+            if (null == _perfectImpulseScaleGetter)
+                return NORMAL_MULTIPLIER;
+
+            return _perfectImpulseScaleGetter();
         }
     }
 }

@@ -41,7 +41,7 @@ namespace Pinball.Ingame.Stat
             if (null != _isPlayingGetter && !_isPlayingGetter())
                 return;
 
-            float chargeInterval = _stats.GetEffectSub(ShopItemData.EEffectType.TimedAttackPowerSurge);
+            float chargeInterval = _stats.GetEffectValue(ShopItemData.EEffectType.TimedAttackPowerSurge, ShopItemData.SUB_VALUE_INDEX);
             if (chargeInterval <= 0f)
                 return;
 

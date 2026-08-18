@@ -1,5 +1,6 @@
 using System;
 using Pinball.Ingame.Stage;
+using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,13 +21,18 @@ namespace Pinball.UI
             bool CanReroll);
 
         const string STAGE_FORMAT = "STAGE {0}";
+        const string STAGE_KEY = "ui.stage_card.stage";
         const string TARGET_SCORE_FORMAT = "N0";
         const string MULTIPLIER_FORMAT = "x{0:0.#}";
         const string REWARD_FORMAT = "${0}";
         const string REROLL_FORMAT = "REROLL ${0}";
+        const string REROLL_KEY = "ui.stage_card.reroll";
         const string TAG_NOW = "NOW";
+        const string TAG_NOW_KEY = "ui.stage_card.tag_now";
         const string TAG_UP_NEXT = "UP NEXT";
+        const string TAG_UP_NEXT_KEY = "ui.stage_card.tag_up_next";
         const string TAG_FINAL = "FINAL";
+        const string TAG_FINAL_KEY = "ui.stage_card.tag_final";
         const float UPCOMING_ALPHA = 0.7f;
         const float CURRENT_RAISE_OFFSET = 40f;
 
@@ -75,7 +81,7 @@ namespace Pinball.UI
         public void Bind(BindParam param)
         {
             gameObject.SetActive(true);
-            _titleLabel.text = string.Format(STAGE_FORMAT, param.StageNumber);
+            _titleLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, param.StageNumber);
             _tagLabel.text = GetTagText(param.IsCurrent, param.IsFinal);
             _bandImage.color = param.IsFinal ? _finalBandColor : _bandBaseColor;
             _content.anchoredPosition = _contentBasePosition + (param.IsCurrent ? Vector2.up * CURRENT_RAISE_OFFSET : Vector2.zero);
@@ -123,16 +129,16 @@ namespace Pinball.UI
             _startButton.gameObject.SetActive(param.IsCurrent);
             _rerollButton.gameObject.SetActive(param.IsCurrent && hasGimmick);
             _rerollButton.interactable = param.CanReroll;
-            _rerollLabel.text = string.Format(REROLL_FORMAT, param.RerollPrice);
+            _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, param.RerollPrice);
             _upNextPlate.SetActive(!param.IsCurrent);
         }
 
         string GetTagText(bool isCurrent, bool isFinal)
         {
             if (isCurrent)
-                return TAG_NOW;
+                return LocalizationTable.Get(TAG_NOW_KEY, TAG_NOW);
 
-            return isFinal ? TAG_FINAL : TAG_UP_NEXT;
+            return isFinal ? LocalizationTable.Get(TAG_FINAL_KEY, TAG_FINAL) : LocalizationTable.Get(TAG_UP_NEXT_KEY, TAG_UP_NEXT);
         }
 
         void OnStartClicked()

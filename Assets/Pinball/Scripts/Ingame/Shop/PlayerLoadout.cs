@@ -130,12 +130,12 @@ namespace Pinball.Ingame
             if (item.EffectType == ShopItemData.EEffectType.GimmickScoreRatioAdd)
             {
                 _gimmickScoreSums.TryGetValue(item.GimmickType, out float gimmickSum);
-                _gimmickScoreSums[item.GimmickType] = gimmickSum + item.EffectValue;
+                _gimmickScoreSums[item.GimmickType] = gimmickSum + item.GetEffectValue(ShopItemData.MAIN_VALUE_INDEX);
                 return;
             }
 
             _upgradeSums.TryGetValue(item.EffectType, out float sum);
-            _upgradeSums[item.EffectType] = sum + item.EffectValue;
+            _upgradeSums[item.EffectType] = sum + item.GetEffectValue(ShopItemData.MAIN_VALUE_INDEX);
         }
 
         void RecordUpgrade(ShopItemData item)
@@ -163,19 +163,19 @@ namespace Pinball.Ingame
 
             for (int i = 0; i < _passives.Count; ++i)
                 if (_passives[i].EffectType == effectType)
-                    sum += _passives[i].EffectValue;
+                    sum += _passives[i].GetEffectValue(ShopItemData.MAIN_VALUE_INDEX);
 
             return sum;
         }
 
-        public float GetEffectSub(ShopItemData.EEffectType effectType)
+        public float GetEffectValue(ShopItemData.EEffectType effectType, int valueIndex)
         {
             if (null == _passives)
                 return 0f;
 
             for (int i = 0; i < _passives.Count; ++i)
                 if (_passives[i].EffectType == effectType)
-                    return _passives[i].EffectValueSub;
+                    return _passives[i].GetEffectValue(valueIndex);
 
             return 0f;
         }

@@ -9,5 +9,6 @@ namespace Pinball.Save
         public int Money = 0;
         public int TotalScore = 0;
         public int[] GimmickIndices = null;
+        public string FlipperId = string.Empty;
     }
 }

@@ -101,7 +101,7 @@ namespace Pinball.Ingame
 
             if (grade == Flipper.EHitGrade.Normal)
             {
-                _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER - _stats.GetEffectSub(ShopItemData.EEffectType.HitGradeScoreRatio);
+                _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER - _stats.GetEffectValue(ShopItemData.EEffectType.HitGradeScoreRatio, ShopItemData.SUB_VALUE_INDEX);
                 return;
             }
 

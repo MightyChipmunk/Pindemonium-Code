@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Localization;
 using Pinball.Util;
 using TMPro;
 using UnityEngine;
@@ -22,9 +23,12 @@ namespace Pinball.UI
         }
 
         const string CLEAR_TITLE = "ALL STAGES CLEAR!";
+        const string CLEAR_TITLE_KEY = "ui.result.clear_title";
         const string GAME_OVER_TITLE = "GAME OVER";
+        const string GAME_OVER_TITLE_KEY = "ui.result.game_over_title";
         const string SCORE_FORMAT = "N0";
         const string STAGE_FORMAT = "STAGE {0}";
+        const string STAGE_KEY = "ui.result.stage";
         const float APPEAR_DURATION = 0.35f;
         const float APPEAR_SLIDE_OFFSET = 120f;
 
@@ -91,7 +95,7 @@ namespace Pinball.UI
         void ApplyResult(Args args)
         {
             bool isClear = args.Result == EResult.Clear;
-            _titleLabel.text = isClear ? CLEAR_TITLE : GAME_OVER_TITLE;
+            _titleLabel.text = isClear ? LocalizationTable.Get(CLEAR_TITLE_KEY, CLEAR_TITLE) : LocalizationTable.Get(GAME_OVER_TITLE_KEY, GAME_OVER_TITLE);
             _panelImage.sprite = isClear ? _clearPanelSprite : _gameOverPanelSprite;
             _bannerImage.sprite = isClear ? _clearBannerSprite : _gameOverBannerSprite;
             _statsButtonImage.sprite = isClear ? _clearStatsButtonSprite : _gameOverStatsButtonSprite;
@@ -101,7 +105,7 @@ namespace Pinball.UI
                 return;
 
             _scoreLabel.text = args.Stats.Score.ToString(SCORE_FORMAT, CultureInfo.InvariantCulture);
-            _stageLabel.text = string.Format(STAGE_FORMAT, args.Stats.StageNumber);
+            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, args.Stats.StageNumber);
         }
 
         void CachePanelBasePosition()

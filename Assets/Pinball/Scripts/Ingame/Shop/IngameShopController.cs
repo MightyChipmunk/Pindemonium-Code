@@ -8,20 +8,29 @@ namespace Pinball.Ingame
     {
         const int PASSIVE_OWNED_COUNT = 1;
 
+        public record InitParam(
+            ShopConfigData Config,
+            ShopCatalogData Catalog,
+            MoneyWallet Wallet,
+            PlayerLoadout Loadout,
+            Func<ShopItemData, bool> IsItemUnlockedGetter);
+
         ShopConfigData _config = null;
         ShopCatalogData _catalog = null;
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
+        Func<ShopItemData, bool> _isItemUnlockedGetter = null;
         ShopSession _session = null;
 
         public event Action OnNextStageRequested;
 
-        public void Init(ShopConfigData config, ShopCatalogData catalog, MoneyWallet wallet, PlayerLoadout loadout)
+        public void Init(InitParam param)
         {
-            _config = config;
-            _catalog = catalog;
-            _wallet = wallet;
-            _loadout = loadout;
+            _config = param.Config;
+            _catalog = param.Catalog;
+            _wallet = param.Wallet;
+            _loadout = param.Loadout;
+            _isItemUnlockedGetter = param.IsItemUnlockedGetter;
             UIManager.OnEvent += HandleUIEvent;
         }
 
@@ -36,6 +45,7 @@ namespace Pinball.Ingame
                 _session = null;
             }
 
+            _isItemUnlockedGetter = null;
             _loadout = null;
             _wallet = null;
             _catalog = null;
@@ -181,6 +191,9 @@ namespace Pinball.Ingame
         bool CanOfferItem(ShopItemData item)
         {
             if (null == item)
+                return false;
+
+            if (null != _isItemUnlockedGetter && !_isItemUnlockedGetter(item))
                 return false;
 
             if (item.Kind != ShopItemData.EItemKind.Passive)
