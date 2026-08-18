@@ -35,7 +35,8 @@ namespace Pinball.UI
         [SerializeField] Button _resolutionPrevButton = null;
         [SerializeField] Button _resolutionNextButton = null;
         [SerializeField] TMP_Text _resolutionLabel = null;
-        [SerializeField] Button _fullscreenButton = null;
+        [SerializeField] Button _fullscreenPrevButton = null;
+        [SerializeField] Button _fullscreenNextButton = null;
         [SerializeField] TMP_Text _fullscreenLabel = null;
         [SerializeField] Button _languagePrevButton = null;
         [SerializeField] Button _languageNextButton = null;
@@ -55,7 +56,8 @@ namespace Pinball.UI
             _nudgeButton.onClick.AddListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.AddListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
-            _fullscreenButton.onClick.AddListener(OnFullscreenClicked);
+            _fullscreenPrevButton.onClick.AddListener(OnFullscreenClicked);
+            _fullscreenNextButton.onClick.AddListener(OnFullscreenClicked);
             _languagePrevButton.onClick.AddListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.AddListener(OnLanguageNextClicked);
             _closeButton.onClick.AddListener(OnCloseClicked);
@@ -69,7 +71,8 @@ namespace Pinball.UI
             _nudgeButton.onClick.RemoveListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.RemoveListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
-            _fullscreenButton.onClick.RemoveListener(OnFullscreenClicked);
+            _fullscreenPrevButton.onClick.RemoveListener(OnFullscreenClicked);
+            _fullscreenNextButton.onClick.RemoveListener(OnFullscreenClicked);
             _languagePrevButton.onClick.RemoveListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.RemoveListener(OnLanguageNextClicked);
             _closeButton.onClick.RemoveListener(OnCloseClicked);
