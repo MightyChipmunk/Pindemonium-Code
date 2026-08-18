@@ -10,16 +10,16 @@ namespace Pinball.Ingame.Map
     public class SaucerInteractable : MapInteractable
     {
         const float CAPTURE_PUNCH_RATIO = 0.4f;
-        const float CAPTURE_PUNCH_DURATION = 0.25f;
+        const float CAPTURE_PUNCH_DURATION = 0.13f;
         const int CAPTURE_PUNCH_VIBRATO = 8;
         const float HOLD_PULSE_RATIO = 0.14f;
-        const float HOLD_PULSE_DURATION = 0.4f;
+        const float HOLD_PULSE_DURATION = 0.2f;
         const float EJECT_PUNCH_RATIO = 0.3f;
-        const float EJECT_PUNCH_DURATION = 0.2f;
+        const float EJECT_PUNCH_DURATION = 0.1f;
         const int EJECT_PUNCH_VIBRATO = 6;
         const int MIN_REWARD_STEP = 0;
         const float SPIN_STOP_LEAD_TIME = 0.3f;
-        const float SPIN_BASE_INTERVAL = 0.055f;
+        const float SPIN_BASE_INTERVAL = 0.0275f;
         const float SPIN_SLOWDOWN_RATIO = 3.5f;
         const float MIN_SPIN_TIME = 0.2f;
         const float MIN_DIRECTION_SQR = 0.0001f;
@@ -31,7 +31,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] int _scoreReward = 0;
         [SerializeField] int _scoreRewardIncrement = 0;
         [SerializeField] int _maxRewardStep = 4;
-        [SerializeField] float _holdDuration = 1.5f;
+        [SerializeField] float _holdDuration = 0.75f;
         [SerializeField] float _ejectSpeed = 14f;
         [SerializeField] PoolableFX.EFXType _captureFX = PoolableFX.EFXType.NonePooling;
 
