@@ -131,57 +131,58 @@ namespace Pinball.Ingame
             UIManager.Show(new ShopView.Args(
                 Money: _wallet.Current,
                 RerollPrice: _session.CurrentRerollPrice,
-                OfferItemIndices: BuildOfferItemIndices(),
-                PassiveCount: _loadout.PassiveCount,
+                Offers: BuildOfferEntries(),
                 PassiveSlotCount: _loadout.PassiveSlotCount,
-                UpgradeKindCount: _loadout.UpgradeKindCount,
-                OwnedEntries: BuildOwnedEntries()));
+                Passives: BuildPassiveEntries(),
+                Upgrades: BuildUpgradeEntries()));
         }
 
-        int[] BuildOfferItemIndices()
+        ShopView.OfferEntry[] BuildOfferEntries()
         {
-            int[] itemIndices = new int[_session.OfferSlotCount];
-            for (int i = 0; i < itemIndices.Length; ++i)
-                itemIndices[i] = GetOfferItemIndex(i);
+            ShopView.OfferEntry[] offers = new ShopView.OfferEntry[_session.OfferSlotCount];
+            for (int i = 0; i < offers.Length; ++i)
+                offers[i] = BuildOfferEntry(_session.GetOffer(i));
 
-            return itemIndices;
+            return offers;
         }
 
-        ShopView.OwnedEntry[] BuildOwnedEntries()
+        static ShopView.OfferEntry BuildOfferEntry(ShopItemData item)
         {
-            int passiveCount = _loadout.PassiveCount;
-            ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[passiveCount + _loadout.UpgradeKindCount];
-            for (int i = 0; i < passiveCount; ++i)
-                entries[i] = new ShopView.OwnedEntry(GetPassiveItemIndex(i), PASSIVE_OWNED_COUNT);
+            if (null == item)
+                return null;
 
-            for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
-                entries[passiveCount + i] = new ShopView.OwnedEntry(GetUpgradeItemIndex(i), _loadout.GetUpgradeCount(i));
+            return new ShopView.OfferEntry(
+                Title: item.GetDisplayName(),
+                Icon: item.GetIcon(),
+                Description: item.GetDescription(),
+                Price: item.Price,
+                IsPassive: item.Kind == ShopItemData.EItemKind.Passive);
+        }
+
+        ShopView.OwnedEntry[] BuildPassiveEntries()
+        {
+            ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[_loadout.PassiveCount];
+            for (int i = 0; i < entries.Length; ++i)
+                entries[i] = BuildOwnedEntry(_loadout.GetPassive(i), PASSIVE_OWNED_COUNT);
 
             return entries;
         }
 
-        int GetOfferItemIndex(int slotIndex)
+        ShopView.OwnedEntry[] BuildUpgradeEntries()
         {
-            if (null == _catalog || null == _session)
-                return ShopCatalogData.INVALID_INDEX;
+            ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[_loadout.UpgradeKindCount];
+            for (int i = 0; i < entries.Length; ++i)
+                entries[i] = BuildOwnedEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i));
 
-            return _catalog.IndexOf(_session.GetOffer(slotIndex));
+            return entries;
         }
 
-        int GetPassiveItemIndex(int passiveIndex)
+        static ShopView.OwnedEntry BuildOwnedEntry(ShopItemData item, int count)
         {
-            if (null == _catalog || null == _loadout)
-                return ShopCatalogData.INVALID_INDEX;
+            if (null == item)
+                return null;
 
-            return _catalog.IndexOf(_loadout.GetPassive(passiveIndex));
-        }
-
-        int GetUpgradeItemIndex(int upgradeIndex)
-        {
-            if (null == _catalog || null == _loadout)
-                return ShopCatalogData.INVALID_INDEX;
-
-            return _catalog.IndexOf(_loadout.GetUpgrade(upgradeIndex));
+            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
         }
 
         void TryBuyOffer(int slotIndex)

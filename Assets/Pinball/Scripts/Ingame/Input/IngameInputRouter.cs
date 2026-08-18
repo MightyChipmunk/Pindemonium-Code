@@ -8,8 +8,6 @@ namespace Pinball.Ingame.InputModule
 {
     public class IngameInputRouter : MonoBehaviour
     {
-        [SerializeField] IngameKeyConfigData _keyConfig = null;
-
         public event Action<bool> OnFlipperLeftChanged;
         public event Action<bool> OnFlipperRightChanged;
         public event Action<bool> OnLaunchChanged;
@@ -41,32 +39,17 @@ namespace Pinball.Ingame.InputModule
             if (!_isInited)
                 return;
 
-            if (null == _keyConfig)
-                return;
-
             Keyboard keyboard = Keyboard.current;
             if (null == keyboard)
                 return;
 
-            CheckKey(keyboard, ResolveKey(EKeyAction.FlipperLeft, _keyConfig.FlipperLeftKey), OnFlipperLeftChanged);
-            CheckKey(keyboard, ResolveKey(EKeyAction.FlipperRight, _keyConfig.FlipperRightKey), OnFlipperRightChanged);
-            CheckKey(keyboard, ResolveKey(EKeyAction.Launch, _keyConfig.LaunchKey), OnLaunchChanged);
-            CheckKeyPressed(keyboard, ResolveKey(EKeyAction.Nudge, _keyConfig.NudgeKey), OnNudgePressed);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperLeft), OnFlipperLeftChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperRight), OnFlipperRightChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Launch), OnLaunchChanged);
+            CheckKeyPressed(keyboard, GameSettings.GetKey(EKeyAction.Nudge), OnNudgePressed);
 
             if (keyboard.escapeKey.wasPressedThisFrame)
                 OnEscapePressed?.Invoke();
-        }
-
-        static Key ResolveKey(EKeyAction action, Key fallbackKey)
-        {
-            if (!GameSettings.IsInitialized)
-                return fallbackKey;
-
-            Key key = GameSettings.GetKey(action);
-            if (key == Key.None)
-                return fallbackKey;
-
-            return key;
         }
 
         static void CheckKey(Keyboard keyboard, Key key, Action<bool> callback)

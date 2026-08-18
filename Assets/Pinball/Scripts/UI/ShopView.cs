@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using Pinball.Ingame;
 using Pinball.Localization;
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,16 +7,17 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record OwnedEntry(int ItemIndex, int Count);
+        public record OfferEntry(string Title, Sprite Icon, string Description, int Price, bool IsPassive);
+
+        public record OwnedEntry(Sprite Icon, int Count, string Title, string Description);
 
         public record Args(
             int Money,
             int RerollPrice,
-            int[] OfferItemIndices,
-            int PassiveCount,
+            OfferEntry[] Offers,
             int PassiveSlotCount,
-            int UpgradeKindCount,
-            OwnedEntry[] OwnedEntries) : UIViewArgs
+            OwnedEntry[] Passives,
+            OwnedEntry[] Upgrades) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
@@ -33,7 +31,6 @@ namespace Pinball.UI
         const string UPGRADE_HEADER_FORMAT = "UPGRADE  {0}";
         const string UPGRADE_HEADER_KEY = "ui.shop.upgrade_header";
         const string OWNED_COUNT_FORMAT = "x{0}";
-        const int OWNED_SLOT_CAPACITY = 12;
         const float OFFER_ROW_WIDTH = 1260f;
         const float OFFER_SLOT_WIDTH = 380f;
         const float OFFER_SLOT_WIDE_SPACING = 60f;
@@ -41,28 +38,22 @@ namespace Pinball.UI
         const int OFFER_SLOT_WIDE_COUNT = 3;
         const int STACKED_COUNT_MIN = 2;
 
-        [SerializeField] ShopCatalogData _catalog = null;
         [SerializeField] TMP_Text _moneyLabel = null;
         [SerializeField] ShopItemView[] _offerSlots = null;
         [SerializeField] HorizontalLayoutGroup _offerRow = null;
         [SerializeField] TMP_Text _passiveHeaderLabel = null;
         [SerializeField] TMP_Text _upgradeHeaderLabel = null;
-        [SerializeField] RectTransform _passiveContent = null;
-        [SerializeField] RectTransform _upgradeContent = null;
-        [SerializeField] ItemIconSlotView _ownedSlotOrigin = null;
+        [SerializeField] ItemIconGridView _passiveGrid = null;
+        [SerializeField] ItemIconGridView _upgradeGrid = null;
         [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
         [SerializeField] TMP_Text _rerollLabel = null;
         [SerializeField] Button _startButton = null;
 
-        ObjectPool<ItemIconSlotView> _ownedSlotPool = null;
-        List<ItemIconSlotView> _activeOwnedSlots = null;
-        int _boundPassiveCount = 0;
-
         public override void OnGenerate()
         {
-            _activeOwnedSlots = new List<ItemIconSlotView>();
-            _ownedSlotPool = new ObjectPool<ItemIconSlotView>(_ownedSlotOrigin, CreateOwnedSlot, OWNED_SLOT_CAPACITY);
+            _passiveGrid.Init(_tooltip);
+            _upgradeGrid.Init(_tooltip);
 
             for (int i = 0; i < _offerSlots.Length; ++i)
                 _offerSlots[i].Init(i, OnOfferClicked);
@@ -77,23 +68,14 @@ namespace Pinball.UI
                 _offerSlots[i].Release();
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
-
-            if (null != _ownedSlotPool)
-            {
-                _ownedSlotPool.Clear();
-                _ownedSlotPool = null;
-            }
-
-            if (null != _activeOwnedSlots)
-            {
-                _activeOwnedSlots.Clear();
-                _activeOwnedSlots = null;
-            }
+            _passiveGrid.Release();
+            _upgradeGrid.Release();
         }
 
         public override void OnReturn()
         {
-            ClearOwnedSlots();
+            _passiveGrid.Clear();
+            _upgradeGrid.Clear();
             _tooltip.Hide();
         }
 
@@ -103,148 +85,77 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            BindMain(viewArgs);
-            BindOffers(viewArgs.OfferItemIndices);
+            _moneyLabel.text = string.Format(MONEY_FORMAT, viewArgs.Money);
+            _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, viewArgs.RerollPrice);
+            BindOffers(viewArgs.Offers);
             BindOwned(viewArgs);
         }
 
-        void BindMain(Args args)
+        void BindOffers(OfferEntry[] offers)
         {
-            _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
-            _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, args.RerollPrice);
-        }
-
-        void BindOffers(int[] offerItemIndices)
-        {
-            int offerCount = null == offerItemIndices ? 0 : offerItemIndices.Length;
+            int offerCount = null == offers ? 0 : offers.Length;
             ApplyOfferLayout(offerCount);
 
             for (int i = 0; i < offerCount; ++i)
-                BindOffer(i, offerItemIndices[i]);
+                BindOffer(i, offers[i]);
         }
 
-        void BindOffer(int slotIndex, int itemIndex)
+        void BindOffer(int slotIndex, OfferEntry offer)
         {
             ShopItemView slot = GetOfferSlot(slotIndex);
             if (null == slot)
                 return;
 
-            ShopItemData item = GetItem(itemIndex);
-            if (null == item)
+            if (null == offer)
             {
                 slot.BindSold();
                 return;
             }
 
             slot.BindItem(new ShopItemView.BindParam(
-                Kind: item.Kind,
-                Title: item.GetDisplayName(),
-                Icon: item.GetIcon(),
-                Description: item.GetDescription(),
-                PriceText: string.Format(PRICE_FORMAT, item.Price)));
+                IsPassive: offer.IsPassive,
+                Title: offer.Title,
+                Icon: offer.Icon,
+                Description: offer.Description,
+                PriceText: string.Format(PRICE_FORMAT, offer.Price)));
         }
 
         void BindOwned(Args args)
         {
-            _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, args.PassiveCount, args.PassiveSlotCount);
-            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, args.UpgradeKindCount);
-            ClearOwnedSlots();
+            int passiveCount = null == args.Passives ? 0 : args.Passives.Length;
+            int upgradeCount = null == args.Upgrades ? 0 : args.Upgrades.Length;
+            _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, passiveCount, args.PassiveSlotCount);
+            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, upgradeCount);
             _tooltip.Hide();
-            _boundPassiveCount = 0;
 
-            int emptyCount = Mathf.Max(0, args.PassiveSlotCount - args.PassiveCount);
-            for (int i = 0; i < emptyCount; ++i)
-                BindEmptyPassiveSlot();
-
-            if (null == args.OwnedEntries)
-                return;
-
-            for (int i = 0; i < args.OwnedEntries.Length; ++i)
-                BindOwnedItem(args.OwnedEntries[i]);
+            _passiveGrid.Bind(BuildGridEntries(args.Passives), Mathf.Max(0, args.PassiveSlotCount - passiveCount));
+            _upgradeGrid.Bind(BuildGridEntries(args.Upgrades), 0);
         }
 
-        void BindEmptyPassiveSlot()
+        static ItemIconGridView.Entry[] BuildGridEntries(OwnedEntry[] owned)
         {
-            ItemIconSlotView slot = _ownedSlotPool.Get();
-            if (null == slot)
-                return;
+            if (null == owned)
+                return null;
 
-            slot.transform.SetParent(_passiveContent, false);
-            slot.transform.SetAsLastSibling();
-            slot.BindEmpty();
-            _activeOwnedSlots.Add(slot);
-        }
-
-        void BindOwnedItem(OwnedEntry entry)
-        {
-            if (null == entry)
-                return;
-
-            ShopItemData item = GetItem(entry.ItemIndex);
-            if (null == item)
-                return;
-
-            ItemIconSlotView slot = _ownedSlotPool.Get();
-            if (null == slot)
-                return;
-
-            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
-            slot.transform.SetParent(isPassive ? _passiveContent : _upgradeContent, false);
-            if (isPassive)
-                slot.transform.SetSiblingIndex(_boundPassiveCount++);
-            else
-                slot.transform.SetAsLastSibling();
-
-            slot.Bind(new ItemIconSlotView.BindParam(
-                ItemIndex: entry.ItemIndex,
-                Icon: item.GetIcon(),
-                CountText: GetCountText(entry.Count),
-                HoverCallback: OnTooltipHovered));
-            _activeOwnedSlots.Add(slot);
-        }
-
-        void ClearOwnedSlots()
-        {
-            if (null == _activeOwnedSlots)
-                return;
-
-            for (int i = 0; i < _activeOwnedSlots.Count; ++i)
-                _ownedSlotPool.Return(_activeOwnedSlots[i]);
-
-            _activeOwnedSlots.Clear();
-        }
-
-        ItemIconSlotView CreateOwnedSlot(ItemIconSlotView origin)
-        {
-            return Instantiate(origin, _passiveContent);
-        }
-
-        void OnTooltipHovered(int itemIndex, Vector3 anchorPosition, bool isEntered)
-        {
-            ShopItemData item = isEntered ? GetItem(itemIndex) : null;
-            if (null == item)
+            ItemIconGridView.Entry[] entries = new ItemIconGridView.Entry[owned.Length];
+            for (int i = 0; i < owned.Length; ++i)
             {
-                _tooltip.Hide();
-                return;
+                OwnedEntry item = owned[i];
+                if (null == item)
+                    continue;
+
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.Title, item.Description);
             }
 
-            _tooltip.Show(item.GetDisplayName(), item.GetDescription(), anchorPosition);
+            return entries;
         }
 
-        string GetCountText(int count)
+        static string GetCountText(int count)
         {
             if (count < STACKED_COUNT_MIN)
                 return string.Empty;
 
             return string.Format(OWNED_COUNT_FORMAT, count);
-        }
-
-        ShopItemData GetItem(int itemIndex)
-        {
-            if (null == _catalog)
-                return null;
-
-            return _catalog.GetItem(itemIndex);
         }
 
         ShopItemView GetOfferSlot(int slotIndex)

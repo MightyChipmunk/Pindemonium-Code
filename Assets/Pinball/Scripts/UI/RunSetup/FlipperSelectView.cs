@@ -1,4 +1,3 @@
-using Pinball.Ingame;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -8,7 +7,15 @@ namespace Pinball.UI
 {
     public class FlipperSelectView : UIViewBase
     {
-        public record Args(bool[] IsFlipperUnlocked, string[] UnlockHints) : UIViewArgs
+        public record FlipperEntry(
+            string DisplayName,
+            Sprite Icon,
+            string AbilityDescription,
+            string DrawbackDescription,
+            bool IsUnlocked,
+            string UnlockHint);
+
+        public record Args(FlipperEntry[] Flippers) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.FlipperSelect;
         }
@@ -21,8 +28,8 @@ namespace Pinball.UI
         const string DEFAULT_LINE_KEY = "ui.flipper_select.default_line";
         const string UNLOCKED_REWARD_LINE = "REWARD: RUN CLEAR";
         const string UNLOCKED_REWARD_LINE_KEY = "ui.flipper_select.unlocked_line";
+        const int DEFAULT_INDEX = 0;
 
-        [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] FlipperCardView _card = null;
         [SerializeField] Button _prevButton = null;
         [SerializeField] Button _nextButton = null;
@@ -35,7 +42,7 @@ namespace Pinball.UI
         [SerializeField] Button _backButton = null;
 
         Args _args = null;
-        int _selectedIndex = FlipperCatalogData.DEFAULT_INDEX;
+        int _selectedIndex = DEFAULT_INDEX;
 
         public override void OnGenerate()
         {
@@ -71,19 +78,20 @@ namespace Pinball.UI
 
         void Refresh()
         {
-            FlipperData flipper = GetFlipper(_selectedIndex);
-            bool isUnlocked = IsUnlocked(_selectedIndex);
-            string hint = GetUnlockHint(_selectedIndex);
+            FlipperEntry flipper = GetFlipper(_selectedIndex);
+            bool isUnlocked = null != flipper && flipper.IsUnlocked;
+            string hint = null == flipper || null == flipper.UnlockHint ? string.Empty : flipper.UnlockHint;
+            string displayName = null == flipper ? string.Empty : flipper.DisplayName;
 
             _card.Bind(new FlipperCardView.BindParam(
-                DisplayName: GetDisplayName(flipper),
-                Icon: null == flipper ? null : flipper.GetIcon(),
+                DisplayName: displayName,
+                Icon: null == flipper ? null : flipper.Icon,
                 IsUnlocked: isUnlocked,
                 LockedHint: hint));
             _pageLabel.text = string.Format(PAGE_FORMAT, _selectedIndex + 1, GetFlipperCount());
-            _flipperNameLabel.text = isUnlocked ? GetDisplayName(flipper) : LOCKED_NAME;
-            _abilityLabel.text = isUnlocked ? GetAbilityDescription(flipper) : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
-            BindDrawback(isUnlocked ? GetDrawbackDescription(flipper) : string.Empty);
+            _flipperNameLabel.text = isUnlocked ? displayName : LOCKED_NAME;
+            _abilityLabel.text = isUnlocked ? flipper.AbilityDescription : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
+            BindDrawback(isUnlocked ? flipper.DrawbackDescription : string.Empty);
             _unlockLineLabel.text = GetUnlockLine(isUnlocked, hint);
             _playButton.interactable = isUnlocked;
 
@@ -92,25 +100,10 @@ namespace Pinball.UI
             _nextButton.interactable = canCycle;
         }
 
-        static string GetDisplayName(FlipperData flipper)
-        {
-            return null == flipper ? string.Empty : flipper.GetDisplayName();
-        }
-
-        static string GetAbilityDescription(FlipperData flipper)
-        {
-            return null == flipper ? string.Empty : flipper.GetAbilityDescription();
-        }
-
         void BindDrawback(string drawback)
         {
             _drawbackLabel.gameObject.SetActive(!string.IsNullOrEmpty(drawback));
             _drawbackLabel.text = drawback;
-        }
-
-        static string GetDrawbackDescription(FlipperData flipper)
-        {
-            return null == flipper ? string.Empty : flipper.GetDrawbackDescription();
         }
 
         static string GetUnlockLine(bool isUnlocked, string hint)
@@ -123,41 +116,25 @@ namespace Pinball.UI
 
         int GetFlipperCount()
         {
-            return null == _flipperCatalog ? 0 : _flipperCatalog.Count;
+            if (null == _args || null == _args.Flippers)
+                return 0;
+
+            return _args.Flippers.Length;
         }
 
-        FlipperData GetFlipper(int index)
+        FlipperEntry GetFlipper(int index)
         {
-            return null == _flipperCatalog ? null : _flipperCatalog.GetFlipper(index);
-        }
+            if (index < 0 || index >= GetFlipperCount())
+                return null;
 
-        bool IsUnlocked(int index)
-        {
-            if (null == _args || null == _args.IsFlipperUnlocked)
-                return index == FlipperCatalogData.DEFAULT_INDEX;
-
-            if (index < 0 || index >= _args.IsFlipperUnlocked.Length)
-                return false;
-
-            return _args.IsFlipperUnlocked[index];
-        }
-
-        string GetUnlockHint(int index)
-        {
-            if (null == _args || null == _args.UnlockHints)
-                return string.Empty;
-
-            if (index < 0 || index >= _args.UnlockHints.Length)
-                return string.Empty;
-
-            return _args.UnlockHints[index] ?? string.Empty;
+            return _args.Flippers[index];
         }
 
         int WrapFlipperIndex(int index)
         {
             int count = GetFlipperCount();
             if (count <= 0)
-                return FlipperCatalogData.DEFAULT_INDEX;
+                return DEFAULT_INDEX;
 
             return ((index % count) + count) % count;
         }
@@ -176,7 +153,8 @@ namespace Pinball.UI
 
         void OnPlayClicked()
         {
-            if (!IsUnlocked(_selectedIndex))
+            FlipperEntry flipper = GetFlipper(_selectedIndex);
+            if (null == flipper || !flipper.IsUnlocked)
                 return;
 
             int flipperIndex = _selectedIndex;

@@ -33,11 +33,7 @@ namespace Pinball.Ingame.Reward
             if (GetFlipperUnlockTier(flipper) == ClearRewardCatalogData.INVALID_TIER)
                 return true;
 
-            UserData userData = SaveManager.GetUserData();
-            if (null == userData || null == userData.UnlockedFlipperIds)
-                return false;
-
-            return userData.UnlockedFlipperIds.Contains(flipper.GetId());
+            return SaveManager.IsFlipperUnlocked(flipper.GetId());
         }
 
         public bool IsItemUnlocked(ShopItemData item)
@@ -48,54 +44,50 @@ namespace Pinball.Ingame.Reward
             if (null == _catalog || _catalog.FindItemTier(item) == ClearRewardCatalogData.INVALID_TIER)
                 return true;
 
-            UserData userData = SaveManager.GetUserData();
-            if (null == userData || null == userData.UnlockedItemIds)
-                return false;
-
-            return userData.UnlockedItemIds.Contains(item.GetId());
+            return SaveManager.IsItemUnlocked(item.GetId());
         }
 
         public ClearRewardData GrantClearReward()
         {
-            UserData userData = SaveManager.GetUserData();
-            if (null == userData)
-                return null;
-
-            int tierIndex = userData.ClearCount;
-            ++userData.ClearCount;
-
-            ClearRewardData tier = null == _catalog ? null : _catalog.GetTier(tierIndex);
-            if (null != tier)
-                Unlock(userData, tier);
-
-            SaveManager.SaveUser();
+            ClearRewardData tier = null == _catalog ? null : _catalog.GetTier(SaveManager.ClearCount);
+            SaveManager.RegisterRunClear(CollectFlipperIds(tier), CollectItemIds(tier));
             return tier;
         }
 
-        static void Unlock(UserData userData, ClearRewardData tier)
+        static List<string> CollectFlipperIds(ClearRewardData tier)
         {
-            if (null == userData.UnlockedFlipperIds)
-                userData.UnlockedFlipperIds = new List<string>();
-
-            if (null == userData.UnlockedItemIds)
-                userData.UnlockedItemIds = new List<string>();
+            List<string> ids = new List<string>();
+            if (null == tier)
+                return ids;
 
             for (int i = 0; i < tier.FlipperCount; ++i)
-                AddId(userData.UnlockedFlipperIds, tier.GetFlipper(i)?.GetId());
+                AddId(ids, tier.GetFlipper(i));
 
-            for (int i = 0; i < tier.ItemCount; ++i)
-                AddId(userData.UnlockedItemIds, tier.GetItem(i)?.GetId());
+            return ids;
         }
 
-        static void AddId(List<string> ids, string id)
+        static List<string> CollectItemIds(ClearRewardData tier)
         {
-            if (string.IsNullOrEmpty(id))
-                return;
+            List<string> ids = new List<string>();
+            if (null == tier)
+                return ids;
 
-            if (ids.Contains(id))
-                return;
+            for (int i = 0; i < tier.ItemCount; ++i)
+                AddId(ids, tier.GetItem(i));
 
-            ids.Add(id);
+            return ids;
+        }
+
+        static void AddId(List<string> ids, FlipperData flipper)
+        {
+            if (null != flipper)
+                ids.Add(flipper.GetId());
+        }
+
+        static void AddId(List<string> ids, ShopItemData item)
+        {
+            if (null != item)
+                ids.Add(item.GetId());
         }
     }
 }

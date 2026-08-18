@@ -1,5 +1,4 @@
-using System.Threading;
-using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using Pinball.Util;
 using UnityEngine;
 
@@ -10,6 +9,7 @@ namespace Pinball.Ingame.UI
         const float SCALE_DURATION = 0.3f;
         const float FADE_DURATION = 0.35f;
         const float RISE_DISTANCE = 60f;
+        const float END_RATIO = 1f;
 
         [SerializeField] RectTransform _rectTransform = null;
         [SerializeField] ScorePopup _popupPrefab = null;
@@ -17,22 +17,15 @@ namespace Pinball.Ingame.UI
         [SerializeField] float _worldHeightOffset = 0.45f;
 
         ObjectPool<ScorePopup> _pool = null;
-        CancellationTokenSource _cancellationTokenSource = null;
 
         public void Init()
         {
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _pool = new ObjectPool<ScorePopup>(_popupPrefab, CreatePopup, _poolCapacity);
         }
 
         public void Release()
         {
-            if (null != _cancellationTokenSource)
-            {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
-            }
+            DOTween.Kill(this);
 
             if (null != _pool)
             {
@@ -51,9 +44,13 @@ namespace Pinball.Ingame.UI
                 return;
 
             popup.SetValue(score);
-            popup.SetBasePosition(GetAnchoredPosition(worldPoint));
-            popup.SetProgress(0f, 0f, 1f);
-            PlayPopupAsync(popup, _cancellationTokenSource.Token).Forget();
+            popup.Prepare(GetAnchoredPosition(worldPoint), RISE_DISTANCE);
+
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(DOTween.To(popup.GetScaleRatio, popup.SetScaleRatio, END_RATIO, SCALE_DURATION).SetEase(Ease.OutElastic));
+            sequence.Append(DOTween.To(popup.GetFadeRatio, popup.SetFadeRatio, END_RATIO, FADE_DURATION).SetEase(Ease.InSine));
+            sequence.OnComplete(() => ReturnPopup(popup));
+            sequence.SetId(this);
         }
 
         ScorePopup CreatePopup(ScorePopup origin)
@@ -69,27 +66,10 @@ namespace Pinball.Ingame.UI
             return localPoint;
         }
 
-        async UniTaskVoid PlayPopupAsync(ScorePopup popup, CancellationToken cancellationToken)
+        void ReturnPopup(ScorePopup popup)
         {
-            float scaleTime = 0f;
-            while (scaleTime <= SCALE_DURATION)
-            {
-                float ratio = EaseUtil.Interpolate(EaseType.ElasticOut, scaleTime / SCALE_DURATION);
-                popup.SetProgress(ratio, 0f, 1f);
-
-                scaleTime += Time.deltaTime;
-                await UniTask.Yield(cancellationToken);
-            }
-
-            float fadeTime = 0f;
-            while (fadeTime <= FADE_DURATION)
-            {
-                float ratio = EaseUtil.Interpolate(EaseType.SineIn, fadeTime / FADE_DURATION);
-                popup.SetProgress(1f, RISE_DISTANCE * ratio, 1f - ratio);
-
-                fadeTime += Time.deltaTime;
-                await UniTask.Yield(cancellationToken);
-            }
+            if (null == _pool)
+                return;
 
             _pool.Return(popup);
         }

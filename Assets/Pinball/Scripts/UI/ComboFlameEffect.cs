@@ -30,22 +30,17 @@ namespace Pinball.UI
 
         void Awake()
         {
-            Init();
-        }
-
-        void OnDestroy()
-        {
-            Release();
-        }
-
-        public void Init()
-        {
             _baseScale = _flameRoot.localScale;
             _lastBurstStep = NO_BURST_STEP;
             _flameRoot.gameObject.SetActive(false);
         }
 
-        public void Release()
+        void OnDestroy()
+        {
+            Cancel();
+        }
+
+        public void Hide()
         {
             Cancel();
             _lastBurstStep = NO_BURST_STEP;
@@ -58,7 +53,7 @@ namespace Pinball.UI
         {
             if (comboCount < START_COMBO)
             {
-                Release();
+                Hide();
                 return;
             }
 

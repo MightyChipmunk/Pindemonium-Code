@@ -7,12 +7,16 @@ namespace Pinball.Ingame.UI
     public class ScorePopup : MonoBehaviour, IPoolObject
     {
         const string SCORE_FORMAT = "+{0}";
+        const float START_RATIO = 0f;
 
         [SerializeField] TMP_Text _text = null;
         [SerializeField] RectTransform _rectTransform = null;
 
         Color _originColor = Color.white;
         Vector2 _basePosition = Vector2.zero;
+        float _riseDistance = 0f;
+        float _scaleRatio = START_RATIO;
+        float _fadeRatio = START_RATIO;
 
         public IPoolBase OwnPool { get; set; }
 
@@ -39,19 +43,37 @@ namespace Pinball.Ingame.UI
             _text.text = string.Format(SCORE_FORMAT, score);
         }
 
-        public void SetBasePosition(Vector2 anchoredPosition)
+        public void Prepare(Vector2 anchoredPosition, float riseDistance)
         {
             _basePosition = anchoredPosition;
-            _rectTransform.anchoredPosition = anchoredPosition;
+            _riseDistance = riseDistance;
+            SetScaleRatio(START_RATIO);
+            SetFadeRatio(START_RATIO);
         }
 
-        public void SetProgress(float scaleRatio, float riseDistance, float alpha)
+        public float GetScaleRatio()
         {
-            _rectTransform.localScale = Vector3.one * scaleRatio;
-            _rectTransform.anchoredPosition = _basePosition + Vector2.up * riseDistance;
+            return _scaleRatio;
+        }
+
+        public void SetScaleRatio(float ratio)
+        {
+            _scaleRatio = ratio;
+            _rectTransform.localScale = Vector3.one * ratio;
+        }
+
+        public float GetFadeRatio()
+        {
+            return _fadeRatio;
+        }
+
+        public void SetFadeRatio(float ratio)
+        {
+            _fadeRatio = ratio;
+            _rectTransform.anchoredPosition = _basePosition + Vector2.up * (_riseDistance * ratio);
 
             Color color = _originColor;
-            color.a = alpha;
+            color.a = 1f - ratio;
             _text.color = color;
         }
 

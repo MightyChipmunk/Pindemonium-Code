@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,9 @@ namespace Pinball.Ingame.UI
     {
         [SerializeField] ScoreView _scoreView = null;
         [SerializeField] BallCountView _ballCountView = null;
+        [SerializeField] OwnedItemsView _ownedItemsView = null;
+        [SerializeField] Pinball.UI.StageInfoView _stageInfoView = null;
+        [SerializeField] Pinball.UI.ComboView _comboView = null;
         [SerializeField] ScorePopupSpawner _scorePopupSpawner = null;
         [SerializeField] Button _pauseButton = null;
 
@@ -20,6 +24,7 @@ namespace Pinball.Ingame.UI
         public void Init()
         {
             _scorePopupSpawner.Init();
+            _ownedItemsView.Init();
             LocalizationManager.OnLanguageChanged += RefreshLabels;
 
             if (null != _pauseButton)
@@ -34,6 +39,7 @@ namespace Pinball.Ingame.UI
                 _pauseButton.onClick.RemoveListener(HandlePauseClicked);
 
             OnPauseClicked = null;
+            _ownedItemsView.Release();
             _scorePopupSpawner.Release();
         }
 
@@ -47,6 +53,31 @@ namespace Pinball.Ingame.UI
         {
             _ballCount = count;
             _ballCountView.SetValue(count);
+        }
+
+        public void SetOwnedItems(List<OwnedItemsView.Entry> passives, List<OwnedItemsView.Entry> upgrades)
+        {
+            _ownedItemsView.SetItems(passives, upgrades);
+        }
+
+        public void SetStageInfo(int stageNumber, int targetScore, int stageScore, int remainingSeconds)
+        {
+            _stageInfoView.SetInfo(stageNumber, targetScore, stageScore, remainingSeconds);
+        }
+
+        public void SetCombo(int comboCount, float multiplier, int pendingBonus)
+        {
+            _comboView.SetCombo(comboCount, multiplier, pendingBonus);
+        }
+
+        public void ShowComboBonus(int comboCount, float multiplier, int bonusScore)
+        {
+            _comboView.ShowBonus(comboCount, multiplier, bonusScore);
+        }
+
+        public void HideCombo()
+        {
+            _comboView.Hide();
         }
 
         void RefreshLabels()

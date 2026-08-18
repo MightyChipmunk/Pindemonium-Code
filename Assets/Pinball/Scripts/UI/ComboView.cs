@@ -1,30 +1,20 @@
 using System;
+using System.Globalization;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 
 namespace Pinball.UI
 {
-    public class ComboView : UIViewBase
+    public class ComboView : MonoBehaviour
     {
-        public record Args(int ComboCount, float Multiplier, int PendingBonus) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Combo;
-        }
-
-        public record BonusArgs(int ComboCount, float Multiplier, int BonusScore) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Combo;
-        }
-
-        const string COMBO_FORMAT = "{0} COMBO";
-        const string COMBO_KEY = "ui.combo.count";
         const string MULTIPLIER_FORMAT = "x{0:0.##}";
         const string BONUS_FORMAT = "+{0}";
         const float BONUS_DISPLAY_SECONDS = 1.2f;
+        const int INITIAL_COMBO_COUNT = 0;
 
+        [SerializeField] GameObject _root = null;
         [SerializeField] TMP_Text _comboLabel = null;
         [SerializeField] TMP_Text _multiplierLabel = null;
         [SerializeField] TMP_Text _bonusLabel = null;
@@ -32,61 +22,50 @@ namespace Pinball.UI
         [SerializeField] ComboFlameEffect _flameEffect = null;
 
         CancellationTokenSource _hideTokenSource = null;
-        int _lastComboCount = 0;
-
-        public override void Bind(UIViewArgs args)
-        {
-            Args comboArgs = args as Args;
-            if (null != comboArgs)
-            {
-                BindCombo(comboArgs);
-                return;
-            }
-
-            BonusArgs bonusArgs = args as BonusArgs;
-            if (null != bonusArgs)
-                BindBonus(bonusArgs);
-        }
-
-        public override void OnReturn()
-        {
-            CancelScheduledHide();
-            _bonusLabel.gameObject.SetActive(false);
-            _lastComboCount = 0;
-            _flameEffect.Release();
-            _punch.Release();
-        }
+        int _lastComboCount = INITIAL_COMBO_COUNT;
 
         void OnDestroy()
         {
             CancelScheduledHide();
         }
 
-        void BindCombo(Args args)
+        public void SetCombo(int comboCount, float multiplier, int pendingBonus)
         {
             CancelScheduledHide();
-            BindComboLabels(args.ComboCount, args.Multiplier);
+            _root.SetActive(true);
+            BindLabels(comboCount, multiplier);
 
-            if (args.ComboCount > _lastComboCount)
+            if (comboCount > _lastComboCount)
                 _punch.Play();
 
-            _lastComboCount = args.ComboCount;
-            _flameEffect.SetCombo(args.ComboCount);
-            BindBonusLabel(args.PendingBonus);
+            _lastComboCount = comboCount;
+            _flameEffect.SetCombo(comboCount);
+            BindBonusLabel(pendingBonus);
         }
 
-        void BindBonus(BonusArgs args)
+        public void ShowBonus(int comboCount, float multiplier, int bonusScore)
         {
             CancelScheduledHide();
-            BindComboLabels(args.ComboCount, args.Multiplier);
-            BindBonusLabel(args.BonusScore);
+            _root.SetActive(true);
+            BindLabels(comboCount, multiplier);
+            BindBonusLabel(bonusScore);
             _hideTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             HideAfterDelayAsync(_hideTokenSource.Token).Forget();
         }
 
-        void BindComboLabels(int comboCount, float multiplier)
+        public void Hide()
         {
-            _comboLabel.text = LocalizationTable.Format(COMBO_KEY, COMBO_FORMAT, comboCount);
+            CancelScheduledHide();
+            _lastComboCount = INITIAL_COMBO_COUNT;
+            _bonusLabel.gameObject.SetActive(false);
+            _flameEffect.Hide();
+            _punch.Stop();
+            _root.SetActive(false);
+        }
+
+        void BindLabels(int comboCount, float multiplier)
+        {
+            _comboLabel.text = comboCount.ToString(CultureInfo.InvariantCulture);
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, multiplier);
         }
 
@@ -115,7 +94,7 @@ namespace Pinball.UI
         async UniTaskVoid HideAfterDelayAsync(CancellationToken cancellationToken)
         {
             await UniTask.Delay(TimeSpan.FromSeconds(BONUS_DISPLAY_SECONDS), cancellationToken: cancellationToken);
-            UIManager.Hide(UIViewCatalogData.EViewType.Combo);
+            Hide();
         }
     }
 }

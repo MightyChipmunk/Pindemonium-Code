@@ -63,16 +63,25 @@ namespace Pinball.Lobby
         public void OpenFlipperSelect()
         {
             int flipperCount = null == _flipperCatalog ? 0 : _flipperCatalog.Count;
-            bool[] isUnlocked = new bool[flipperCount];
-            string[] hints = new string[flipperCount];
+            FlipperSelectView.FlipperEntry[] entries = new FlipperSelectView.FlipperEntry[flipperCount];
             for (int i = 0; i < flipperCount; ++i)
-            {
-                FlipperData flipper = _flipperCatalog.GetFlipper(i);
-                isUnlocked[i] = _unlockProgress.IsFlipperUnlocked(flipper);
-                hints[i] = BuildUnlockHint(flipper);
-            }
+                entries[i] = BuildFlipperEntry(_flipperCatalog.GetFlipper(i));
 
-            UIManager.Show(new FlipperSelectView.Args(isUnlocked, hints));
+            UIManager.Show(new FlipperSelectView.Args(entries));
+        }
+
+        FlipperSelectView.FlipperEntry BuildFlipperEntry(FlipperData flipper)
+        {
+            if (null == flipper)
+                return null;
+
+            return new FlipperSelectView.FlipperEntry(
+                DisplayName: flipper.GetDisplayName(),
+                Icon: flipper.GetIcon(),
+                AbilityDescription: flipper.GetAbilityDescription(),
+                DrawbackDescription: flipper.GetDrawbackDescription(),
+                IsUnlocked: _unlockProgress.IsFlipperUnlocked(flipper),
+                UnlockHint: BuildUnlockHint(flipper));
         }
 
         public void OpenContinue()
@@ -81,17 +90,27 @@ namespace Pinball.Lobby
             if (null == saved)
                 return;
 
-            int flipperIndex = null == _flipperCatalog ? FlipperCatalogData.DEFAULT_INDEX : _flipperCatalog.IndexOfId(saved.FlipperId);
-            if (flipperIndex == FlipperCatalogData.INVALID_INDEX)
-                flipperIndex = FlipperCatalogData.DEFAULT_INDEX;
-
+            FlipperData flipper = ResolveSavedFlipper(saved.FlipperId);
             UIManager.Show(new ContinueRunView.Args(
-                FlipperIndex: flipperIndex,
+                FlipperName: null == flipper ? string.Empty : flipper.GetDisplayName(),
+                FlipperIcon: null == flipper ? null : flipper.GetIcon(),
                 StageNumber: saved.StageNumber,
                 TotalStageCount: null == _stageCatalog ? 0 : _stageCatalog.Count,
                 Money: saved.Money,
                 Score: saved.TotalScore,
                 GimmickText: BuildGimmickText(saved)));
+        }
+
+        FlipperData ResolveSavedFlipper(string flipperId)
+        {
+            if (null == _flipperCatalog)
+                return null;
+
+            int flipperIndex = _flipperCatalog.IndexOfId(flipperId);
+            if (flipperIndex == FlipperCatalogData.INVALID_INDEX)
+                flipperIndex = FlipperCatalogData.DEFAULT_INDEX;
+
+            return _flipperCatalog.GetFlipper(flipperIndex);
         }
 
         string BuildUnlockHint(FlipperData flipper)
@@ -109,10 +128,11 @@ namespace Pinball.Lobby
         string BuildGimmickText(IngamePlayData saved)
         {
             StringBuilder builder = new StringBuilder();
-            if (null != saved.GimmickIndices && saved.GimmickIndices.Length > 0)
+            int[] gimmickIndices = saved.GetGimmickIndices();
+            if (null != gimmickIndices && gimmickIndices.Length > 0)
             {
-                for (int i = 0; i < saved.GimmickIndices.Length; ++i)
-                    AppendGimmickLabel(builder, null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(saved.GimmickIndices[i]));
+                for (int i = 0; i < gimmickIndices.Length; ++i)
+                    AppendGimmickLabel(builder, null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]));
 
                 return builder.ToString();
             }

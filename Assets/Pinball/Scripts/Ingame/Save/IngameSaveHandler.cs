@@ -23,29 +23,20 @@ namespace Pinball.Ingame
 
         public void Save(SaveParam param)
         {
-            IngamePlayData data = new IngamePlayData();
-            data.StageNumber = param.StageNumber;
-            data.IsShopPending = param.IsShopPending;
-            data.Money = param.Money;
-            data.TotalScore = param.TotalScore;
-            data.GimmickIndices = param.GimmickIndices;
-            data.FlipperId = param.FlipperId;
-            data.PassiveIds = param.PassiveIds;
-            data.Upgrades = param.Upgrades;
-            SaveManager.SaveIngame(data);
+            SaveManager.SaveIngame(new IngamePlayData(
+                param.StageNumber,
+                param.IsShopPending,
+                param.Money,
+                param.TotalScore,
+                param.GimmickIndices,
+                param.FlipperId,
+                param.PassiveIds,
+                param.Upgrades));
         }
 
         public void UpdateBestStage(int stageNumber)
         {
-            UserData userData = SaveManager.GetUserData();
-            if (null == userData)
-                return;
-
-            if (stageNumber <= userData.BestStageNumber)
-                return;
-
-            userData.BestStageNumber = stageNumber;
-            SaveManager.SaveUser();
+            SaveManager.UpdateBestStage(stageNumber);
         }
 
         public void ClearPlayData()

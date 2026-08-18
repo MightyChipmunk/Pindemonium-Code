@@ -1,5 +1,4 @@
 using System;
-using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -34,6 +33,7 @@ namespace Pinball.UI
         const string TAG_FINAL = "FINAL";
         const string TAG_FINAL_KEY = "ui.stage_card.tag_final";
         const float UPCOMING_ALPHA = 0.7f;
+        const float DEFAULT_TARGET_SCORE_MULTIPLIER = 1f;
         const float CURRENT_RAISE_OFFSET = 40f;
 
         [SerializeField] RectTransform _content = null;
@@ -100,7 +100,7 @@ namespace Pinball.UI
 
         void BindMultiplier(float multiplier)
         {
-            bool hasMultiplier = !Mathf.Approximately(multiplier, StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER);
+            bool hasMultiplier = !Mathf.Approximately(multiplier, DEFAULT_TARGET_SCORE_MULTIPLIER);
             _multiplierLabel.gameObject.SetActive(hasMultiplier);
             if (!hasMultiplier)
                 return;

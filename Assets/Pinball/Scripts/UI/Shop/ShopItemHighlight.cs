@@ -1,6 +1,4 @@
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Pinball.Util;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -12,45 +10,32 @@ namespace Pinball.UI
         const float HOVER_LIFT = 16f;
         const float ENTER_DURATION = 0.18f;
         const float EXIT_DURATION = 0.12f;
-        const float PULSE_FREQUENCY = 1.4f;
+        const float PULSE_HALF_PERIOD = 0.36f;
         const float PULSE_MIN_ALPHA = 0.55f;
-        const float TAU = Mathf.PI * 2f;
+        const float HOVERED_PROGRESS = 1f;
+        const float IDLE_PROGRESS = 0f;
 
         [SerializeField] RectTransform _visual = null;
         [SerializeField] CanvasGroup _fxGroup = null;
 
         Vector2 _basePosition = Vector2.zero;
-        float _progress = 0f;
+        float _progress = IDLE_PROGRESS;
         bool _isInited = false;
         bool _isInteractable = true;
         bool _isHovered = false;
-        CancellationTokenSource _tweenTokenSource = null;
+        Tween _tween = null;
 
         public void Init()
         {
             _basePosition = _visual.anchoredPosition;
             _isInited = true;
-            ApplyProgress(0f);
+            ApplyProgress(IDLE_PROGRESS);
         }
 
         public void Release()
         {
             ResetState();
             _isInited = false;
-        }
-
-        void OnDisable()
-        {
-            ResetState();
-        }
-
-        void ResetState()
-        {
-            CancelTween();
-            _isHovered = false;
-
-            if (_isInited)
-                ApplyProgress(0f);
         }
 
         public void SetInteractable(bool isInteractable)
@@ -60,19 +45,19 @@ namespace Pinball.UI
                 return;
 
             _isHovered = false;
-            if (_progress > 0f)
+            if (_progress > IDLE_PROGRESS)
             {
-                StartTween();
+                PlayTween();
                 return;
             }
 
-            CancelTween();
-            ApplyProgress(0f);
+            KillTween();
+            ApplyProgress(IDLE_PROGRESS);
         }
 
-        void OnDestroy()
+        void OnDisable()
         {
-            CancelTween();
+            ResetState();
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -81,59 +66,61 @@ namespace Pinball.UI
                 return;
 
             _isHovered = true;
-            StartTween();
+            PlayTween();
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
             _isHovered = false;
-            StartTween();
+            PlayTween();
         }
 
-        void StartTween()
+        void ResetState()
         {
-            CancelTween();
-            _tweenTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
-            TweenAsync(_isHovered, _tweenTokenSource.Token).Forget();
+            KillTween();
+            _isHovered = false;
+
+            if (_isInited)
+                ApplyProgress(IDLE_PROGRESS);
         }
 
-        void CancelTween()
+        void PlayTween()
         {
-            if (null == _tweenTokenSource)
-                return;
+            KillTween();
 
-            _tweenTokenSource.Cancel();
-            _tweenTokenSource.Dispose();
-            _tweenTokenSource = null;
-        }
-
-        async UniTaskVoid TweenAsync(bool toHovered, CancellationToken cancellationToken)
-        {
-            float start = _progress;
-            float target = toHovered ? 1f : 0f;
+            bool toHovered = _isHovered;
+            float target = toHovered ? HOVERED_PROGRESS : IDLE_PROGRESS;
             float duration = toHovered ? ENTER_DURATION : EXIT_DURATION;
-            EaseType ease = toHovered ? EaseType.BackOut : EaseType.QuadOut;
-            float time = 0f;
-            while (time < duration)
-            {
-                float ratio = EaseUtil.Interpolate(ease, Mathf.Clamp01(time / duration));
-                ApplyProgress(Mathf.LerpUnclamped(start, target, ratio));
-                time += Time.deltaTime;
-                await UniTask.Yield(cancellationToken);
-            }
+            Ease ease = toHovered ? Ease.OutBack : Ease.OutQuad;
 
-            ApplyProgress(target);
-            if (!toHovered)
+            Tween progressTween = DOTween.To(GetProgress, ApplyProgress, target, duration).SetEase(ease).SetUpdate(true);
+            if (toHovered)
+                progressTween.OnComplete(PlayPulse);
+
+            _tween = progressTween;
+        }
+
+        void PlayPulse()
+        {
+            _tween = _fxGroup
+                .DOFade(PULSE_MIN_ALPHA, PULSE_HALF_PERIOD)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetUpdate(true);
+        }
+
+        void KillTween()
+        {
+            if (null == _tween)
                 return;
 
-            float pulseTime = 0f;
-            while (true)
-            {
-                pulseTime += Time.deltaTime;
-                float pulse = 0.5f + 0.5f * Mathf.Cos(pulseTime * PULSE_FREQUENCY * TAU);
-                _fxGroup.alpha = Mathf.Lerp(PULSE_MIN_ALPHA, 1f, pulse);
-                await UniTask.Yield(cancellationToken);
-            }
+            _tween.Kill();
+            _tween = null;
+        }
+
+        float GetProgress()
+        {
+            return _progress;
         }
 
         void ApplyProgress(float progress)

@@ -1,12 +1,10 @@
 using Cysharp.Threading.Tasks;
-using Pinball.Audio;
 using Pinball.Core;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using Pinball.Save;
-using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
 using UnityEngine;
@@ -15,11 +13,7 @@ namespace Pinball.Lobby
 {
     public class LobbySceneManager : BehaviourBase
     {
-        [SerializeField] SettingsConfigData _settingsConfig = null;
-        [SerializeField] AudioStorage _audioStorage = null;
-        [SerializeField] LocalizationTableData _localizationTable = null;
-        [SerializeField] UIViewCatalogData _viewCatalog = null;
-        [SerializeField] BlockerView _blockerPrefab = null;
+        [SerializeField] GameBootStrapConfig _bootStrapConfig = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
@@ -31,23 +25,7 @@ namespace Pinball.Lobby
 
         void Awake()
         {
-            Init();
-        }
-
-        void OnDestroy()
-        {
-            Release();
-        }
-
-        public void Init()
-        {
-            SaveManager.EnsureInit();
-            AudioStorage.Init(_audioStorage);
-            GameSettings.EnsureInit(_settingsConfig);
-            LocalizationManager.EnsureInit();
-            LocalizationTable.EnsureInit(_localizationTable);
-            UIManager.EnsureInit(_viewCatalog);
-            Blocker.EnsureInit(_blockerPrefab);
+            GameBootStrap.EnsureInit(_bootStrapConfig);
             _runSetupController = new LobbyRunSetupController();
             _runSetupController.Init(new LobbyRunSetupController.InitParam(
                 FlipperCatalog: _flipperCatalog,
@@ -76,11 +54,10 @@ namespace Pinball.Lobby
 
         static int GetBestStageNumber()
         {
-            UserData userData = SaveManager.GetUserData();
-            return null == userData ? 0 : userData.BestStageNumber;
+            return SaveManager.BestStageNumber;
         }
 
-        public void Release()
+        void OnDestroy()
         {
             LocalizationManager.OnLanguageChanged -= RefreshLobbyLabels;
             UIManager.Hide(UIViewCatalogData.EViewType.Settings);
@@ -93,8 +70,6 @@ namespace Pinball.Lobby
 
             if (null != _uiRoot)
                 _uiRoot.Release();
-
-            AudioStorage.Release();
         }
 
         void OnContinueRequested()

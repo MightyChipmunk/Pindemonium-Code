@@ -12,8 +12,6 @@ using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.UI;
 using Pinball.Save;
-using Pinball.Localization;
-using Pinball.Settings;
 using Pinball.UI;
 using Pinball.Util;
 using UnityEngine;
@@ -36,6 +34,7 @@ namespace Pinball.Ingame
         const int STAGE_CLEAR_BASE_MONEY = 3;
         const int FIRST_STAGE_NUMBER = 1;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 4;
+        const int PASSIVE_OWNED_COUNT = 1;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -48,17 +47,13 @@ namespace Pinball.Ingame
         [SerializeField] FXPoolData _fxPoolData = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
         [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
-        [SerializeField] UIViewCatalogData _viewCatalog = null;
-        [SerializeField] SettingsConfigData _settingsConfig = null;
-        [SerializeField] AudioStorage _audioStorage = null;
-        [SerializeField] LocalizationTableData _localizationTable = null;
+        [SerializeField] GameBootStrapConfig _bootStrapConfig = null;
         [SerializeField] ComboConfigData _comboConfig = null;
         [SerializeField] ShopConfigData _shopConfig = null;
         [SerializeField] ShopCatalogData _shopCatalog = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] IngameCheatHandler _cheatHandler = null;
-        [SerializeField] BlockerView _blockerPrefab = null;
 
         IngameDirector _director = null;
         PlayerController _playerController = null;
@@ -79,6 +74,8 @@ namespace Pinball.Ingame
         UnlockProgress _unlockProgress = null;
         FlipperData _selectedFlipper = null;
         FlipperData.RunSetup _runSetup = null;
+        List<UI.OwnedItemsView.Entry> _passiveEntries = null;
+        List<UI.OwnedItemsView.Entry> _upgradeEntries = null;
         int _stageClearMoney = STAGE_CLEAR_BASE_MONEY;
         MapRoot _currentMap = null;
         EGameState _gameState = EGameState.Ready;
@@ -90,18 +87,7 @@ namespace Pinball.Ingame
 
         void Awake()
         {
-            Init();
-        }
-
-        void OnDestroy()
-        {
-            Release();
-        }
-
-        public void Init()
-        {
-            SaveManager.EnsureInit();
-            AudioStorage.Init(_audioStorage);
+            GameBootStrap.EnsureInit(_bootStrapConfig);
             _saveHandler = new IngameSaveHandler();
             _unlockProgress = new UnlockProgress();
             _unlockProgress.Init(_rewardCatalog);
@@ -118,7 +104,7 @@ namespace Pinball.Ingame
                 startStageNumber = savedData.StageNumber;
                 startMoney = savedData.Money;
                 startScore = savedData.TotalScore;
-                startGimmickIndices = savedData.GimmickIndices;
+                startGimmickIndices = savedData.GetGimmickIndices();
                 flipperIndex = ResolveSavedFlipperIndex(savedData.FlipperId);
                 _isShopPending = savedData.IsShopPending;
             }
@@ -174,6 +160,7 @@ namespace Pinball.Ingame
                 IsInterestDisabled: _runSetup.IsInterestDisabled));
             _shopController.OnNextStageRequested += OpenNextStageSelect;
             _shopController.OnLoadoutChanged += SaveProgress;
+            _shopController.OnLoadoutChanged += RefreshOwnedItems;
             _stageSelectController = new IngameStageSelectController();
             _stageSelectController.Init(new IngameStageSelectController.InitParam(
                 StageCatalog: _stageCatalog,
@@ -233,12 +220,10 @@ namespace Pinball.Ingame
             _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
             _uiRoot.SetScore(_scoreCounter.Current);
             _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
+            _passiveEntries = new List<UI.OwnedItemsView.Entry>();
+            _upgradeEntries = new List<UI.OwnedItemsView.Entry>();
+            RefreshOwnedItems();
 
-            GameSettings.EnsureInit(_settingsConfig);
-            LocalizationManager.EnsureInit();
-            LocalizationTable.EnsureInit(_localizationTable);
-            UIManager.EnsureInit(_viewCatalog);
-            Blocker.EnsureInit(_blockerPrefab);
             UIManager.OnEvent += OnUIEvent;
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
@@ -249,7 +234,7 @@ namespace Pinball.Ingame
                 OpenStageSelect();
         }
 
-        public void Release()
+        void OnDestroy()
         {
             UIManager.OnEvent -= OnUIEvent;
             UIManager.HideAll();
@@ -350,6 +335,18 @@ namespace Pinball.Ingame
             _selectedFlipper = null;
             _runSetup = null;
 
+            if (null != _passiveEntries)
+            {
+                _passiveEntries.Clear();
+                _passiveEntries = null;
+            }
+
+            if (null != _upgradeEntries)
+            {
+                _upgradeEntries.Clear();
+                _upgradeEntries = null;
+            }
+
             if (null != _drainZone)
                 _drainZone.Release();
 
@@ -376,7 +373,6 @@ namespace Pinball.Ingame
             if (null != _ballSpawner)
                 _ballSpawner.Release();
 
-            AudioStorage.Release();
             _saveHandler = null;
         }
 
@@ -430,7 +426,7 @@ namespace Pinball.Ingame
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
         {
             AudioManager.Play(AudioStorage.EAudioClipType.ComboUp);
-            UIManager.Show(new ComboView.Args(comboCount, multiplier, pendingBonus));
+            _uiRoot.SetCombo(comboCount, multiplier, pendingBonus);
         }
 
         void OnSurgeChargedChanged(bool isCharged)
@@ -445,11 +441,11 @@ namespace Pinball.Ingame
         {
             if (bonusScore <= 0)
             {
-                UIManager.Hide(UIViewCatalogData.EViewType.Combo);
+                _uiRoot.HideCombo();
                 return;
             }
 
-            UIManager.Show(new ComboView.BonusArgs(comboCount, multiplier, bonusScore));
+            _uiRoot.ShowComboBonus(comboCount, multiplier, bonusScore);
         }
 
         void OnStageStarted(int stageNumber, StageData stage)
@@ -506,12 +502,53 @@ namespace Pinball.Ingame
 
             RewardUnlockView.Entry[] entries = new RewardUnlockView.Entry[entryCount];
             for (int i = 0; i < reward.FlipperCount; ++i)
-                entries[i] = new RewardUnlockView.Entry(RewardUnlockView.ERewardKind.Flipper, GetFlipperCatalogIndex(reward.GetFlipper(i)));
+                entries[i] = BuildFlipperRewardEntry(reward.GetFlipper(i));
 
             for (int i = 0; i < reward.ItemCount; ++i)
-                entries[reward.FlipperCount + i] = new RewardUnlockView.Entry(RewardUnlockView.ERewardKind.ShopItem, GetCatalogIndex(reward.GetItem(i)));
+                entries[reward.FlipperCount + i] = BuildItemRewardEntry(reward.GetItem(i));
 
             UIManager.Show(new RewardUnlockView.Args(entries));
+        }
+
+        static RewardUnlockView.Entry BuildFlipperRewardEntry(FlipperData flipper)
+        {
+            if (null == flipper)
+                return null;
+
+            return new RewardUnlockView.Entry(
+                Kind: RewardUnlockView.ERewardKind.Flipper,
+                Icon: flipper.GetIcon(),
+                DisplayName: flipper.GetDisplayName(),
+                Description: flipper.GetAbilityDescription());
+        }
+
+        static RewardUnlockView.Entry BuildItemRewardEntry(ShopItemData item)
+        {
+            if (null == item)
+                return null;
+
+            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
+            return new RewardUnlockView.Entry(
+                Kind: isPassive ? RewardUnlockView.ERewardKind.Passive : RewardUnlockView.ERewardKind.Upgrade,
+                Icon: item.GetIcon(),
+                DisplayName: item.GetDisplayName(),
+                Description: item.GetDescription());
+        }
+
+        void RefreshOwnedItems()
+        {
+            if (null == _passiveEntries || null == _upgradeEntries)
+                return;
+
+            _passiveEntries.Clear();
+            for (int i = 0; i < _loadout.PassiveCount; ++i)
+                _passiveEntries.Add(new UI.OwnedItemsView.Entry(_loadout.GetPassive(i).GetIcon(), PASSIVE_OWNED_COUNT));
+
+            _upgradeEntries.Clear();
+            for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
+                _upgradeEntries.Add(new UI.OwnedItemsView.Entry(_loadout.GetUpgrade(i).GetIcon(), _loadout.GetUpgradeCount(i)));
+
+            _uiRoot.SetOwnedItems(_passiveEntries, _upgradeEntries);
         }
 
         string[] BuildPassiveIds()
@@ -527,11 +564,7 @@ namespace Pinball.Ingame
         {
             IngamePlayData.UpgradeEntry[] entries = new IngamePlayData.UpgradeEntry[_loadout.UpgradeKindCount];
             for (int i = 0; i < entries.Length; ++i)
-            {
-                entries[i] = new IngamePlayData.UpgradeEntry();
-                entries[i].Id = _loadout.GetUpgrade(i).GetId();
-                entries[i].Count = _loadout.GetUpgradeCount(i);
-            }
+                entries[i] = new IngamePlayData.UpgradeEntry(_loadout.GetUpgrade(i).GetId(), _loadout.GetUpgradeCount(i));
 
             return entries;
         }
@@ -541,18 +574,20 @@ namespace Pinball.Ingame
             if (null == savedData || null == _shopCatalog)
                 return;
 
-            if (null != savedData.PassiveIds)
+            string[] passiveIds = savedData.GetPassiveIds();
+            if (null != passiveIds)
             {
-                for (int i = 0; i < savedData.PassiveIds.Length; ++i)
-                    _loadout.TryAddPassive(_shopCatalog.FindById(savedData.PassiveIds[i]));
+                for (int i = 0; i < passiveIds.Length; ++i)
+                    _loadout.TryAddPassive(_shopCatalog.FindById(passiveIds[i]));
             }
 
-            if (null == savedData.Upgrades)
+            IngamePlayData.UpgradeEntry[] upgrades = savedData.GetUpgrades();
+            if (null == upgrades)
                 return;
 
-            for (int i = 0; i < savedData.Upgrades.Length; ++i)
+            for (int i = 0; i < upgrades.Length; ++i)
             {
-                IngamePlayData.UpgradeEntry entry = savedData.Upgrades[i];
+                IngamePlayData.UpgradeEntry entry = upgrades[i];
                 ShopItemData item = _shopCatalog.FindById(entry.Id);
                 if (null == item)
                     continue;
@@ -589,14 +624,6 @@ namespace Pinball.Ingame
                 _loadout.TryAddPassive(candidates[pickIndex]);
                 candidates.RemoveAt(pickIndex);
             }
-        }
-
-        int GetFlipperCatalogIndex(FlipperData flipper)
-        {
-            if (null == _flipperCatalog)
-                return FlipperCatalogData.INVALID_INDEX;
-
-            return _flipperCatalog.IndexOf(flipper);
         }
 
         int ResolveSavedFlipperIndex(string flipperId)
@@ -646,7 +673,7 @@ namespace Pinball.Ingame
                 return;
 
             int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
-            UIManager.Show(new StageInfoView.Args(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds));
+            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds);
         }
 
         void OnBallLaunched()
@@ -745,29 +772,29 @@ namespace Pinball.Ingame
 
         ResultStatsView.Args BuildResultStats()
         {
-            int[] passiveIndices = new int[_loadout.PassiveCount];
-            for (int i = 0; i < passiveIndices.Length; ++i)
-                passiveIndices[i] = GetCatalogIndex(_loadout.GetPassive(i));
+            ResultStatsView.ItemEntry[] passives = new ResultStatsView.ItemEntry[_loadout.PassiveCount];
+            for (int i = 0; i < passives.Length; ++i)
+                passives[i] = BuildResultItemEntry(_loadout.GetPassive(i), PASSIVE_OWNED_COUNT);
 
-            ResultStatsView.ItemCountEntry[] upgrades = new ResultStatsView.ItemCountEntry[_loadout.UpgradeKindCount];
+            ResultStatsView.ItemEntry[] upgrades = new ResultStatsView.ItemEntry[_loadout.UpgradeKindCount];
             for (int i = 0; i < upgrades.Length; ++i)
-                upgrades[i] = new ResultStatsView.ItemCountEntry(GetCatalogIndex(_loadout.GetUpgrade(i)), _loadout.GetUpgradeCount(i));
+                upgrades[i] = BuildResultItemEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i));
 
             return new ResultStatsView.Args(
                 StageNumber: _stageTracker.StageNumber,
                 Score: _scoreCounter.Current,
                 Money: _wallet.Current,
                 UsedBallCount: _ballFlow.UsedBallCount,
-                PassiveIndices: passiveIndices,
+                Passives: passives,
                 Upgrades: upgrades);
         }
 
-        int GetCatalogIndex(ShopItemData item)
+        static ResultStatsView.ItemEntry BuildResultItemEntry(ShopItemData item, int count)
         {
-            if (null == _shopCatalog)
-                return ShopCatalogData.INVALID_INDEX;
+            if (null == item)
+                return null;
 
-            return _shopCatalog.IndexOf(item);
+            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
         }
 
         void SaveProgress()

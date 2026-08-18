@@ -1,9 +1,8 @@
 using Pinball.Ingame.Map;
-using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using UnityEngine;
 
-namespace Pinball.UI
+namespace Pinball.Ingame.Stage
 {
     public static class StageGimmickLabelFormatter
     {

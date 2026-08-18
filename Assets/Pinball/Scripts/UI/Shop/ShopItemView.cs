@@ -1,5 +1,4 @@
 using System;
-using Pinball.Ingame;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,7 +8,7 @@ namespace Pinball.UI
     public class ShopItemView : MonoBehaviour
     {
         public record BindParam(
-            ShopItemData.EItemKind Kind,
+            bool IsPassive,
             string Title,
             Sprite Icon,
             string Description,
@@ -53,7 +52,7 @@ namespace Pinball.UI
             _button.interactable = true;
             _highlight.SetInteractable(true);
             _canvasGroup.alpha = 1f;
-            _bandImage.sprite = param.Kind == ShopItemData.EItemKind.Passive ? _passiveBandSprite : _upgradeBandSprite;
+            _bandImage.sprite = param.IsPassive ? _passiveBandSprite : _upgradeBandSprite;
             _titleLabel.text = param.Title;
             _iconImage.sprite = param.Icon;
             _iconImage.enabled = null != param.Icon;

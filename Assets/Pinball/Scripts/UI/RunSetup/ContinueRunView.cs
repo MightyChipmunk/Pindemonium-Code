@@ -1,5 +1,4 @@
 using System.Globalization;
-using Pinball.Ingame;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -10,7 +9,8 @@ namespace Pinball.UI
     public class ContinueRunView : UIViewBase
     {
         public record Args(
-            int FlipperIndex,
+            string FlipperName,
+            Sprite FlipperIcon,
             int StageNumber,
             int TotalStageCount,
             int Money,
@@ -27,7 +27,6 @@ namespace Pinball.UI
         const string EMPTY_GIMMICK_TEXT = "NONE";
         const string EMPTY_GIMMICK_KEY = "ui.continue.empty_gimmick";
 
-        [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] FlipperCardView _card = null;
         [SerializeField] TMP_Text _stageLabel = null;
         [SerializeField] TMP_Text _moneyLabel = null;
@@ -54,10 +53,9 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            FlipperData flipper = null == _flipperCatalog ? null : _flipperCatalog.GetFlipper(viewArgs.FlipperIndex);
             _card.Bind(new FlipperCardView.BindParam(
-                DisplayName: null == flipper ? string.Empty : flipper.GetDisplayName(),
-                Icon: null == flipper ? null : flipper.GetIcon(),
+                DisplayName: viewArgs.FlipperName ?? string.Empty,
+                Icon: viewArgs.FlipperIcon,
                 IsUnlocked: true,
                 LockedHint: string.Empty));
             _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);

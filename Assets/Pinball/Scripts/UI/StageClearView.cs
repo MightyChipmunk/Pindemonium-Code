@@ -1,8 +1,5 @@
-using System;
-using System.Threading;
-using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using Pinball.Localization;
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 
@@ -23,7 +20,7 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _label = null;
         [SerializeField] RectTransform _panel = null;
 
-        CancellationTokenSource _cancellationTokenSource = null;
+        Tween _playTween = null;
 
         public override bool IsTransient => true;
 
@@ -34,49 +31,48 @@ namespace Pinball.UI
                 return;
 
             _label.text = LocalizationTable.Format(CLEAR_KEY, CLEAR_FORMAT, viewArgs.StageNumber);
-            _panel.localScale = Vector3.zero;
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
-            PlayAsync(_cancellationTokenSource.Token).Forget();
+            PlayShow();
         }
 
         public override void OnReturn()
         {
-            ReleasePlayHandle();
+            KillPlay();
         }
 
-        void OnDestroy()
+        public override void OnTerminate()
         {
-            ReleasePlayHandle();
+            KillPlay();
         }
 
-        void ReleasePlayHandle()
+        void PlayShow()
         {
-            if (null == _cancellationTokenSource)
-                return;
+            KillPlay();
+            _panel.localScale = Vector3.zero;
 
-            _cancellationTokenSource.Cancel();
-            _cancellationTokenSource.Dispose();
-            _cancellationTokenSource = null;
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(_panel.DOScale(Vector3.one, SCALE_DURATION).SetEase(Ease.OutElastic));
+            sequence.AppendInterval(HOLD_DURATION);
+            sequence.OnComplete(OnShowCompleted);
+            sequence.SetUpdate(true);
+            _playTween = sequence;
         }
 
-        async UniTaskVoid PlayAsync(CancellationToken cancellationToken)
+        void OnShowCompleted()
         {
-            float time = 0f;
-            while (time <= SCALE_DURATION)
-            {
-                float ratio = EaseUtil.Interpolate(EaseType.ElasticOut, time / SCALE_DURATION);
-                _panel.localScale = Vector3.one * ratio;
-                time += Time.deltaTime;
-                await UniTask.Yield(cancellationToken);
-            }
-
-            _panel.localScale = Vector3.one;
-            await UniTask.Delay(TimeSpan.FromSeconds(HOLD_DURATION), cancellationToken: cancellationToken);
-
+            _playTween = null;
             UIManager.RaiseEvent(UIManager.EEvent.StageClearFinished);
 
             if (null != OwnPool)
                 OwnPool.Return(this);
+        }
+
+        void KillPlay()
+        {
+            if (null == _playTween)
+                return;
+
+            _playTween.Kill();
+            _playTween = null;
         }
     }
 }

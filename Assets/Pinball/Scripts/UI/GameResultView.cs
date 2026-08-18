@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Threading;
-using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using Pinball.Localization;
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,17 +50,18 @@ namespace Pinball.UI
 
         Args _args = null;
         Vector2 _panelBasePosition = Vector2.zero;
-        bool _isPanelBaseCached = false;
-        CancellationTokenSource _appearTokenSource = null;
+        Tween _appearTween = null;
 
         public override void OnGenerate()
         {
+            _panelBasePosition = _panel.anchoredPosition;
             _statsButton.onClick.AddListener(OnStatsClicked);
             _lobbyButton.onClick.AddListener(OnLobbyClicked);
         }
 
         public override void OnTerminate()
         {
+            KillAppear();
             _statsButton.onClick.RemoveListener(OnStatsClicked);
             _lobbyButton.onClick.RemoveListener(OnLobbyClicked);
         }
@@ -75,21 +74,13 @@ namespace Pinball.UI
 
             _args = viewArgs;
             ApplyResult(viewArgs);
-            CachePanelBasePosition();
-            CancelAppear();
-            _appearTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
-            AppearAsync(_appearTokenSource.Token).Forget();
+            PlayAppear();
         }
 
         public override void OnReturn()
         {
-            CancelAppear();
+            KillAppear();
             _args = null;
-        }
-
-        void OnDestroy()
-        {
-            CancelAppear();
         }
 
         void ApplyResult(Args args)
@@ -108,45 +99,34 @@ namespace Pinball.UI
             _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, args.Stats.StageNumber);
         }
 
-        void CachePanelBasePosition()
+        void PlayAppear()
         {
-            if (_isPanelBaseCached)
-                return;
-
-            _panelBasePosition = _panel.anchoredPosition;
-            _isPanelBaseCached = true;
-        }
-
-        void CancelAppear()
-        {
-            if (null == _appearTokenSource)
-                return;
-
-            _appearTokenSource.Cancel();
-            _appearTokenSource.Dispose();
-            _appearTokenSource = null;
-        }
-
-        async UniTaskVoid AppearAsync(CancellationToken cancellationToken)
-        {
+            KillAppear();
             _canvasGroup.interactable = false;
-            float time = 0f;
-            while (time <= APPEAR_DURATION)
-            {
-                float ratio = EaseUtil.Interpolate(EaseType.QuadOut, Mathf.Clamp01(time / APPEAR_DURATION));
-                ApplyAppearRatio(ratio);
-                time += Time.deltaTime;
-                await UniTask.Yield(cancellationToken);
-            }
+            _canvasGroup.alpha = 0f;
+            _panel.anchoredPosition = _panelBasePosition + Vector2.down * APPEAR_SLIDE_OFFSET;
 
-            ApplyAppearRatio(1f);
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(_canvasGroup.DOFade(1f, APPEAR_DURATION).SetEase(Ease.OutQuad));
+            sequence.Join(_panel.DOAnchorPos(_panelBasePosition, APPEAR_DURATION).SetEase(Ease.OutQuad));
+            sequence.OnComplete(OnAppearCompleted);
+            sequence.SetUpdate(true);
+            _appearTween = sequence;
+        }
+
+        void OnAppearCompleted()
+        {
+            _appearTween = null;
             _canvasGroup.interactable = true;
         }
 
-        void ApplyAppearRatio(float ratio)
+        void KillAppear()
         {
-            _canvasGroup.alpha = ratio;
-            _panel.anchoredPosition = _panelBasePosition + (Vector2.down * (APPEAR_SLIDE_OFFSET * (1f - ratio)));
+            if (null == _appearTween)
+                return;
+
+            _appearTween.Kill();
+            _appearTween = null;
         }
 
         void OnStatsClicked()

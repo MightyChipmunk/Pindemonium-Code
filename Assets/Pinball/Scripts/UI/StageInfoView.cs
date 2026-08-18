@@ -4,13 +4,8 @@ using UnityEngine;
 
 namespace Pinball.UI
 {
-    public class StageInfoView : UIViewBase
+    public class StageInfoView : MonoBehaviour
     {
-        public record Args(int StageNumber, int TargetScore, int StageScore, int RemainingSeconds) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageInfo;
-        }
-
         public const int NO_TIME_LIMIT = -1;
 
         const string STAGE_FORMAT = "STAGE {0}";
@@ -26,22 +21,15 @@ namespace Pinball.UI
         [SerializeField] GameObject _timeRoot = null;
         [SerializeField] TMP_Text _timeLabel = null;
 
-        public override void Bind(UIViewArgs args)
+        public void SetInfo(int stageNumber, int targetScore, int stageScore, int remainingSeconds)
         {
-            Args viewArgs = args as Args;
-            if (null == viewArgs)
-                return;
-
-            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber);
-            _goalLabel.text = LocalizationTable.Format(SCORE_GOAL_KEY, SCORE_GOAL_FORMAT, viewArgs.StageScore, viewArgs.TargetScore);
-            BindTime(viewArgs.RemainingSeconds);
+            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, stageNumber);
+            _goalLabel.text = LocalizationTable.Format(SCORE_GOAL_KEY, SCORE_GOAL_FORMAT, stageScore, targetScore);
+            BindTime(remainingSeconds);
         }
 
         void BindTime(int remainingSeconds)
         {
-            if (null == _timeLabel)
-                return;
-
             bool hasTimeLimit = remainingSeconds != NO_TIME_LIMIT;
             _timeRoot.SetActive(hasTimeLimit);
             if (!hasTimeLimit)
