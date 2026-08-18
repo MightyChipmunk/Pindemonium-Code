@@ -10,10 +10,6 @@ namespace Pinball.Ingame
         public const int MAIN_VALUE_INDEX = 0;
         public const int SUB_VALUE_INDEX = 1;
 
-        const string KEY_PREFIX = "item.";
-        const string NAME_KEY_SUFFIX = ".name";
-        const string DESCRIPTION_KEY_SUFFIX = ".desc";
-
         public enum EItemKind
         {
             Passive = 0,
@@ -43,8 +39,8 @@ namespace Pinball.Ingame
             BallCloneSpawn = 18,
         }
 
-        [SerializeField] string _displayName = string.Empty;
-        [SerializeField, TextArea] string _description = string.Empty;
+        [SerializeField] string _nameKey = string.Empty;
+        [SerializeField] string _descriptionKey = string.Empty;
         [SerializeField] Sprite _icon = null;
         [SerializeField] int _price = 1;
         [SerializeField] EItemKind _kind = EItemKind.Upgrade;
@@ -75,12 +71,12 @@ namespace Pinball.Ingame
 
         public string GetDisplayName()
         {
-            return LocalizationTable.Get(KEY_PREFIX + GetId() + NAME_KEY_SUFFIX, _displayName);
+            return LocalizationTable.Get(_nameKey, _nameKey);
         }
 
         public string GetDescription()
         {
-            return LocalizationTable.Get(KEY_PREFIX + GetId() + DESCRIPTION_KEY_SUFFIX, _description);
+            return LocalizationTable.Get(_descriptionKey, _descriptionKey);
         }
 
         public Sprite GetIcon()
