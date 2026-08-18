@@ -80,15 +80,21 @@ namespace Pinball.Ingame.Map
             _spring.Init(param.OnSpringChargeEvent);
         }
 
+        public void Suspend()
+        {
+            CancelChainDamage();
+            _spring.SetCharging(false);
+
+            if (null == _interactables)
+                return;
+
+            for (int i = 0; i < _interactables.Length; ++i)
+                _interactables[i].Release();
+        }
+
         public void Release()
         {
-            if (null != _cancellationTokenSource)
-            {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
-            }
-
+            CancelChainDamage();
             _lineFXPlayer = null;
             _spring.Release();
             _rightFlipper.OnBallStruck -= OnFlipperBallStruck;
@@ -116,6 +122,16 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _interactables.Length; ++i)
                 _interactables[i].Release();
+        }
+
+        void CancelChainDamage()
+        {
+            if (null == _cancellationTokenSource)
+                return;
+
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = null;
         }
 
         public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount)

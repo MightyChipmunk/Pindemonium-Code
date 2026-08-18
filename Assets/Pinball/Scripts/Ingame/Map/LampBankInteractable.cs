@@ -83,7 +83,9 @@ namespace Pinball.Ingame.Map
             GainScore(_clearScoreReward);
             PlayFX(_clearFX, transform.position);
             PlayBankClearedSound();
-            PlaySirenAsync(_cancellationTokenSource.Token).Forget();
+
+            if (null != _cancellationTokenSource)
+                PlaySirenAsync(_cancellationTokenSource.Token).Forget();
         }
 
         async UniTaskVoid PlaySirenAsync(CancellationToken cancellationToken)

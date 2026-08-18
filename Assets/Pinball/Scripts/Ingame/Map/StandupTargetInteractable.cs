@@ -61,7 +61,9 @@ namespace Pinball.Ingame.Map
         protected override void OnBallHit(Collision2D collision, float damage)
         {
             PlayHitMotion();
-            CooldownAsync(_cancellationTokenSource.Token).Forget();
+
+            if (null != _cancellationTokenSource)
+                CooldownAsync(_cancellationTokenSource.Token).Forget();
         }
 
         async UniTaskVoid CooldownAsync(CancellationToken cancellationToken)

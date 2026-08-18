@@ -58,7 +58,9 @@ namespace Pinball.Ingame.Map
             GainScore(_clearScoreReward);
             PlayBankClearedSound();
             PlayClearShake();
-            ResetBankAsync(_cancellationTokenSource.Token).Forget();
+
+            if (null != _cancellationTokenSource)
+                ResetBankAsync(_cancellationTokenSource.Token).Forget();
         }
 
         void PlayClearShake()

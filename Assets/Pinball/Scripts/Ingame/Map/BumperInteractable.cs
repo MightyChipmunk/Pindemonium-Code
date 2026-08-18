@@ -298,7 +298,9 @@ namespace Pinball.Ingame.Map
                 _visual.gameObject.SetActive(false);
 
             OnBroken?.Invoke();
-            RespawnAsync(_cancellationTokenSource.Token).Forget();
+
+            if (null != _cancellationTokenSource)
+                RespawnAsync(_cancellationTokenSource.Token).Forget();
         }
 
         async UniTaskVoid RespawnAsync(CancellationToken cancellationToken)

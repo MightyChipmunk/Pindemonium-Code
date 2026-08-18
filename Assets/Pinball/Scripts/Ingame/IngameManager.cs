@@ -460,6 +460,7 @@ namespace Pinball.Ingame
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
             _ballFlow.DespawnBalls();
+            SuspendCurrentMap();
 
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetBallResupplyMoney());
@@ -483,6 +484,7 @@ namespace Pinball.Ingame
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
             _ballFlow.DespawnBalls();
+            SuspendCurrentMap();
             _saveHandler.ClearPlayData();
             ClearRewardData reward = _unlockProgress.GrantClearReward();
             ShowGameResult(GameResultView.EResult.Clear);
@@ -717,8 +719,17 @@ namespace Pinball.Ingame
         {
             _gameState = EGameState.GameOver;
             _playerController.ResetControlStates();
+            SuspendCurrentMap();
             _saveHandler.ClearPlayData();
             ShowGameResult(GameResultView.EResult.GameOver);
+        }
+
+        void SuspendCurrentMap()
+        {
+            if (null == _currentMap)
+                return;
+
+            _currentMap.Suspend();
         }
 
         void ShowGameResult(GameResultView.EResult result)
