@@ -186,7 +186,6 @@ namespace Pinball.Ingame
 
             if (null != _cheatHandler)
                 _cheatHandler.Init(new IngameCheatHandler.InitParam(
-                    Catalog: _shopCatalog,
                     Wallet: _wallet,
                     Loadout: _loadout,
                     OnCheatApplied: OnCheatApplied));

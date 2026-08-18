@@ -27,14 +27,5 @@ namespace Pinball.Ingame
             --_remaining;
             OnChanged?.Invoke(_remaining);
         }
-
-        public void Add(int amount)
-        {
-            if (amount <= 0)
-                return;
-
-            _remaining += amount;
-            OnChanged?.Invoke(_remaining);
-        }
     }
 }

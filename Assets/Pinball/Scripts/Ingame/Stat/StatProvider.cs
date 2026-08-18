@@ -35,11 +35,6 @@ namespace Pinball.Ingame.Stat
             _comboCountGetter = null;
         }
 
-        public FlipperData.RunSetup GetRunSetup()
-        {
-            return _runSetup;
-        }
-
         public float GetPerfectImpulseScale()
         {
             return _tuning.PerfectImpulseScale;

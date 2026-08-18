@@ -14,7 +14,6 @@ namespace Pinball.Ingame.Cheat
         }
 
         public record InitParam(
-            ShopCatalogData Catalog,
             MoneyWallet Wallet,
             PlayerLoadout Loadout,
             Action OnCheatApplied);
@@ -22,14 +21,12 @@ namespace Pinball.Ingame.Cheat
         const int MIN_APPLY_COUNT = 1;
         const int PASSIVE_OWNED_COUNT = 1;
 
-        ShopCatalogData _catalog = null;
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
         public void Init(InitParam param)
         {
-            _catalog = param.Catalog;
             _wallet = param.Wallet;
             _loadout = param.Loadout;
             _onCheatApplied = param.OnCheatApplied;
@@ -40,20 +37,11 @@ namespace Pinball.Ingame.Cheat
             _onCheatApplied = null;
             _loadout = null;
             _wallet = null;
-            _catalog = null;
         }
 
         public bool IsReady()
         {
             return null != _wallet && null != _loadout;
-        }
-
-        public bool IsCatalogItem(ShopItemData item)
-        {
-            if (null == _catalog || null == item)
-                return false;
-
-            return _catalog.IndexOf(item) != ShopCatalogData.INVALID_INDEX;
         }
 
         public int GetMoney()
