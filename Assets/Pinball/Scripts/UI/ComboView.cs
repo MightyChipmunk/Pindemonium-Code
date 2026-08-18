@@ -14,7 +14,7 @@ namespace Pinball.UI
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Combo;
         }
 
-        public record BonusArgs(int BonusScore) : UIViewArgs
+        public record BonusArgs(int ComboCount, float Multiplier, int BonusScore) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Combo;
         }
@@ -65,32 +65,41 @@ namespace Pinball.UI
         void BindCombo(Args args)
         {
             CancelScheduledHide();
-            _comboLabel.text = LocalizationTable.Format(COMBO_KEY, COMBO_FORMAT, args.ComboCount);
-            _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, args.Multiplier);
+            BindComboLabels(args.ComboCount, args.Multiplier);
 
             if (args.ComboCount > _lastComboCount)
                 _punch.Play();
 
             _lastComboCount = args.ComboCount;
             _flameEffect.SetCombo(args.ComboCount);
-
-            if (args.PendingBonus <= 0)
-            {
-                _bonusLabel.gameObject.SetActive(false);
-                return;
-            }
-
-            _bonusLabel.text = string.Format(BONUS_FORMAT, args.PendingBonus);
-            _bonusLabel.gameObject.SetActive(true);
+            BindBonusLabel(args.PendingBonus);
         }
 
         void BindBonus(BonusArgs args)
         {
             CancelScheduledHide();
-            _bonusLabel.text = string.Format(BONUS_FORMAT, args.BonusScore);
-            _bonusLabel.gameObject.SetActive(true);
+            BindComboLabels(args.ComboCount, args.Multiplier);
+            BindBonusLabel(args.BonusScore);
             _hideTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             HideAfterDelayAsync(_hideTokenSource.Token).Forget();
+        }
+
+        void BindComboLabels(int comboCount, float multiplier)
+        {
+            _comboLabel.text = LocalizationTable.Format(COMBO_KEY, COMBO_FORMAT, comboCount);
+            _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, multiplier);
+        }
+
+        void BindBonusLabel(int bonusScore)
+        {
+            if (bonusScore <= 0)
+            {
+                _bonusLabel.gameObject.SetActive(false);
+                return;
+            }
+
+            _bonusLabel.text = string.Format(BONUS_FORMAT, bonusScore);
+            _bonusLabel.gameObject.SetActive(true);
         }
 
         void CancelScheduledHide()

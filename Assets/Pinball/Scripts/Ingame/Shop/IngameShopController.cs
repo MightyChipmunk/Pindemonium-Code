@@ -125,23 +125,36 @@ namespace Pinball.Ingame
             if (null == _session)
                 return;
 
-            UIManager.Show(new ShopView.Args(_wallet.Current, _session.CurrentRerollPrice, _session.OfferSlotCount));
-
-            for (int i = 0; i < _session.OfferSlotCount; ++i)
-                UIManager.Show(new ShopView.OfferArgs(i, GetOfferItemIndex(i)));
-
-            RefreshOwnedView();
+            UIManager.Show(new ShopView.Args(
+                Money: _wallet.Current,
+                RerollPrice: _session.CurrentRerollPrice,
+                OfferItemIndices: BuildOfferItemIndices(),
+                PassiveCount: _loadout.PassiveCount,
+                PassiveSlotCount: _loadout.PassiveSlotCount,
+                UpgradeKindCount: _loadout.UpgradeKindCount,
+                OwnedEntries: BuildOwnedEntries()));
         }
 
-        void RefreshOwnedView()
+        int[] BuildOfferItemIndices()
         {
-            UIManager.Show(new ShopView.OwnedResetArgs(_loadout.PassiveCount, _loadout.PassiveSlotCount, _loadout.UpgradeKindCount));
+            int[] itemIndices = new int[_session.OfferSlotCount];
+            for (int i = 0; i < itemIndices.Length; ++i)
+                itemIndices[i] = GetOfferItemIndex(i);
 
-            for (int i = 0; i < _loadout.PassiveCount; ++i)
-                UIManager.Show(new ShopView.OwnedItemArgs(GetPassiveItemIndex(i), PASSIVE_OWNED_COUNT));
+            return itemIndices;
+        }
+
+        ShopView.OwnedEntry[] BuildOwnedEntries()
+        {
+            int passiveCount = _loadout.PassiveCount;
+            ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[passiveCount + _loadout.UpgradeKindCount];
+            for (int i = 0; i < passiveCount; ++i)
+                entries[i] = new ShopView.OwnedEntry(GetPassiveItemIndex(i), PASSIVE_OWNED_COUNT);
 
             for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
-                UIManager.Show(new ShopView.OwnedItemArgs(GetUpgradeItemIndex(i), _loadout.GetUpgradeCount(i)));
+                entries[passiveCount + i] = new ShopView.OwnedEntry(GetUpgradeItemIndex(i), _loadout.GetUpgradeCount(i));
+
+            return entries;
         }
 
         int GetOfferItemIndex(int slotIndex)

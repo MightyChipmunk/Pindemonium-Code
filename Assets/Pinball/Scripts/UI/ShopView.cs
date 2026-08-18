@@ -10,22 +10,16 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record Args(int Money, int RerollPrice, int VisibleOfferCount) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
-        }
+        public record OwnedEntry(int ItemIndex, int Count);
 
-        public record OfferArgs(int SlotIndex, int ItemIndex) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
-        }
-
-        public record OwnedResetArgs(int PassiveCount, int PassiveSlotCount, int UpgradeCount) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
-        }
-
-        public record OwnedItemArgs(int ItemIndex, int Count) : UIViewArgs
+        public record Args(
+            int Money,
+            int RerollPrice,
+            int[] OfferItemIndices,
+            int PassiveCount,
+            int PassiveSlotCount,
+            int UpgradeKindCount,
+            OwnedEntry[] OwnedEntries) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
@@ -105,46 +99,37 @@ namespace Pinball.UI
 
         public override void Bind(UIViewArgs args)
         {
-            Args mainArgs = args as Args;
-            if (null != mainArgs)
-            {
-                BindMain(mainArgs);
+            Args viewArgs = args as Args;
+            if (null == viewArgs)
                 return;
-            }
 
-            OfferArgs offerArgs = args as OfferArgs;
-            if (null != offerArgs)
-            {
-                BindOffer(offerArgs);
-                return;
-            }
-
-            OwnedResetArgs ownedResetArgs = args as OwnedResetArgs;
-            if (null != ownedResetArgs)
-            {
-                BindOwnedReset(ownedResetArgs);
-                return;
-            }
-
-            OwnedItemArgs ownedItemArgs = args as OwnedItemArgs;
-            if (null != ownedItemArgs)
-                BindOwnedItem(ownedItemArgs);
+            BindMain(viewArgs);
+            BindOffers(viewArgs.OfferItemIndices);
+            BindOwned(viewArgs);
         }
 
         void BindMain(Args args)
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
             _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, args.RerollPrice);
-            ApplyOfferLayout(args.VisibleOfferCount);
         }
 
-        void BindOffer(OfferArgs args)
+        void BindOffers(int[] offerItemIndices)
         {
-            ShopItemView slot = GetOfferSlot(args.SlotIndex);
+            int offerCount = null == offerItemIndices ? 0 : offerItemIndices.Length;
+            ApplyOfferLayout(offerCount);
+
+            for (int i = 0; i < offerCount; ++i)
+                BindOffer(i, offerItemIndices[i]);
+        }
+
+        void BindOffer(int slotIndex, int itemIndex)
+        {
+            ShopItemView slot = GetOfferSlot(slotIndex);
             if (null == slot)
                 return;
 
-            ShopItemData item = GetItem(args.ItemIndex);
+            ShopItemData item = GetItem(itemIndex);
             if (null == item)
             {
                 slot.BindSold();
@@ -159,10 +144,10 @@ namespace Pinball.UI
                 PriceText: string.Format(PRICE_FORMAT, item.Price)));
         }
 
-        void BindOwnedReset(OwnedResetArgs args)
+        void BindOwned(Args args)
         {
             _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, args.PassiveCount, args.PassiveSlotCount);
-            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, args.UpgradeCount);
+            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, args.UpgradeKindCount);
             ClearOwnedSlots();
             _tooltip.Hide();
             _boundPassiveCount = 0;
@@ -170,6 +155,12 @@ namespace Pinball.UI
             int emptyCount = Mathf.Max(0, args.PassiveSlotCount - args.PassiveCount);
             for (int i = 0; i < emptyCount; ++i)
                 BindEmptyPassiveSlot();
+
+            if (null == args.OwnedEntries)
+                return;
+
+            for (int i = 0; i < args.OwnedEntries.Length; ++i)
+                BindOwnedItem(args.OwnedEntries[i]);
         }
 
         void BindEmptyPassiveSlot()
@@ -184,9 +175,12 @@ namespace Pinball.UI
             _activeOwnedSlots.Add(slot);
         }
 
-        void BindOwnedItem(OwnedItemArgs args)
+        void BindOwnedItem(OwnedEntry entry)
         {
-            ShopItemData item = GetItem(args.ItemIndex);
+            if (null == entry)
+                return;
+
+            ShopItemData item = GetItem(entry.ItemIndex);
             if (null == item)
                 return;
 
@@ -202,9 +196,9 @@ namespace Pinball.UI
                 slot.transform.SetAsLastSibling();
 
             slot.Bind(new ItemIconSlotView.BindParam(
-                ItemIndex: args.ItemIndex,
+                ItemIndex: entry.ItemIndex,
                 Icon: item.GetIcon(),
-                CountText: GetCountText(args.Count),
+                CountText: GetCountText(entry.Count),
                 HoverCallback: OnTooltipHovered));
             _activeOwnedSlots.Add(slot);
         }

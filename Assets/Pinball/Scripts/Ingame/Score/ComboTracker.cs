@@ -15,7 +15,7 @@ namespace Pinball.Ingame
         public int ComboCount => _comboCount;
 
         public event Action<int, float, int> OnComboChanged;
-        public event Action<int, int> OnComboEnded;
+        public event Action<int, float, int> OnComboEnded;
 
         public void Init(ComboConfigData config, Func<float> multiplierBonusGetter, Func<float> timeoutBonusGetter)
         {
@@ -63,9 +63,10 @@ namespace Pinball.Ingame
                 return;
 
             int comboCount = _comboCount;
+            float multiplier = GetCurrentMultiplier();
             int bonusScore = CalculateBonusScore();
             ResetCombo();
-            OnComboEnded?.Invoke(comboCount, bonusScore);
+            OnComboEnded?.Invoke(comboCount, multiplier, bonusScore);
         }
 
         int CalculateBonusScore()

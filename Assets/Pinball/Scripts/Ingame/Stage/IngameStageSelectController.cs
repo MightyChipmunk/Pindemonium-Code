@@ -83,21 +83,27 @@ namespace Pinball.Ingame.Stage
         void RefreshView()
         {
             int remainingBalls = null == _remainingBallGetter ? 0 : _remainingBallGetter();
-            UIManager.Show(new StageSelectView.Args(_wallet.Current, remainingBalls, _tracker.StageNumber, _stageCatalog.Count));
-
             int currentStageIndex = _tracker.StageNumber - 1;
-            for (int slot = 0; slot < StageSelectView.CARD_COUNT; ++slot)
-                UIManager.Show(BuildCardArgs(slot, currentStageIndex + slot));
+            StageSelectView.CardArgs[] cards = new StageSelectView.CardArgs[StageSelectView.CARD_COUNT];
+            for (int slot = 0; slot < cards.Length; ++slot)
+                cards[slot] = BuildCardArgs(slot, currentStageIndex + slot);
+
+            UIManager.Show(new StageSelectView.Args(
+                Money: _wallet.Current,
+                RemainingBalls: remainingBalls,
+                CurrentStageNumber: _tracker.StageNumber,
+                TotalStageCount: _stageCatalog.Count,
+                Cards: cards));
         }
 
         StageSelectView.CardArgs BuildCardArgs(int slotIndex, int stageIndex)
         {
             if (stageIndex >= _stageCatalog.Count)
-                return BuildHiddenCardArgs(slotIndex);
+                return BuildHiddenCardArgs();
 
             StageData stage = _stageCatalog.GetStage(stageIndex);
             if (null == stage)
-                return BuildHiddenCardArgs(slotIndex);
+                return BuildHiddenCardArgs();
 
             bool isCurrent = slotIndex == 0;
             IStageGimmickSource source = isCurrent ? _roller : stage;
@@ -106,7 +112,6 @@ namespace Pinball.Ingame.Stage
                 gimmickLabels[i] = StageGimmickLabelFormatter.Format(source.GetGimmick(i));
 
             return new StageSelectView.CardArgs(
-                SlotIndex: slotIndex,
                 IsVisible: true,
                 StageNumber: stageIndex + 1,
                 IsCurrent: isCurrent,
@@ -119,10 +124,9 @@ namespace Pinball.Ingame.Stage
                 CanReroll: isCurrent && _roller.CanReroll && _wallet.Current >= _roller.CurrentRerollPrice);
         }
 
-        StageSelectView.CardArgs BuildHiddenCardArgs(int slotIndex)
+        static StageSelectView.CardArgs BuildHiddenCardArgs()
         {
             return new StageSelectView.CardArgs(
-                SlotIndex: slotIndex,
                 IsVisible: false,
                 StageNumber: 0,
                 IsCurrent: false,

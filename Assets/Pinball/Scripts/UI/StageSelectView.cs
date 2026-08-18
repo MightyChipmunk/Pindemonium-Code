@@ -6,13 +6,7 @@ namespace Pinball.UI
 {
     public class StageSelectView : UIViewBase
     {
-        public record Args(int Money, int RemainingBalls, int CurrentStageNumber, int TotalStageCount) : UIViewArgs
-        {
-            public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageSelect;
-        }
-
         public record CardArgs(
-            int SlotIndex,
             bool IsVisible,
             int StageNumber,
             bool IsCurrent,
@@ -22,7 +16,14 @@ namespace Pinball.UI
             int RewardMoney,
             string[] GimmickLabels,
             int RerollPrice,
-            bool CanReroll) : UIViewArgs
+            bool CanReroll);
+
+        public record Args(
+            int Money,
+            int RemainingBalls,
+            int CurrentStageNumber,
+            int TotalStageCount,
+            CardArgs[] Cards) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageSelect;
         }
@@ -56,16 +57,12 @@ namespace Pinball.UI
 
         public override void Bind(UIViewArgs args)
         {
-            Args mainArgs = args as Args;
-            if (null != mainArgs)
-            {
-                BindMain(mainArgs);
+            Args viewArgs = args as Args;
+            if (null == viewArgs)
                 return;
-            }
 
-            CardArgs cardArgs = args as CardArgs;
-            if (null != cardArgs)
-                BindCard(cardArgs);
+            BindMain(viewArgs);
+            BindCards(viewArgs.Cards);
         }
 
         void BindMain(Args args)
@@ -80,12 +77,20 @@ namespace Pinball.UI
                 _progressLabel.text = LocalizationTable.Format(PROGRESS_SINGLE_KEY, PROGRESS_SINGLE_FORMAT, args.CurrentStageNumber, args.TotalStageCount);
         }
 
-        void BindCard(CardArgs args)
+        void BindCards(CardArgs[] cards)
         {
-            if (args.SlotIndex < 0 || args.SlotIndex >= _cards.Length)
-                return;
+            int cardCount = null == cards ? 0 : cards.Length;
+            for (int i = 0; i < _cards.Length; ++i)
+            {
+                if (i < cardCount && null != cards[i])
+                    BindCard(_cards[i], cards[i]);
+                else
+                    _cards[i].Hide();
+            }
+        }
 
-            StageCardView card = _cards[args.SlotIndex];
+        void BindCard(StageCardView card, CardArgs args)
+        {
             if (!args.IsVisible)
             {
                 card.Hide();

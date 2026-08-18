@@ -436,7 +436,7 @@ namespace Pinball.Ingame
             AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
         }
 
-        void OnComboEnded(int comboCount, int bonusScore)
+        void OnComboEnded(int comboCount, float multiplier, int bonusScore)
         {
             if (bonusScore <= 0)
             {
@@ -444,7 +444,7 @@ namespace Pinball.Ingame
                 return;
             }
 
-            UIManager.Show(new ComboView.BonusArgs(bonusScore));
+            UIManager.Show(new ComboView.BonusArgs(comboCount, multiplier, bonusScore));
         }
 
         void OnStageStarted(int stageNumber, StageData stage)

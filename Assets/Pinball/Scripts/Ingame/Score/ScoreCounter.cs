@@ -20,7 +20,7 @@ namespace Pinball.Ingame
         public int ComboCount => null == _comboTracker ? 0 : _comboTracker.ComboCount;
         public event Action<int> OnChanged;
         public event Action<int, float, int> OnComboChanged;
-        public event Action<int, int> OnComboEnded;
+        public event Action<int, float, int> OnComboEnded;
 
         public void Init(int initialScore, ComboConfigData comboConfig, StatProvider stats, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter)
         {
@@ -136,10 +136,10 @@ namespace Pinball.Ingame
             OnComboChanged?.Invoke(comboCount, multiplier, pendingBonus);
         }
 
-        void HandleComboEnded(int comboCount, int bonusScore)
+        void HandleComboEnded(int comboCount, float multiplier, int bonusScore)
         {
             Add(bonusScore);
-            OnComboEnded?.Invoke(comboCount, bonusScore);
+            OnComboEnded?.Invoke(comboCount, multiplier, bonusScore);
         }
 
         void Add(int amount)
