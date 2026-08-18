@@ -285,6 +285,9 @@ namespace Pinball.UI
                 if (control.keyCode == Key.Escape)
                     continue;
 
+                if (!GameSettings.IsBindableKey(control.keyCode))
+                    continue;
+
                 return control.keyCode;
             }
 
