@@ -249,8 +249,13 @@ namespace Pinball.Ingame.Map
             KillVisualTween();
             Sequence sequence = DOTween.Sequence();
             sequence.Append(_visual.DOPunchScale(_visualBaseScale * CAPTURE_PUNCH_RATIO, CAPTURE_PUNCH_DURATION, CAPTURE_PUNCH_VIBRATO));
-            sequence.Append(_visual.DOScale(_visualBaseScale * (1f + HOLD_PULSE_RATIO), HOLD_PULSE_DURATION).SetLoops(-1, LoopType.Yoyo));
+            sequence.AppendCallback(PlayHoldPulse);
             _visualTween = sequence;
+        }
+
+        void PlayHoldPulse()
+        {
+            _visualTween = _visual.DOScale(_visualBaseScale * (1f + HOLD_PULSE_RATIO), HOLD_PULSE_DURATION).SetLoops(-1, LoopType.Yoyo);
         }
 
         void PlayEjectMotion()
