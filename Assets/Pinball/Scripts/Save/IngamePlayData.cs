@@ -3,7 +3,7 @@ using System;
 namespace Pinball.Save
 {
     [Serializable]
-    public class IngamePlayData
+    public class IngamePlayData : SaveDataBase
     {
         [Serializable]
         public class UpgradeEntry

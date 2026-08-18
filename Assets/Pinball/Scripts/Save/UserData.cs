@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Pinball.Save
 {
     [Serializable]
-    public class UserData
+    public class UserData : SaveDataBase
     {
         public int BestStageNumber = 0;
         public int ClearCount = 0;
