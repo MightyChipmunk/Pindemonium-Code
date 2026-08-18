@@ -13,11 +13,17 @@ namespace Pinball.Lobby
         const string BEST_STAGE_FORMAT = "BEST STAGE {0}";
         const string BEST_STAGE_KEY = "ui.lobby.best_stage";
 
+        static readonly Vector2 CONTINUE_LABEL_POSITION_WITH_CHIP = new Vector2(-80f, 0f);
+        static readonly Vector2 CONTINUE_LABEL_SIZE_WITH_CHIP = new Vector2(-264f, -16f);
+        static readonly Vector2 CONTINUE_LABEL_POSITION_CENTERED = new Vector2(0f, 0f);
+        static readonly Vector2 CONTINUE_LABEL_SIZE_CENTERED = new Vector2(-24f, -16f);
+
         [SerializeField] Button _continueButton = null;
         [SerializeField] Button _newGameButton = null;
         [SerializeField] Button _settingsButton = null;
         [SerializeField] GameObject _continueStageChip = null;
         [SerializeField] TMP_Text _continueStageLabel = null;
+        [SerializeField] RectTransform _continueLabelRect = null;
         [SerializeField] TMP_Text _bestStageLabel = null;
 
         Action _onContinueClicked = null;
@@ -46,6 +52,17 @@ namespace Pinball.Lobby
             _continueStageChip.SetActive(hasStage);
             if (hasStage)
                 _continueStageLabel.text = LocalizationTable.Format(STAGE_CHIP_KEY, STAGE_CHIP_FORMAT, stageNumber);
+
+            ApplyContinueLabelLayout(hasStage);
+        }
+
+        void ApplyContinueLabelLayout(bool hasStage)
+        {
+            if (null == _continueLabelRect)
+                return;
+
+            _continueLabelRect.anchoredPosition = hasStage ? CONTINUE_LABEL_POSITION_WITH_CHIP : CONTINUE_LABEL_POSITION_CENTERED;
+            _continueLabelRect.sizeDelta = hasStage ? CONTINUE_LABEL_SIZE_WITH_CHIP : CONTINUE_LABEL_SIZE_CENTERED;
         }
 
         public void SetBestStage(int bestStageNumber)
