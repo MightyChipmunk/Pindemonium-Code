@@ -68,6 +68,7 @@ namespace Pinball.Ingame.Map
             Lamp lamp = _lamps[_litCount];
             lamp.PlayLightUp();
             PlayFX(_lightUpFX, lamp.transform.position);
+            PlayGimmickHitSound();
             ++_litCount;
 
             if (_litCount < _lamps.Length)
@@ -81,6 +82,7 @@ namespace Pinball.Ingame.Map
             _isPlayingSiren = true;
             GainScore(_clearScoreReward);
             PlayFX(_clearFX, transform.position);
+            PlayBankClearedSound();
             PlaySirenAsync(_cancellationTokenSource.Token).Forget();
         }
 

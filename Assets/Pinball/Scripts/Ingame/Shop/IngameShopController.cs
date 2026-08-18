@@ -1,4 +1,5 @@
 using System;
+using Pinball.Audio;
 using Pinball.UI;
 using UnityEngine;
 
@@ -183,6 +184,7 @@ namespace Pinball.Ingame
                 return;
 
             ApplyItem(item);
+            AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             _session.MarkSold(slotIndex);
             OnLoadoutChanged?.Invoke();
             RefreshShopView();
@@ -197,6 +199,7 @@ namespace Pinball.Ingame
                 return;
 
             _session.Reroll();
+            AudioManager.Play(AudioStorage.EAudioClipType.ShopReroll);
             RefreshShopView();
         }
 

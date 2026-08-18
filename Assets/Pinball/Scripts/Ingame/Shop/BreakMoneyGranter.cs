@@ -1,3 +1,4 @@
+using Pinball.Audio;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 
@@ -48,6 +49,7 @@ namespace Pinball.Ingame
 
             _stageEarnedMoney += amount;
             _wallet.Add(amount);
+            AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
         }
     }
 }

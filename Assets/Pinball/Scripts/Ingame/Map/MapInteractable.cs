@@ -1,4 +1,5 @@
 using System;
+using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
@@ -121,6 +122,44 @@ namespace Pinball.Ingame.Map
         protected void NotifyBallHit(Collider2D ballCollider)
         {
             _onBallHit?.Invoke(ballCollider);
+        }
+
+        protected void PlayGimmickHitSound()
+        {
+            if (_isDeactivated)
+                return;
+
+            AudioManager.Play(GetHitClipType());
+        }
+
+        protected void PlayBankClearedSound()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.GimmickBankCleared);
+        }
+
+        AudioStorage.EAudioClipType GetHitClipType()
+        {
+            switch (GimmickType)
+            {
+                case EGimmickType.Bumper:
+                    return AudioStorage.EAudioClipType.GimmickHitBumper;
+                case EGimmickType.Slingshot:
+                    return AudioStorage.EAudioClipType.GimmickHitSlingshot;
+                case EGimmickType.Spinner:
+                    return AudioStorage.EAudioClipType.GimmickHitSpinner;
+                case EGimmickType.DropTarget:
+                    return AudioStorage.EAudioClipType.GimmickHitDropTarget;
+                case EGimmickType.StandupTarget:
+                    return AudioStorage.EAudioClipType.GimmickHitStandupTarget;
+                case EGimmickType.LampBank:
+                    return AudioStorage.EAudioClipType.GimmickHitLampBank;
+                case EGimmickType.Lane:
+                    return AudioStorage.EAudioClipType.GimmickHitLane;
+                case EGimmickType.Saucer:
+                    return AudioStorage.EAudioClipType.GimmickHitSaucer;
+                default:
+                    return AudioStorage.EAudioClipType.None;
+            }
         }
 
         protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)

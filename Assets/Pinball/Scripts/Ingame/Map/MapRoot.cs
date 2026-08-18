@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
@@ -148,6 +149,7 @@ namespace Pinball.Ingame.Map
                 chainedBumpers.Add(target);
                 Vector2 targetPoint = target.transform.position;
                 _lineFXPlayer?.Invoke(CHAIN_LINK_FX, originPoint, targetPoint);
+                AudioManager.Play(AudioStorage.EAudioClipType.EffectChainLightning);
                 originPoint = targetPoint;
                 target.ApplyDamage(chainDamage, CHAIN_FX);
             }

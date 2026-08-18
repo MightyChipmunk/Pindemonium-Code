@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Pinball.Audio;
 using Pinball.FX;
 using UnityEngine;
 
@@ -174,6 +175,7 @@ namespace Pinball.Ingame.Map
             _burnTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             RefreshVisualTint();
             PlayFX(_burnFX, transform.position);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectBurn);
             BurnAsync(damagePerTick, Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds), _burnTokenSource.Token).Forget();
         }
 
@@ -185,6 +187,7 @@ namespace Pinball.Ingame.Map
             if (_isFrozen)
             {
                 PlayFX(shatterFX, transform.position);
+                AudioManager.Play(AudioStorage.EAudioClipType.EffectFrostShatter);
                 ClearFrozen();
                 return;
             }
@@ -192,6 +195,7 @@ namespace Pinball.Ingame.Map
             _isFrozen = true;
             _frozenDamageMultiplier = Mathf.Max(DEFAULT_DAMAGE_MULTIPLIER, shatterDamageMultiplier);
             PlayFX(freezeFX, transform.position);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectFreeze);
             RefreshVisualTint();
         }
 
@@ -287,6 +291,7 @@ namespace Pinball.Ingame.Map
             _collider.enabled = false;
             GainScore(_spec.BreakScore);
             PlayFX(_spec.BreakFX, transform.position);
+            AudioManager.Play(AudioStorage.EAudioClipType.BumperBreak);
             KillVisualTween(false);
 
             if (null != _visual)

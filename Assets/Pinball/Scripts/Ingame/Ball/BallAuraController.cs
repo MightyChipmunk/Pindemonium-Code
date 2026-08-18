@@ -44,6 +44,29 @@ namespace Pinball.Ingame
                 _auras[i].Clear();
         }
 
+        public bool TryGetDominantAuraType(out BallAura.EAuraType auraType)
+        {
+            auraType = BallAura.EAuraType.Fire;
+
+            if (null == _auras)
+                return false;
+
+            bool isFound = false;
+            for (int i = 0; i < _auras.Length; ++i)
+            {
+                if (!_auras[i].IsActive)
+                    continue;
+
+                if (isFound && _auras[i].AuraType <= auraType)
+                    continue;
+
+                auraType = _auras[i].AuraType;
+                isFound = true;
+            }
+
+            return isFound;
+        }
+
         public bool TryGetBlendedColor(out Color blendedColor)
         {
             blendedColor = Color.white;

@@ -157,6 +157,7 @@ namespace Pinball.Ingame.Map
 
             NotifyBallHit(ballCollider);
             PlayFX(_captureFX, transform.position);
+            PlayGimmickHitSound();
             PlayCaptureMotion();
 
             int targetIndex = PickTargetIndex();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Audio;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Stat;
 using UnityEngine;
@@ -188,6 +189,7 @@ namespace Pinball.Ingame
         void HandleBallLost()
         {
             DespawnCloneBalls();
+            AudioManager.Play(AudioStorage.EAudioClipType.BallLost);
             OnBallLost?.Invoke();
 
             if (IsControlBlocked())
@@ -203,6 +205,7 @@ namespace Pinball.Ingame
             }
 
             LoadBallOnSpring();
+            AudioManager.Play(AudioStorage.EAudioClipType.BallReady);
             OnBallReady?.Invoke();
         }
 
@@ -294,6 +297,7 @@ namespace Pinball.Ingame
             clone.SetAlpha(CLONE_ALPHA);
             ApplyPassiveAura(clone);
             _map.SetFlipperCollisionIgnored(clone, true);
+            AudioManager.Play(AudioStorage.EAudioClipType.BallCloneSpawn);
         }
 
         Vector3 GetCloneSpawnPosition()

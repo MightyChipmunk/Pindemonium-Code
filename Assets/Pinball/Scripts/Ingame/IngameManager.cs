@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using Pinball.Core;
 using Pinball.FX;
 using Pinball.Ingame.Cheat;
@@ -49,6 +50,7 @@ namespace Pinball.Ingame
         [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
         [SerializeField] SettingsConfigData _settingsConfig = null;
+        [SerializeField] AudioStorage _audioStorage = null;
         [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] ComboConfigData _comboConfig = null;
         [SerializeField] ShopConfigData _shopConfig = null;
@@ -80,9 +82,10 @@ namespace Pinball.Ingame
         int _stageClearMoney = STAGE_CLEAR_BASE_MONEY;
         MapRoot _currentMap = null;
         EGameState _gameState = EGameState.Ready;
+        bool _isPaused = false;
         bool _isExitingToLobby = false;
 
-        bool IsControlBlocked => _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared || _gameState == EGameState.StageSelecting;
+        bool IsControlBlocked => _isPaused || _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared || _gameState == EGameState.StageSelecting;
 
         void Awake()
         {
@@ -97,6 +100,7 @@ namespace Pinball.Ingame
         public void Init()
         {
             SaveManager.EnsureInit();
+            AudioStorage.Init(_audioStorage);
             _saveHandler = new IngameSaveHandler();
             _unlockProgress = new UnlockProgress();
             _unlockProgress.Init(_rewardCatalog);
@@ -214,6 +218,7 @@ namespace Pinball.Ingame
                 IsCloneBallGetter: _ballFlow.IsCloneBall,
                 CloneDamageRatioGetter: _statProvider.GetCloneDamageRatio));
             _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
+            _powerSurgeCharger.OnChargedChanged += OnSurgeChargedChanged;
             _playerController = new PlayerController();
             _playerController.Init(new PlayerController.InitParam(
                 InputRouter: _inputRouter,
@@ -367,12 +372,16 @@ namespace Pinball.Ingame
             if (null != _ballSpawner)
                 _ballSpawner.Release();
 
+            AudioStorage.Release();
             _saveHandler = null;
         }
 
         void Update()
         {
             if (null == _scoreCounter)
+                return;
+
+            if (_isPaused)
                 return;
 
             _scoreCounter.Tick(Time.deltaTime);
@@ -416,7 +425,16 @@ namespace Pinball.Ingame
 
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
         {
+            AudioManager.Play(AudioStorage.EAudioClipType.ComboUp);
             UIManager.Show(new ComboView.Args(comboCount, multiplier, pendingBonus));
+        }
+
+        void OnSurgeChargedChanged(bool isCharged)
+        {
+            if (!isCharged)
+                return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
         }
 
         void OnComboEnded(int comboCount, int bonusScore)
@@ -447,6 +465,7 @@ namespace Pinball.Ingame
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetBallResupplyMoney());
             _wallet.Add(remainingBalls + _stageClearMoney + _shopController.CalculateInterest() + resupplyMoney);
+            AudioManager.Play(AudioStorage.EAudioClipType.StageClear);
             SaveProgress();
 
             if (!UIManager.IsInitialized)
@@ -479,6 +498,8 @@ namespace Pinball.Ingame
             int entryCount = reward.FlipperCount + reward.ItemCount;
             if (entryCount <= 0)
                 return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
 
             RewardUnlockView.Entry[] entries = new RewardUnlockView.Entry[entryCount];
             for (int i = 0; i < reward.FlipperCount; ++i)
@@ -645,7 +666,7 @@ namespace Pinball.Ingame
 
         bool GetIsPlaying()
         {
-            return _gameState == EGameState.Playing;
+            return !_isPaused && _gameState == EGameState.Playing;
         }
 
         int GetRemainingBallCount()
@@ -703,6 +724,7 @@ namespace Pinball.Ingame
 
         void ShowGameResult(GameResultView.EResult result)
         {
+            AudioManager.Play(result == GameResultView.EResult.Clear ? AudioStorage.EAudioClipType.GameClear : AudioStorage.EAudioClipType.GameOver);
             UIManager.Show(new GameResultView.Args(result, BuildResultStats()));
         }
 
@@ -764,8 +786,15 @@ namespace Pinball.Ingame
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)
         {
-            if (uiEvent == UIManager.EEvent.ExitToLobbyRequested)
-                OnLobbyExitRequested();
+            switch (uiEvent)
+            {
+                case UIManager.EEvent.ExitToLobbyRequested:
+                    OnLobbyExitRequested();
+                    break;
+                case UIManager.EEvent.PauseResumeRequested:
+                    ResumeGame();
+                    break;
+            }
         }
 
         void OpenNextStageSelect()
@@ -804,19 +833,40 @@ namespace Pinball.Ingame
 
         void TogglePausePopup()
         {
-            if (IsControlBlocked)
-                return;
-
             if (UIManager.IsOpen(UIViewCatalogData.EViewType.Settings))
                 return;
 
-            if (UIManager.IsOpen(UIViewCatalogData.EViewType.PausePopup))
+            if (_isPaused)
             {
-                UIManager.Hide(UIViewCatalogData.EViewType.PausePopup);
+                ResumeGame();
                 return;
             }
 
+            if (IsControlBlocked)
+                return;
+
+            PauseGame();
+        }
+
+        void PauseGame()
+        {
+            if (_isPaused)
+                return;
+
+            _isPaused = true;
+            _playerController.ResetControlStates();
+            _director.SetPaused(true);
             UIManager.Show(new PausePopupView.Args());
+        }
+
+        void ResumeGame()
+        {
+            if (!_isPaused)
+                return;
+
+            _isPaused = false;
+            _director.SetPaused(false);
+            UIManager.Hide(UIViewCatalogData.EViewType.PausePopup);
         }
 
         void OnLobbyExitRequested()

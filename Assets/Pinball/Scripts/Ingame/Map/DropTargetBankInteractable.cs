@@ -48,6 +48,7 @@ namespace Pinball.Ingame.Map
         void OnTargetDropped(Collider2D ballCollider)
         {
             NotifyBallHit(ballCollider);
+            PlayGimmickHitSound();
             GainScore(_dropScoreReward);
             ++_droppedCount;
 
@@ -55,6 +56,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             GainScore(_clearScoreReward);
+            PlayBankClearedSound();
             PlayClearShake();
             ResetBankAsync(_cancellationTokenSource.Token).Forget();
         }

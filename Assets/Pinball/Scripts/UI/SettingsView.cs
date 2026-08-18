@@ -23,6 +23,7 @@ namespace Pinball.UI
         const string FULLSCREEN_KEY = "ui.settings.fullscreen";
         const string WINDOWED_LABEL = "WINDOWED";
         const string WINDOWED_KEY = "ui.settings.windowed";
+        const float SCROLL_TOP_POSITION = 1f;
 
         [SerializeField] Button _flipperLeftButton = null;
         [SerializeField] TMP_Text _flipperLeftLabel = null;
@@ -38,10 +39,17 @@ namespace Pinball.UI
         [SerializeField] Button _fullscreenPrevButton = null;
         [SerializeField] Button _fullscreenNextButton = null;
         [SerializeField] TMP_Text _fullscreenLabel = null;
+        [SerializeField] Button _masterVolumePrevButton = null;
+        [SerializeField] Button _masterVolumeNextButton = null;
+        [SerializeField] TMP_Text _masterVolumeLabel = null;
+        [SerializeField] Button _sfxVolumePrevButton = null;
+        [SerializeField] Button _sfxVolumeNextButton = null;
+        [SerializeField] TMP_Text _sfxVolumeLabel = null;
         [SerializeField] Button _languagePrevButton = null;
         [SerializeField] Button _languageNextButton = null;
         [SerializeField] TMP_Text _languageLabel = null;
         [SerializeField] Button _closeButton = null;
+        [SerializeField] ScrollRect _systemScroll = null;
 
         TMP_Text _capturingLabel = null;
         string _capturingLabelBackup = string.Empty;
@@ -58,6 +66,10 @@ namespace Pinball.UI
             _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
             _fullscreenPrevButton.onClick.AddListener(OnFullscreenClicked);
             _fullscreenNextButton.onClick.AddListener(OnFullscreenClicked);
+            _masterVolumePrevButton.onClick.AddListener(OnMasterVolumePrevClicked);
+            _masterVolumeNextButton.onClick.AddListener(OnMasterVolumeNextClicked);
+            _sfxVolumePrevButton.onClick.AddListener(OnSfxVolumePrevClicked);
+            _sfxVolumeNextButton.onClick.AddListener(OnSfxVolumeNextClicked);
             _languagePrevButton.onClick.AddListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.AddListener(OnLanguageNextClicked);
             _closeButton.onClick.AddListener(OnCloseClicked);
@@ -73,6 +85,10 @@ namespace Pinball.UI
             _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
             _fullscreenPrevButton.onClick.RemoveListener(OnFullscreenClicked);
             _fullscreenNextButton.onClick.RemoveListener(OnFullscreenClicked);
+            _masterVolumePrevButton.onClick.RemoveListener(OnMasterVolumePrevClicked);
+            _masterVolumeNextButton.onClick.RemoveListener(OnMasterVolumeNextClicked);
+            _sfxVolumePrevButton.onClick.RemoveListener(OnSfxVolumePrevClicked);
+            _sfxVolumeNextButton.onClick.RemoveListener(OnSfxVolumeNextClicked);
             _languagePrevButton.onClick.RemoveListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.RemoveListener(OnLanguageNextClicked);
             _closeButton.onClick.RemoveListener(OnCloseClicked);
@@ -86,6 +102,15 @@ namespace Pinball.UI
         public override void Bind(UIViewArgs args)
         {
             RefreshLabels();
+            ResetSystemScroll();
+        }
+
+        void ResetSystemScroll()
+        {
+            if (null == _systemScroll)
+                return;
+
+            _systemScroll.verticalNormalizedPosition = SCROLL_TOP_POSITION;
         }
 
         void RefreshLabels()
@@ -100,6 +125,8 @@ namespace Pinball.UI
             SetKeyLabel(_launchLabel, GameSettings.GetKey(EKeyAction.Launch));
             SetKeyLabel(_nudgeLabel, GameSettings.GetKey(EKeyAction.Nudge));
             _resolutionLabel.text = GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
+            _masterVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.MasterVolume);
+            _sfxVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.SfxVolume);
             _fullscreenLabel.text = GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
         }
 
@@ -159,6 +186,30 @@ namespace Pinball.UI
         void OnResolutionNextClicked()
         {
             GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnMasterVolumePrevClicked()
+        {
+            GameSettings.ShiftMasterVolume(PREV_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnMasterVolumeNextClicked()
+        {
+            GameSettings.ShiftMasterVolume(NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnSfxVolumePrevClicked()
+        {
+            GameSettings.ShiftSfxVolume(PREV_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnSfxVolumeNextClicked()
+        {
+            GameSettings.ShiftSfxVolume(NEXT_DIRECTION);
             RefreshLabels();
         }
 

@@ -1,5 +1,6 @@
 using System;
 using DG.Tweening;
+using Pinball.Audio;
 using UnityEngine;
 
 namespace Pinball.Ingame
@@ -78,6 +79,7 @@ namespace Pinball.Ingame
             if (isCharging)
             {
                 KillLaunchTween(true);
+                AudioManager.Play(AudioStorage.EAudioClipType.SpringChargeStart);
                 return;
             }
 
@@ -108,6 +110,7 @@ namespace Pinball.Ingame
             ball.SetKinematic(false);
             ball.AddImpulse(Vector2.up * (_config.LaunchImpulse * powerRatio));
             PlayLaunchMotion();
+            AudioManager.Play(AudioStorage.EAudioClipType.SpringLaunch);
             return true;
         }
 

@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using Pinball.Core;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
@@ -15,6 +16,7 @@ namespace Pinball.Lobby
     public class LobbySceneManager : BehaviourBase
     {
         [SerializeField] SettingsConfigData _settingsConfig = null;
+        [SerializeField] AudioStorage _audioStorage = null;
         [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
         [SerializeField] BlockerView _blockerPrefab = null;
@@ -40,6 +42,7 @@ namespace Pinball.Lobby
         public void Init()
         {
             SaveManager.EnsureInit();
+            AudioStorage.Init(_audioStorage);
             GameSettings.EnsureInit(_settingsConfig);
             LocalizationManager.EnsureInit();
             LocalizationTable.EnsureInit(_localizationTable);
@@ -90,6 +93,8 @@ namespace Pinball.Lobby
 
             if (null != _uiRoot)
                 _uiRoot.Release();
+
+            AudioStorage.Release();
         }
 
         void OnContinueRequested()

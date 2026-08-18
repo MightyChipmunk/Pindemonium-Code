@@ -1,4 +1,5 @@
 using System;
+using Pinball.Audio;
 using Pinball.FX;
 using Pinball.StaticPoolModule;
 using Pinball.Util;
@@ -37,6 +38,14 @@ namespace Pinball.Ingame.Presentation
             StaticPool<PoolableFX.EFXType, PoolableFX>.Release();
         }
 
+        public void SetPaused(bool isPaused)
+        {
+            if (null == _hitStopPlayer)
+                return;
+
+            _hitStopPlayer.SetPaused(isPaused);
+        }
+
         public void PlayFlipperHit(Flipper.EHitGrade grade, Vector2 worldPoint)
         {
             if (null == _config)
@@ -46,6 +55,20 @@ namespace Pinball.Ingame.Presentation
             PlayFX(presentation.FXType, worldPoint);
             PlayCameraShake(presentation);
             _hitStopPlayer.Play(presentation);
+            AudioManager.Play(GetFlipperHitClipType(grade));
+        }
+
+        static AudioStorage.EAudioClipType GetFlipperHitClipType(Flipper.EHitGrade grade)
+        {
+            switch (grade)
+            {
+                case Flipper.EHitGrade.Perfect:
+                    return AudioStorage.EAudioClipType.FlipperHitPerfect;
+                case Flipper.EHitGrade.SweetSpot:
+                    return AudioStorage.EAudioClipType.FlipperHitSweetSpot;
+                default:
+                    return AudioStorage.EAudioClipType.FlipperHitNormal;
+            }
         }
 
         public void PlaySpringCharge(Spring.EChargeEvent chargeEvent, Vector2 worldPoint)
@@ -54,11 +77,21 @@ namespace Pinball.Ingame.Presentation
                 return;
 
             PlayFX(_config.GetSpringChargeFX(chargeEvent), worldPoint);
+            AudioManager.Play(GetSpringChargeClipType(chargeEvent));
+        }
+
+        static AudioStorage.EAudioClipType GetSpringChargeClipType(Spring.EChargeEvent chargeEvent)
+        {
+            if (chargeEvent == Spring.EChargeEvent.Peaked)
+                return AudioStorage.EAudioClipType.SpringChargePeak;
+
+            return AudioStorage.EAudioClipType.SpringChargeCancel;
         }
 
         public void PlayNudge()
         {
             _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectNudge);
         }
 
         void PlayCameraShake(HitPresentationData presentation)
