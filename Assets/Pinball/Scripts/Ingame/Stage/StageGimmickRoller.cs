@@ -5,6 +5,8 @@ namespace Pinball.Ingame.Stage
 {
     public class StageGimmickRoller : IStageGimmickSource
     {
+        const int INVALID_INDEX = -1;
+
         StageGimmickCatalogData _catalog = null;
         List<StageGimmickData> _gimmicks = null;
         int _rerollCount = 0;
@@ -48,13 +50,7 @@ namespace Pinball.Ingame.Stage
                 return;
 
             for (int i = 0; i < stage.GimmickCount; ++i)
-            {
-                StageGimmickData gimmick = stage.GetGimmick(i);
-                if (null == gimmick)
-                    continue;
-
-                _gimmicks.Add(gimmick);
-            }
+                AddGimmick(stage.GetGimmick(i));
         }
 
         public void RestoreGimmicks(int[] catalogIndices)
@@ -66,13 +62,7 @@ namespace Pinball.Ingame.Stage
                 return;
 
             for (int i = 0; i < catalogIndices.Length; ++i)
-            {
-                StageGimmickData gimmick = _catalog.GetGimmick(catalogIndices[i]);
-                if (null == gimmick)
-                    continue;
-
-                _gimmicks.Add(gimmick);
-            }
+                AddGimmick(_catalog.GetGimmick(catalogIndices[i]));
         }
 
         public int[] GetCatalogIndices()
@@ -97,10 +87,68 @@ namespace Pinball.Ingame.Stage
                 if (candidates.Count <= 0)
                     return;
 
-                int pickIndex = Random.Range(0, candidates.Count);
+                int pickIndex = PickCandidateIndex(candidates, i);
+                if (pickIndex == INVALID_INDEX)
+                    continue;
+
                 _gimmicks[i] = candidates[pickIndex];
                 candidates.RemoveAt(pickIndex);
             }
+        }
+
+        int PickCandidateIndex(List<StageGimmickData> candidates, int slotIndex)
+        {
+            int acceptableCount = 0;
+            for (int i = 0; i < candidates.Count; ++i)
+            {
+                if (IsAcceptable(candidates[i], slotIndex))
+                    ++acceptableCount;
+            }
+
+            if (acceptableCount <= 0)
+                return INVALID_INDEX;
+
+            int pickOrder = Random.Range(0, acceptableCount);
+            for (int i = 0; i < candidates.Count; ++i)
+            {
+                if (!IsAcceptable(candidates[i], slotIndex))
+                    continue;
+
+                if (pickOrder <= 0)
+                    return i;
+
+                --pickOrder;
+            }
+
+            return INVALID_INDEX;
+        }
+
+        void AddGimmick(StageGimmickData gimmick)
+        {
+            if (null == gimmick)
+                return;
+
+            if (!IsAcceptable(gimmick, INVALID_INDEX))
+            {
+                Debug.LogWarning($"[StageGimmickRoller] 블랙리스트에 걸린 기믹을 제외합니다: {gimmick.name}");
+                return;
+            }
+
+            _gimmicks.Add(gimmick);
+        }
+
+        bool IsAcceptable(StageGimmickData candidate, int slotIndex)
+        {
+            for (int i = 0; i < _gimmicks.Count; ++i)
+            {
+                if (i == slotIndex)
+                    continue;
+
+                if (StageGimmickBlacklist.IsConflict(candidate, _gimmicks[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         List<StageGimmickData> CollectCandidates()
