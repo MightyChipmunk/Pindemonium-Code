@@ -17,6 +17,7 @@ namespace Pinball.Lobby
         [SerializeField] SettingsConfigData _settingsConfig = null;
         [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
+        [SerializeField] BlockerView _blockerPrefab = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
@@ -43,6 +44,7 @@ namespace Pinball.Lobby
             LocalizationManager.EnsureInit();
             LocalizationTable.EnsureInit(_localizationTable);
             UIManager.EnsureInit(_viewCatalog);
+            Blocker.EnsureInit(_blockerPrefab);
             _runSetupController = new LobbyRunSetupController();
             _runSetupController.Init(new LobbyRunSetupController.InitParam(
                 FlipperCatalog: _flipperCatalog,

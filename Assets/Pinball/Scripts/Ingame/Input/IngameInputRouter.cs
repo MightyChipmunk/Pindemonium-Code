@@ -1,5 +1,6 @@
 using System;
 using Pinball.Settings;
+using Pinball.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -34,6 +35,9 @@ namespace Pinball.Ingame.InputModule
 
         void Update()
         {
+            if (Blocker.IsBlocking)
+                return;
+
             if (!_isInited)
                 return;
 

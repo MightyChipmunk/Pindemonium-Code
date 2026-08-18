@@ -55,6 +55,7 @@ namespace Pinball.Ingame
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] IngameCheatHandler _cheatHandler = null;
+        [SerializeField] BlockerView _blockerPrefab = null;
 
         IngameDirector _director = null;
         PlayerController _playerController = null;
@@ -211,6 +212,7 @@ namespace Pinball.Ingame
             LocalizationManager.EnsureInit();
             LocalizationTable.EnsureInit(_localizationTable);
             UIManager.EnsureInit(_viewCatalog);
+            Blocker.EnsureInit(_blockerPrefab);
             UIManager.OnEvent += OnUIEvent;
             _uiRoot.OnPauseClicked += OnPauseButtonClicked;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;

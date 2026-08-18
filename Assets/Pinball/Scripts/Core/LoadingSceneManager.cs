@@ -17,6 +17,7 @@ namespace Pinball.Core
         [SerializeField] SettingsConfigData _settingsConfig = null;
         [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
+        [SerializeField] BlockerView _blockerPrefab = null;
 
         void Start()
         {
@@ -30,6 +31,7 @@ namespace Pinball.Core
             LocalizationManager.EnsureInit();
             LocalizationTable.EnsureInit(_localizationTable);
             UIManager.EnsureInit(_viewCatalog);
+            Blocker.EnsureInit(_blockerPrefab);
             await UniTask.Delay(TimeSpan.FromSeconds(MIN_DISPLAY_SECONDS), cancellationToken: cancellationToken);
             await SceneFlow.LoadLobbyAsync();
         }
