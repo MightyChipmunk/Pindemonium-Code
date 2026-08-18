@@ -23,6 +23,7 @@ namespace Pinball.UI
 
         [SerializeField] TMP_Text _stageLabel = null;
         [SerializeField] TMP_Text _goalLabel = null;
+        [SerializeField] GameObject _timeRoot = null;
         [SerializeField] TMP_Text _timeLabel = null;
 
         public override void Bind(UIViewArgs args)
@@ -42,7 +43,7 @@ namespace Pinball.UI
                 return;
 
             bool hasTimeLimit = remainingSeconds != NO_TIME_LIMIT;
-            _timeLabel.gameObject.SetActive(hasTimeLimit);
+            _timeRoot.SetActive(hasTimeLimit);
             if (!hasTimeLimit)
                 return;
 
