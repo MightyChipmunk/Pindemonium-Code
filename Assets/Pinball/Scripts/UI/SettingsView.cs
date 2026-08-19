@@ -23,6 +23,10 @@ namespace Pinball.UI
         const string FULLSCREEN_KEY = "ui.settings.fullscreen";
         const string WINDOWED_LABEL = "WINDOWED";
         const string WINDOWED_KEY = "ui.settings.windowed";
+        const string ON_LABEL = "ON";
+        const string ON_KEY = "ui.settings.on";
+        const string OFF_LABEL = "OFF";
+        const string OFF_KEY = "ui.settings.off";
         const float SCROLL_TOP_POSITION = 1f;
 
         [SerializeField] Button _flipperLeftButton = null;
@@ -36,6 +40,12 @@ namespace Pinball.UI
         [SerializeField] Button _resolutionPrevButton = null;
         [SerializeField] Button _resolutionNextButton = null;
         [SerializeField] TMP_Text _resolutionLabel = null;
+        [SerializeField] Button _refreshRatePrevButton = null;
+        [SerializeField] Button _refreshRateNextButton = null;
+        [SerializeField] TMP_Text _refreshRateLabel = null;
+        [SerializeField] Button _vSyncPrevButton = null;
+        [SerializeField] Button _vSyncNextButton = null;
+        [SerializeField] TMP_Text _vSyncLabel = null;
         [SerializeField] Button _fullscreenPrevButton = null;
         [SerializeField] Button _fullscreenNextButton = null;
         [SerializeField] TMP_Text _fullscreenLabel = null;
@@ -64,6 +74,10 @@ namespace Pinball.UI
             _nudgeButton.onClick.AddListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.AddListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
+            _refreshRatePrevButton.onClick.AddListener(OnRefreshRatePrevClicked);
+            _refreshRateNextButton.onClick.AddListener(OnRefreshRateNextClicked);
+            _vSyncPrevButton.onClick.AddListener(OnVSyncClicked);
+            _vSyncNextButton.onClick.AddListener(OnVSyncClicked);
             _fullscreenPrevButton.onClick.AddListener(OnFullscreenClicked);
             _fullscreenNextButton.onClick.AddListener(OnFullscreenClicked);
             _masterVolumePrevButton.onClick.AddListener(OnMasterVolumePrevClicked);
@@ -83,6 +97,10 @@ namespace Pinball.UI
             _nudgeButton.onClick.RemoveListener(OnNudgeClicked);
             _resolutionPrevButton.onClick.RemoveListener(OnResolutionPrevClicked);
             _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
+            _refreshRatePrevButton.onClick.RemoveListener(OnRefreshRatePrevClicked);
+            _refreshRateNextButton.onClick.RemoveListener(OnRefreshRateNextClicked);
+            _vSyncPrevButton.onClick.RemoveListener(OnVSyncClicked);
+            _vSyncNextButton.onClick.RemoveListener(OnVSyncClicked);
             _fullscreenPrevButton.onClick.RemoveListener(OnFullscreenClicked);
             _fullscreenNextButton.onClick.RemoveListener(OnFullscreenClicked);
             _masterVolumePrevButton.onClick.RemoveListener(OnMasterVolumePrevClicked);
@@ -125,9 +143,18 @@ namespace Pinball.UI
             SetKeyLabel(_launchLabel, GameSettings.GetKey(EKeyAction.Launch));
             SetKeyLabel(_nudgeLabel, GameSettings.GetKey(EKeyAction.Nudge));
             _resolutionLabel.text = GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
+            _refreshRateLabel.text = GameSettings.GetRefreshRateLabel(GameSettings.RefreshRateIndex);
+            _vSyncLabel.text = GameSettings.IsVSyncEnabled ? LocalizationTable.Get(ON_KEY, ON_LABEL) : LocalizationTable.Get(OFF_KEY, OFF_LABEL);
+            SetRefreshRateInteractable(!GameSettings.IsVSyncEnabled);
             _masterVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.MasterVolume);
             _sfxVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.SfxVolume);
             _fullscreenLabel.text = GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
+        }
+
+        void SetRefreshRateInteractable(bool isInteractable)
+        {
+            _refreshRatePrevButton.interactable = isInteractable;
+            _refreshRateNextButton.interactable = isInteractable;
         }
 
         static void SetKeyLabel(TMP_Text label, Key key)
@@ -186,6 +213,24 @@ namespace Pinball.UI
         void OnResolutionNextClicked()
         {
             GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnRefreshRatePrevClicked()
+        {
+            GameSettings.SetRefreshRateIndex(GameSettings.RefreshRateIndex + PREV_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnRefreshRateNextClicked()
+        {
+            GameSettings.SetRefreshRateIndex(GameSettings.RefreshRateIndex + NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnVSyncClicked()
+        {
+            GameSettings.SetVSync(!GameSettings.IsVSyncEnabled);
             RefreshLabels();
         }
 
