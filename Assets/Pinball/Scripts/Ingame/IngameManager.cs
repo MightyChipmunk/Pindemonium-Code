@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Pinball.Core;
 using Pinball.FX;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using Pinball.Ingame.Cheat;
+#endif
 using Pinball.Ingame.InputModule;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Presentation;
@@ -42,7 +44,9 @@ namespace Pinball.Ingame
         [SerializeField] ShopCatalogData _shopCatalog = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField] IngameCheatHandler _cheatHandler = null;
+#endif
 
         readonly List<Action> _releaseActions = new List<Action>();
 
@@ -268,7 +272,12 @@ namespace Pinball.Ingame
             _stateMachine.Register(_playState);
             _stateMachine.Register(_resultState);
             Track(_stateMachine.Dispose);
+            InitCheatHandler();
+        }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        void InitCheatHandler()
+        {
             if (null == _cheatHandler)
                 return;
 
@@ -278,6 +287,18 @@ namespace Pinball.Ingame
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
         }
+
+        void OnCheatApplied()
+        {
+            _shopState.RefreshOpenedView();
+            _stageSelectState.RefreshOpenedView();
+            RefreshOwnedItems();
+        }
+#else
+        void InitCheatHandler()
+        {
+        }
+#endif
 
         void PrepareNextStage()
         {
@@ -431,13 +452,6 @@ namespace Pinball.Ingame
                 FlipperId: null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId(),
                 PassiveIds: _loadout.CollectPassiveIds(),
                 Upgrades: _loadout.CollectUpgradeEntries()));
-        }
-
-        void OnCheatApplied()
-        {
-            _shopState.RefreshOpenedView();
-            _stageSelectState.RefreshOpenedView();
-            RefreshOwnedItems();
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)

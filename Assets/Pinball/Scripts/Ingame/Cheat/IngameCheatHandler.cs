@@ -1,3 +1,4 @@
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using UnityEngine;
 
@@ -150,3 +151,4 @@ namespace Pinball.Ingame.Cheat
         }
     }
 }
+#endif
