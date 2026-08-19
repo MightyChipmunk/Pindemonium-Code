@@ -7,14 +7,9 @@ namespace Pinball.Ingame.Reward
     {
         ClearRewardCatalogData _catalog = null;
 
-        public void Init(ClearRewardCatalogData catalog)
+        public UnlockProgress(ClearRewardCatalogData catalog)
         {
             _catalog = catalog;
-        }
-
-        public void Release()
-        {
-            _catalog = null;
         }
 
         public int GetFlipperUnlockTier(FlipperData flipper)

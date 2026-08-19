@@ -14,16 +14,11 @@ namespace Pinball.Ingame
         const float MIN_CLONE_OFFSET_SQR_SPEED = 0.01f;
 
         public record InitParam(
-            BallSpawner Spawner,
-            BallDrainZone DrainZone,
-            StatProvider Stats,
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter);
 
         BallSpawner _spawner = null;
-        BallDrainZone _drainZone = null;
         BallStockCounter _ballStock = null;
-        StatProvider _stats = null;
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
         MapRoot _map = null;
@@ -42,53 +37,17 @@ namespace Pinball.Ingame
         public event Action OnBallReady;
         public event Action OnAllBallsLost;
 
-        public void Init(InitParam param)
+        public BallFlowController(InitParam param, BallSpawner spawner)
         {
-            _spawner = param.Spawner;
-            _drainZone = param.DrainZone;
-            _stats = param.Stats;
+            _spawner = spawner;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
             _usedBallCount = 0;
             _cloneBalls = new List<Ball>();
             _cloneSpawnElapsed = 0f;
             _isSurgeCharged = false;
-            _ballStock = new BallStockCounter();
-            _ballStock.Init(_stats.GetInitialBallCount());
+            _ballStock = new BallStockCounter(StatProvider.GetInitialBallCount());
             _ballStock.OnChanged += HandleBallCountChanged;
-            _drainZone.OnColliderEntered += HandleBallDrained;
-        }
-
-        public void Release()
-        {
-            if (null != _drainZone)
-            {
-                _drainZone.OnColliderEntered -= HandleBallDrained;
-                _drainZone = null;
-            }
-
-            if (null != _ballStock)
-            {
-                _ballStock.Release();
-                _ballStock = null;
-            }
-
-            if (null != _cloneBalls)
-            {
-                _cloneBalls.Clear();
-                _cloneBalls = null;
-            }
-
-            OnBallCountChanged = null;
-            OnBallLost = null;
-            OnBallReady = null;
-            OnAllBallsLost = null;
-            _activeBall = null;
-            _map = null;
-            _stats = null;
-            _spawner = null;
-            _isControlBlockedGetter = null;
-            _isPlayingGetter = null;
         }
 
         public void SetMap(MapRoot map)
@@ -110,7 +69,7 @@ namespace Pinball.Ingame
             if (null == ball)
                 return;
 
-            ball.SetMass(_stats.GetBallMass());
+            ball.SetMass(StatProvider.GetBallMass());
             ApplyPassiveAura(ball);
             ball.SetAura(BallAura.EAuraType.Surge, _isSurgeCharged);
             _map.SetFlipperCollisionIgnored(ball, false);
@@ -137,7 +96,7 @@ namespace Pinball.Ingame
 
         public void RefillStock()
         {
-            _ballStock.Init(_stats.GetInitialBallCount());
+            _ballStock.Reset(StatProvider.GetInitialBallCount());
             OnBallCountChanged?.Invoke(_ballStock.Remaining);
         }
 
@@ -167,7 +126,7 @@ namespace Pinball.Ingame
             OnBallCountChanged?.Invoke(remaining);
         }
 
-        void HandleBallDrained(Collider2D collider)
+        public void HandleBallDrained(Collider2D collider)
         {
             if (!_spawner.TryResolve(collider, out Ball ball))
                 return;
@@ -217,10 +176,10 @@ namespace Pinball.Ingame
             if (!IsActiveBall(ballCollider))
                 return;
 
-            if (!_stats.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
+            if (!StatProvider.HasEffect(ShopItemData.EEffectType.FragileBallScoreRatio))
                 return;
 
-            int hitLimit = Mathf.RoundToInt(_stats.GetEffectValue(ShopItemData.EEffectType.FragileBallScoreRatio, ShopItemData.SUB_VALUE_INDEX));
+            int hitLimit = Mathf.RoundToInt(StatProvider.GetEffectValue(ShopItemData.EEffectType.FragileBallScoreRatio, ShopItemData.SUB_VALUE_INDEX));
             if (hitLimit <= 0)
                 return;
 
@@ -272,7 +231,7 @@ namespace Pinball.Ingame
             if (null == _activeBall || null == _map)
                 return;
 
-            float spawnInterval = _stats.GetEffectValue(ShopItemData.EEffectType.BallCloneSpawn, ShopItemData.SUB_VALUE_INDEX);
+            float spawnInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.BallCloneSpawn, ShopItemData.SUB_VALUE_INDEX);
             if (spawnInterval <= 0f)
                 return;
 
@@ -291,7 +250,7 @@ namespace Pinball.Ingame
                 return;
 
             _cloneBalls.Add(clone);
-            clone.SetMass(_stats.GetBallMass());
+            clone.SetMass(StatProvider.GetBallMass());
             clone.MoveTo(GetCloneSpawnPosition());
             clone.SetKinematic(false);
             clone.SetAlpha(CLONE_ALPHA);
@@ -317,10 +276,10 @@ namespace Pinball.Ingame
 
         void ApplyPassiveAura(Ball ball)
         {
-            ball.SetAura(BallAura.EAuraType.Fire, _stats.HasEffect(ShopItemData.EEffectType.BumperBurn));
-            ball.SetAura(BallAura.EAuraType.Lightning, _stats.HasEffect(ShopItemData.EEffectType.BumperChainLightning));
-            ball.SetAura(BallAura.EAuraType.Frost, _stats.HasEffect(ShopItemData.EEffectType.BumperFreeze));
-            ball.SetAura(BallAura.EAuraType.Gold, _stats.HasEffect(ShopItemData.EEffectType.GimmickBreakMoney));
+            ball.SetAura(BallAura.EAuraType.Fire, StatProvider.HasEffect(ShopItemData.EEffectType.BumperBurn));
+            ball.SetAura(BallAura.EAuraType.Lightning, StatProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning));
+            ball.SetAura(BallAura.EAuraType.Frost, StatProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze));
+            ball.SetAura(BallAura.EAuraType.Gold, StatProvider.HasEffect(ShopItemData.EEffectType.GimmickBreakMoney));
         }
 
         bool IsControlBlocked()

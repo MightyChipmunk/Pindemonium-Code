@@ -41,7 +41,7 @@ namespace Pinball.Ingame.Stage
         public event Action<int> OnRemainingSecondsChanged;
         public event Action OnTimeExpired;
 
-        public void Init(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver)
+        public StageProgressTracker(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver)
         {
             _catalog = catalog;
             _gimmickResolver = gimmickResolver;
@@ -49,18 +49,6 @@ namespace Pinball.Ingame.Stage
             _stageStartScore = startTotalScore;
             _totalScore = startTotalScore;
             ResetStageState();
-        }
-
-        public void Release()
-        {
-            OnStageStarted = null;
-            OnStageCleared = null;
-            OnAllStagesCleared = null;
-            OnStageScoreChanged = null;
-            OnRemainingSecondsChanged = null;
-            OnTimeExpired = null;
-            _gimmickResolver = null;
-            _catalog = null;
         }
 
         public StageData GetCurrentStage()

@@ -6,23 +6,17 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Presentation
 {
-    public class HitStopPlayer
+    public class HitStopPlayer : IDisposable
     {
         const float DEFAULT_TIME_SCALE = 1f;
         const float PAUSED_TIME_SCALE = 0f;
         const float MIN_DURATION = 0.0001f;
 
-        bool _isActive = false;
+        bool _isActive = true;
         bool _isPaused = false;
         CancellationTokenSource _playTokenSource = null;
 
-        public void Init()
-        {
-            _isActive = true;
-            _isPaused = false;
-        }
-
-        public void Release()
+        public void Dispose()
         {
             CancelPlaying();
             _isActive = false;

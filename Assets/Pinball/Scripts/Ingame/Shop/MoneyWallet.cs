@@ -6,14 +6,9 @@ namespace Pinball.Ingame
 
         public int Current => _current;
 
-        public void Init(int initialAmount)
+        public MoneyWallet(int initialAmount)
         {
             _current = initialAmount;
-        }
-
-        public void Release()
-        {
-            _current = 0;
         }
 
         public void Add(int amount)

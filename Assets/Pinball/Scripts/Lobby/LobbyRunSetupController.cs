@@ -9,7 +9,7 @@ using Pinball.UI;
 
 namespace Pinball.Lobby
 {
-    public class LobbyRunSetupController
+    public class LobbyRunSetupController : IDisposable
     {
         public record InitParam(
             FlipperCatalogData FlipperCatalog,
@@ -31,33 +31,22 @@ namespace Pinball.Lobby
         public event Action<int> OnPlayRequested;
         public event Action OnContinueRequested;
 
-        public void Init(InitParam param)
+        public LobbyRunSetupController(InitParam param)
         {
             _flipperCatalog = param.FlipperCatalog;
             _stageCatalog = param.StageCatalog;
             _gimmickCatalog = param.GimmickCatalog;
-            _unlockProgress = new UnlockProgress();
-            _unlockProgress.Init(param.RewardCatalog);
+            _unlockProgress = new UnlockProgress(param.RewardCatalog);
             UIManager.OnEvent += HandleUIEvent;
         }
 
-        public void Release()
+        public void Dispose()
         {
             UIManager.OnEvent -= HandleUIEvent;
             UIManager.Hide(UIViewCatalogData.EViewType.FlipperSelect);
             UIManager.Hide(UIViewCatalogData.EViewType.ContinueRun);
             OnPlayRequested = null;
             OnContinueRequested = null;
-
-            if (null != _unlockProgress)
-            {
-                _unlockProgress.Release();
-                _unlockProgress = null;
-            }
-
-            _gimmickCatalog = null;
-            _stageCatalog = null;
-            _flipperCatalog = null;
         }
 
         public void OpenFlipperSelect()
@@ -106,11 +95,7 @@ namespace Pinball.Lobby
             if (null == _flipperCatalog)
                 return null;
 
-            int flipperIndex = _flipperCatalog.IndexOfId(flipperId);
-            if (flipperIndex == FlipperCatalogData.INVALID_INDEX)
-                flipperIndex = FlipperCatalogData.DEFAULT_INDEX;
-
-            return _flipperCatalog.GetFlipper(flipperIndex);
+            return _flipperCatalog.GetFlipper(_flipperCatalog.IndexOfIdOrDefault(flipperId));
         }
 
         string BuildUnlockHint(FlipperData flipper)

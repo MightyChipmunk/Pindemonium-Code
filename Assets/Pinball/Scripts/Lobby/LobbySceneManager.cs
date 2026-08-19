@@ -26,8 +26,7 @@ namespace Pinball.Lobby
         void Awake()
         {
             GameBootStrap.EnsureInit(_bootStrapConfig);
-            _runSetupController = new LobbyRunSetupController();
-            _runSetupController.Init(new LobbyRunSetupController.InitParam(
+            _runSetupController = new LobbyRunSetupController(new LobbyRunSetupController.InitParam(
                 FlipperCatalog: _flipperCatalog,
                 RewardCatalog: _rewardCatalog,
                 StageCatalog: _stageCatalog,
@@ -64,7 +63,7 @@ namespace Pinball.Lobby
 
             if (null != _runSetupController)
             {
-                _runSetupController.Release();
+                _runSetupController.Dispose();
                 _runSetupController = null;
             }
 

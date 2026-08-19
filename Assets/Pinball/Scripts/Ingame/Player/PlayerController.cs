@@ -5,10 +5,9 @@ using UnityEngine;
 
 namespace Pinball.Ingame
 {
-    public class PlayerController
+    public class PlayerController : IDisposable
     {
         public record InitParam(
-            IngameInputRouter InputRouter,
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
             Func<Vector2, bool> NudgeImpulseApplier,
@@ -16,7 +15,7 @@ namespace Pinball.Ingame
 
         const float NUDGE_COOLDOWN_SECONDS = 3f;
         const float NUDGE_IMPULSE_POWER = 2.5f;
-        const float FULL_CIRCLE_RADIAN = 6.2831853f;
+        const float FULL_CIRCLE_RADIAN = Mathf.PI * 2f;
 
         IngameInputRouter _inputRouter = null;
         MapRoot _map = null;
@@ -28,9 +27,9 @@ namespace Pinball.Ingame
 
         public event Action OnLaunched;
 
-        public void Init(InitParam param)
+        public PlayerController(InitParam param, IngameInputRouter inputRouter)
         {
-            _inputRouter = param.InputRouter;
+            _inputRouter = inputRouter;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
             _nudgeImpulseApplier = param.NudgeImpulseApplier;
@@ -42,23 +41,16 @@ namespace Pinball.Ingame
             _inputRouter.OnNudgePressed += HandleNudgePressed;
         }
 
-        public void Release()
+        public void Dispose()
         {
-            if (null != _inputRouter)
-            {
-                _inputRouter.OnFlipperLeftChanged -= HandleFlipperLeftChanged;
-                _inputRouter.OnFlipperRightChanged -= HandleFlipperRightChanged;
-                _inputRouter.OnLaunchChanged -= HandleLaunchChanged;
-                _inputRouter.OnNudgePressed -= HandleNudgePressed;
-                _inputRouter = null;
-            }
+            if (null == _inputRouter)
+                return;
 
-            OnLaunched = null;
-            _isControlBlockedGetter = null;
-            _isPlayingGetter = null;
-            _nudgeImpulseApplier = null;
-            _nudgePresenter = null;
-            _map = null;
+            _inputRouter.OnFlipperLeftChanged -= HandleFlipperLeftChanged;
+            _inputRouter.OnFlipperRightChanged -= HandleFlipperRightChanged;
+            _inputRouter.OnLaunchChanged -= HandleLaunchChanged;
+            _inputRouter.OnNudgePressed -= HandleNudgePressed;
+            _inputRouter = null;
         }
 
         public void SetMap(MapRoot map)

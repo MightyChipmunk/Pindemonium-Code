@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Presentation
 {
-    public class IngameDirector
+    public class IngameDirector : IDisposable
     {
         const float NUDGE_SHAKE_DELAY = 0f;
 
@@ -15,23 +15,19 @@ namespace Pinball.Ingame.Presentation
         HitStopPlayer _hitStopPlayer = null;
         Action<CameraController.ECameraShakeType, float> _cameraShaker = null;
 
-        public void Init(PresentationConfigData config, FXPoolData fxPoolData, Action<CameraController.ECameraShakeType, float> cameraShaker)
+        public IngameDirector(PresentationConfigData config, FXPoolData fxPoolData, Action<CameraController.ECameraShakeType, float> cameraShaker)
         {
             _config = config;
             _cameraShaker = cameraShaker;
             StaticPool<PoolableFX.EFXType, PoolableFX>.Init(fxPoolData);
             _hitStopPlayer = new HitStopPlayer();
-            _hitStopPlayer.Init();
         }
 
-        public void Release()
+        public void Dispose()
         {
-            _cameraShaker = null;
-            _config = null;
-
             if (null != _hitStopPlayer)
             {
-                _hitStopPlayer.Release();
+                _hitStopPlayer.Dispose();
                 _hitStopPlayer = null;
             }
 
@@ -92,6 +88,31 @@ namespace Pinball.Ingame.Presentation
         {
             _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectNudge);
+        }
+
+        public void PlayComboUp()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.ComboUp);
+        }
+
+        public void PlaySurgeCharged()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
+        }
+
+        public void PlayStageClear()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.StageClear);
+        }
+
+        public void PlayGameResult(bool isClear)
+        {
+            AudioManager.Play(isClear ? AudioStorage.EAudioClipType.GameClear : AudioStorage.EAudioClipType.GameOver);
+        }
+
+        public void PlayRewardUnlock()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
         }
 
         void PlayCameraShake(HitPresentationData presentation)

@@ -9,14 +9,14 @@ namespace Pinball.Ingame
         public int Remaining => _remaining;
         public event Action<int> OnChanged;
 
-        public void Init(int initialCount)
+        public BallStockCounter(int initialCount)
         {
             _remaining = initialCount;
         }
 
-        public void Release()
+        public void Reset(int count)
         {
-            OnChanged = null;
+            _remaining = count;
         }
 
         public void Consume()

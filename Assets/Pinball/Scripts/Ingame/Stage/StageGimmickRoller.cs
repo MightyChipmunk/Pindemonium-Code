@@ -15,22 +15,11 @@ namespace Pinball.Ingame.Stage
         public int CurrentRerollPrice => null == _catalog ? 0 : _catalog.RerollBasePrice + _catalog.RerollPriceIncrement * _rerollCount;
         public bool CanReroll => GimmickCount > 0 && null != _catalog && _catalog.Count > 0;
 
-        public void Init(StageGimmickCatalogData catalog)
+        public StageGimmickRoller(StageGimmickCatalogData catalog)
         {
             _catalog = catalog;
             _gimmicks = new List<StageGimmickData>();
             _rerollCount = 0;
-        }
-
-        public void Release()
-        {
-            if (null != _gimmicks)
-            {
-                _gimmicks.Clear();
-                _gimmicks = null;
-            }
-
-            _catalog = null;
         }
 
         public StageGimmickData GetGimmick(int index)
@@ -53,7 +42,18 @@ namespace Pinball.Ingame.Stage
                 AddGimmick(stage.GetGimmick(i));
         }
 
-        public void RestoreGimmicks(int[] catalogIndices)
+        public void RestoreOrSetBase(int[] catalogIndices, StageData baseStage)
+        {
+            if (null == catalogIndices || catalogIndices.Length <= 0)
+            {
+                SetBaseGimmicks(baseStage);
+                return;
+            }
+
+            RestoreGimmicks(catalogIndices);
+        }
+
+        void RestoreGimmicks(int[] catalogIndices)
         {
             _gimmicks.Clear();
             _rerollCount = 0;

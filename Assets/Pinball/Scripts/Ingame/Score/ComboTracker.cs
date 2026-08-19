@@ -17,21 +17,12 @@ namespace Pinball.Ingame
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, float, int> OnComboEnded;
 
-        public void Init(ComboConfigData config, Func<float> multiplierBonusGetter, Func<float> timeoutBonusGetter)
+        public ComboTracker(ComboConfigData config, Func<float> multiplierBonusGetter, Func<float> timeoutBonusGetter)
         {
             _config = config;
             _multiplierBonusGetter = multiplierBonusGetter;
             _timeoutBonusGetter = timeoutBonusGetter;
             ResetCombo();
-        }
-
-        public void Release()
-        {
-            OnComboChanged = null;
-            OnComboEnded = null;
-            _multiplierBonusGetter = null;
-            _timeoutBonusGetter = null;
-            _config = null;
         }
 
         public void AddBounce(int score)

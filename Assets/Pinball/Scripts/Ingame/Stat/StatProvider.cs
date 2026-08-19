@@ -4,18 +4,24 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Stat
 {
-    public class StatProvider
+    public static class StatProvider
     {
         const int MIN_SCALING_BALL_COUNT = 1;
+        const float DEFAULT_SCALE = 1f;
+        const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 초기화되지 않은 상태에서 스탯을 조회했습니다.";
 
-        PinballStatData _statData = null;
-        PlayerLoadout _loadout = null;
-        FlipperData.Tuning _tuning = null;
-        FlipperData.RunSetup _runSetup = null;
-        Func<int> _remainingBallGetter = null;
-        Func<int> _comboCountGetter = null;
+        static PinballStatData _statData = null;
+        static PlayerLoadout _loadout = null;
+        static FlipperData.Tuning _tuning = null;
+        static FlipperData.RunSetup _runSetup = null;
+        static Func<int> _remainingBallGetter = null;
+        static Func<int> _comboCountGetter = null;
+        static bool _isInitialized = false;
+        static bool _isMissingReported = false;
 
-        public void Init(PinballStatData statData, PlayerLoadout loadout, FlipperData flipper, Func<int> remainingBallGetter, Func<int> comboCountGetter)
+        public static bool IsInitialized => _isInitialized;
+
+        public static void Init(PinballStatData statData, PlayerLoadout loadout, FlipperData flipper, Func<int> remainingBallGetter, Func<int> comboCountGetter)
         {
             _statData = statData;
             _loadout = loadout;
@@ -23,10 +29,13 @@ namespace Pinball.Ingame.Stat
             _runSetup = null == flipper ? FlipperData.DEFAULT_RUN_SETUP : flipper.GetRunSetup();
             _remainingBallGetter = remainingBallGetter;
             _comboCountGetter = comboCountGetter;
+            _isInitialized = true;
+            _isMissingReported = false;
         }
 
-        public void Release()
+        public static void Release()
         {
+            _isInitialized = false;
             _statData = null;
             _loadout = null;
             _tuning = null;
@@ -35,55 +44,55 @@ namespace Pinball.Ingame.Stat
             _comboCountGetter = null;
         }
 
-        public float GetPerfectImpulseScale()
+        public static float GetPerfectImpulseScale()
         {
-            return _tuning.PerfectImpulseScale;
+            return EnsureReady() ? _tuning.PerfectImpulseScale : DEFAULT_SCALE;
         }
 
-        public float GetFlipperLengthScale()
+        public static float GetFlipperLengthScale()
         {
-            return _tuning.LengthScale;
+            return EnsureReady() ? _tuning.LengthScale : DEFAULT_SCALE;
         }
 
-        public float GetFlipperRotateSpeedScale()
+        public static float GetFlipperRotateSpeedScale()
         {
-            return _tuning.RotateSpeedScale;
+            return EnsureReady() ? _tuning.RotateSpeedScale : DEFAULT_SCALE;
         }
 
-        public float GetFlipPower()
+        public static float GetFlipPower()
         {
-            if (null == _statData)
+            if (!EnsureReady() || null == _statData)
                 return 0f;
 
             return (_statData.FlipPower + GetEffectSum(ShopItemData.EEffectType.FlipPowerAdd)) * _tuning.FlipPowerScale;
         }
 
-        public int GetInitialBallCount()
+        public static int GetInitialBallCount()
         {
-            if (null == _statData)
+            if (!EnsureReady() || null == _statData)
                 return 0;
 
             return Mathf.Max(MIN_SCALING_BALL_COUNT, _statData.InitialBallCount + _runSetup.StartBallAdd);
         }
 
-        public float GetBallMass()
+        public static float GetBallMass()
         {
-            if (null == _statData)
+            if (!EnsureReady() || null == _statData)
                 return 0f;
 
             return _statData.BallMass;
         }
 
-        public float GetBallAttackPower()
+        public static float GetBallAttackPower()
         {
-            if (null == _statData)
+            if (!EnsureReady() || null == _statData)
                 return 0f;
 
             float basePower = _statData.BallAttackPower + GetEffectSum(ShopItemData.EEffectType.BallAttackPowerAdd);
             return basePower * (1f + GetComboAttackPowerRatio());
         }
 
-        float GetComboAttackPowerRatio()
+        static float GetComboAttackPowerRatio()
         {
             float ratioPerHit = GetEffectSum(ShopItemData.EEffectType.ComboAttackPowerRatio);
             if (ratioPerHit <= 0f)
@@ -95,7 +104,7 @@ namespace Pinball.Ingame.Stat
             return ratioPerHit * _comboCountGetter();
         }
 
-        public float GetLowBallScoreRatio()
+        public static float GetLowBallScoreRatio()
         {
             float maxRatio = GetEffectSum(ShopItemData.EEffectType.LowBallScoreRatio);
             if (maxRatio <= 0f)
@@ -112,66 +121,86 @@ namespace Pinball.Ingame.Stat
             return maxRatio * (initialCount - remainingCount) / (initialCount - MIN_SCALING_BALL_COUNT);
         }
 
-        public float GetHitFlatDamage()
+        public static float GetHitFlatDamage()
         {
             return GetEffectSum(ShopItemData.EEffectType.HitFlatDamageAdd);
         }
 
-        public float GetCloneDamageRatio()
+        public static float GetCloneDamageRatio()
         {
             return GetEffectSum(ShopItemData.EEffectType.BallCloneSpawn);
         }
 
-        public float GetPerfectTimingRelax()
+        public static float GetPerfectTimingRelax()
         {
+            if (!EnsureReady())
+                return 0f;
+
             return GetEffectSum(ShopItemData.EEffectType.PerfectTimingRelax) + _tuning.PerfectTimingWindowAdd;
         }
 
-        public float GetBallResupplyMoney()
+        public static float GetBallResupplyMoney()
         {
+            if (!EnsureReady())
+                return 0f;
+
             return GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney) + _runSetup.BallResupplyMoneyAdd;
         }
 
-        public float GetComboMultiplierBonus()
+        public static float GetComboMultiplierBonus()
         {
             return GetEffectSum(ShopItemData.EEffectType.ComboMultiplierAdd);
         }
 
-        public float GetComboTimeoutBonus()
+        public static float GetComboTimeoutBonus()
         {
             return GetEffectSum(ShopItemData.EEffectType.ComboTimeoutAdd);
         }
 
-        public float GetGimmickScoreRatio(MapInteractable.EGimmickType gimmickType)
+        public static float GetGimmickScoreRatio(MapInteractable.EGimmickType gimmickType)
         {
-            if (null == _loadout)
+            if (!EnsureReady() || null == _loadout)
                 return 0f;
 
             return _loadout.GetGimmickScoreRatio(gimmickType);
         }
 
-        public float GetEffectSum(ShopItemData.EEffectType effectType)
+        public static float GetEffectSum(ShopItemData.EEffectType effectType)
         {
-            if (null == _loadout)
+            if (!EnsureReady() || null == _loadout)
                 return 0f;
 
             return _loadout.GetEffectSum(effectType);
         }
 
-        public float GetEffectValue(ShopItemData.EEffectType effectType, int valueIndex)
+        public static float GetEffectValue(ShopItemData.EEffectType effectType, int valueIndex)
         {
-            if (null == _loadout)
+            if (!EnsureReady() || null == _loadout)
                 return 0f;
 
             return _loadout.GetEffectValue(effectType, valueIndex);
         }
 
-        public bool HasEffect(ShopItemData.EEffectType effectType)
+        public static bool HasEffect(ShopItemData.EEffectType effectType)
         {
-            if (null == _loadout)
+            if (!EnsureReady() || null == _loadout)
                 return false;
 
             return _loadout.HasEffect(effectType);
+        }
+
+        static bool EnsureReady()
+        {
+            if (_isInitialized)
+                return true;
+
+            if (!_isMissingReported)
+            {
+                _isMissingReported = true;
+                Debug.LogError(NOT_INITIALIZED_MESSAGE);
+            }
+
+            return false;
         }
     }
 }

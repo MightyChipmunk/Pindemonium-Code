@@ -43,5 +43,11 @@ namespace Pinball.Ingame
 
             return INVALID_INDEX;
         }
+
+        public int IndexOfIdOrDefault(string flipperId)
+        {
+            int index = IndexOfId(flipperId);
+            return index == INVALID_INDEX ? DEFAULT_INDEX : index;
+        }
     }
 }

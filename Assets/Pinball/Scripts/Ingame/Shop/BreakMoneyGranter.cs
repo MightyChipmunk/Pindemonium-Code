@@ -7,20 +7,11 @@ namespace Pinball.Ingame
     public class BreakMoneyGranter
     {
         MoneyWallet _wallet = null;
-        StatProvider _stats = null;
         int _stageEarnedMoney = 0;
 
-        public void Init(MoneyWallet wallet, StatProvider stats)
+        public BreakMoneyGranter(MoneyWallet wallet)
         {
             _wallet = wallet;
-            _stats = stats;
-            _stageEarnedMoney = 0;
-        }
-
-        public void Release()
-        {
-            _wallet = null;
-            _stats = null;
             _stageEarnedMoney = 0;
         }
 
@@ -31,14 +22,14 @@ namespace Pinball.Ingame
 
         public void HandleGimmickBroken()
         {
-            if (null == _wallet || null == _stats)
+            if (null == _wallet)
                 return;
 
-            int amount = Mathf.RoundToInt(_stats.GetEffectSum(ShopItemData.EEffectType.GimmickBreakMoney));
+            int amount = Mathf.RoundToInt(StatProvider.GetEffectSum(ShopItemData.EEffectType.GimmickBreakMoney));
             if (amount <= 0)
                 return;
 
-            int stageLimit = Mathf.RoundToInt(_stats.GetEffectValue(ShopItemData.EEffectType.GimmickBreakMoney, ShopItemData.SUB_VALUE_INDEX));
+            int stageLimit = Mathf.RoundToInt(StatProvider.GetEffectValue(ShopItemData.EEffectType.GimmickBreakMoney, ShopItemData.SUB_VALUE_INDEX));
             if (stageLimit > 0)
             {
                 if (_stageEarnedMoney >= stageLimit)

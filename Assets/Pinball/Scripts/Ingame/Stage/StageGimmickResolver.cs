@@ -12,14 +12,9 @@ namespace Pinball.Ingame.Stage
 
         IStageGimmickSource _source = null;
 
-        public void Init(IStageGimmickSource source)
+        public StageGimmickResolver(IStageGimmickSource source)
         {
             _source = source;
-        }
-
-        public void Release()
-        {
-            _source = null;
         }
 
         public bool IsBumperUnbreakable()

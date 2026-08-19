@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Pinball.Audio;
 using Pinball.Core;
 using Pinball.FX;
 using Pinball.Ingame.Cheat;
@@ -10,6 +10,7 @@ using Pinball.Ingame.Presentation;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
+using Pinball.Ingame.State;
 using Pinball.Ingame.UI;
 using Pinball.Save;
 using Pinball.UI;
@@ -20,21 +21,9 @@ namespace Pinball.Ingame
 {
     public class IngameManager : BehaviourBase
     {
-        public enum EGameState
-        {
-            Ready = 0,
-            Playing = 1,
-            GameOver = 2,
-            Shopping = 3,
-            Cleared = 4,
-            StageSelecting = 5,
-        }
-
         const int DEFAULT_MAP_INDEX = 0;
         const int STAGE_CLEAR_BASE_MONEY = 3;
-        const int FIRST_STAGE_NUMBER = 1;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 4;
-        const int PASSIVE_OWNED_COUNT = 1;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -55,7 +44,15 @@ namespace Pinball.Ingame
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] IngameCheatHandler _cheatHandler = null;
 
+        readonly List<Action> _releaseActions = new List<Action>();
+
+        IngameStateMachine _stateMachine = null;
+        StageSelectState _stageSelectState = null;
+        ShopState _shopState = null;
+        PlayState _playState = null;
+        ResultState _resultState = null;
         IngameDirector _director = null;
+        IngameResultPresenter _resultPresenter = null;
         PlayerController _playerController = null;
         BallFlowController _ballFlow = null;
         ScoreCounter _scoreCounter = null;
@@ -63,175 +60,42 @@ namespace Pinball.Ingame
         StageProgressTracker _stageTracker = null;
         StageGimmickResolver _gimmickResolver = null;
         StageGimmickRoller _gimmickRoller = null;
-        IngameStageSelectController _stageSelectController = null;
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
-        StatProvider _statProvider = null;
         PowerSurgeCharger _powerSurgeCharger = null;
         BreakMoneyGranter _breakMoneyGranter = null;
-        IngameShopController _shopController = null;
         IngameSaveHandler _saveHandler = null;
         UnlockProgress _unlockProgress = null;
         FlipperData _selectedFlipper = null;
         FlipperData.RunSetup _runSetup = null;
-        List<UI.OwnedItemsView.Entry> _passiveEntries = null;
-        List<UI.OwnedItemsView.Entry> _upgradeEntries = null;
         int _stageClearMoney = STAGE_CLEAR_BASE_MONEY;
-        MapRoot _currentMap = null;
-        EGameState _gameState = EGameState.Ready;
-        bool _isPaused = false;
-        bool _isShopPending = false;
         bool _isExitingToLobby = false;
-
-        bool IsControlBlocked => _isPaused || _gameState == EGameState.GameOver || _gameState == EGameState.Shopping || _gameState == EGameState.Cleared || _gameState == EGameState.StageSelecting;
 
         void Awake()
         {
             GameBootStrap.EnsureInit(_bootStrapConfig);
             _saveHandler = new IngameSaveHandler();
-            _unlockProgress = new UnlockProgress();
-            _unlockProgress.Init(_rewardCatalog);
+            _unlockProgress = new UnlockProgress(_rewardCatalog);
 
-            int startStageNumber = FIRST_STAGE_NUMBER;
-            int startMoney = 0;
-            int startScore = 0;
-            int[] startGimmickIndices = null;
-            int flipperIndex = SceneFlow.RequestedFlipperIndex;
-            bool isContinuedRun = false;
-            if (_saveHandler.TryLoad(out IngamePlayData savedData))
-            {
-                isContinuedRun = true;
-                startStageNumber = savedData.StageNumber;
-                startMoney = savedData.Money;
-                startScore = savedData.TotalScore;
-                startGimmickIndices = savedData.GetGimmickIndices();
-                flipperIndex = ResolveSavedFlipperIndex(savedData.FlipperId);
-                _isShopPending = savedData.IsShopPending;
-            }
+            IngameRunSetupResolver.RunStart start = ResolveRunStart();
+            _selectedFlipper = start.Flipper;
+            _runSetup = start.Setup;
+            _stageClearMoney = start.StageClearMoney;
 
-            _selectedFlipper = ResolveFlipper(flipperIndex);
-            _runSetup = null == _selectedFlipper ? FlipperData.DEFAULT_RUN_SETUP : _selectedFlipper.GetRunSetup();
-            _stageClearMoney = Mathf.Max(0, STAGE_CLEAR_BASE_MONEY + _runSetup.StageClearMoneyAdd);
-
-            bool isNewRun = !isContinuedRun;
-            if (isNewRun)
-                startMoney = Mathf.Max(0, startMoney + _runSetup.StartMoneyAdd);
-
-            _wallet = new MoneyWallet();
-            _wallet.Init(startMoney);
-            _loadout = new PlayerLoadout();
-            int baseSlotCount = null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount;
-            _loadout.Init(Mathf.Max(1, baseSlotCount + _runSetup.PassiveSlotAdd));
-            if (isNewRun)
-                GrantStartPassives(_runSetup.StartPassiveCount);
-            else
-                RestoreLoadout(savedData);
-            _statProvider = new StatProvider();
-            _statProvider.Init(_statData, _loadout, _selectedFlipper, GetRemainingBallCount, GetComboCount);
-            _powerSurgeCharger = new PowerSurgeCharger();
-            _powerSurgeCharger.Init(_statProvider, GetIsPlaying);
-            _breakMoneyGranter = new BreakMoneyGranter();
-            _breakMoneyGranter.Init(_wallet, _statProvider);
-            _gimmickRoller = new StageGimmickRoller();
-            _gimmickRoller.Init(_gimmickCatalog);
-            _gimmickResolver = new StageGimmickResolver();
-            _gimmickResolver.Init(_gimmickRoller);
-            _stageTracker = new StageProgressTracker();
-            _stageTracker.Init(_stageCatalog, startStageNumber, startScore, _gimmickResolver);
-            RestoreCurrentStageGimmicks(startGimmickIndices);
-            _stageTracker.OnStageStarted += OnStageStarted;
-            _stageTracker.OnStageCleared += OnStageCleared;
-            _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
-            _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
-            _stageTracker.OnRemainingSecondsChanged += OnStageRemainingSecondsChanged;
-            _stageTracker.OnTimeExpired += OnStageTimeExpired;
-            _scoreCounter = new ScoreCounter();
-            _scoreCounter.Init(startScore, _comboConfig, _statProvider, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier);
-            _scoreCounter.OnComboChanged += OnComboChanged;
-            _scoreCounter.OnComboEnded += OnComboEnded;
-            _shopController = new IngameShopController();
-            _shopController.Init(new IngameShopController.InitParam(
-                Config: _shopConfig,
-                Catalog: _shopCatalog,
-                Wallet: _wallet,
-                Loadout: _loadout,
-                IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked,
-                OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
-                IsInterestDisabled: _runSetup.IsInterestDisabled));
-            _shopController.OnNextStageRequested += OpenNextStageSelect;
-            _shopController.OnLoadoutChanged += SaveProgress;
-            _shopController.OnLoadoutChanged += RefreshOwnedItems;
-            _stageSelectController = new IngameStageSelectController();
-            _stageSelectController.Init(new IngameStageSelectController.InitParam(
-                StageCatalog: _stageCatalog,
-                Tracker: _stageTracker,
-                Roller: _gimmickRoller,
-                Resolver: _gimmickResolver,
-                Wallet: _wallet,
-                RemainingBallGetter: GetRemainingBallCount,
-                StageClearBaseMoney: _stageClearMoney));
-            _stageSelectController.OnStageStartRequested += StartCurrentStage;
-            _stageSelectController.OnGimmickRerolled += SaveProgress;
-
-            if (null != _cheatHandler)
-                _cheatHandler.Init(new IngameCheatHandler.InitParam(
-                    Wallet: _wallet,
-                    Loadout: _loadout,
-                    OnCheatApplied: OnCheatApplied));
-
-            _inputRouter.Init();
-            _inputRouter.OnEscapePressed += OnEscapePressed;
-            _ballSpawner.Init();
-            _drainZone.Init();
-            _mapLoader.Init();
-            _uiRoot.Init();
-            _cameraController.Init();
-            _director = new IngameDirector();
-            _director.Init(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
-            _ballFlow = new BallFlowController();
-            _ballFlow.Init(new BallFlowController.InitParam(
-                Spawner: _ballSpawner,
-                DrainZone: _drainZone,
-                Stats: _statProvider,
-                IsControlBlockedGetter: GetIsControlBlocked,
-                IsPlayingGetter: GetIsPlaying));
-            _ballFlow.OnBallLost += OnBallLost;
-            _ballFlow.OnBallReady += OnBallReady;
-            _ballFlow.OnAllBallsLost += EndGame;
-            _damageCalculator = new DamageCalculator();
-            _damageCalculator.Init(new DamageCalculator.InitParam(
-                AttackPowerGetter: _statProvider.GetBallAttackPower,
-                FlatDamageGetter: _statProvider.GetHitFlatDamage,
-                SurgeMultiplierConsumer: _powerSurgeCharger.ConsumeMultiplier,
-                IsCloneBallGetter: _ballFlow.IsCloneBall,
-                CloneDamageRatioGetter: _statProvider.GetCloneDamageRatio));
-            _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
-            _powerSurgeCharger.OnChargedChanged += OnSurgeChargedChanged;
-            _playerController = new PlayerController();
-            _playerController.Init(new PlayerController.InitParam(
-                InputRouter: _inputRouter,
-                IsControlBlockedGetter: GetIsControlBlocked,
-                IsPlayingGetter: GetIsPlaying,
-                NudgeImpulseApplier: _ballFlow.TryApplyImpulseToActiveBall,
-                NudgePresenter: _director.PlayNudge));
-            _playerController.OnLaunched += OnBallLaunched;
-
-            _scoreCounter.OnChanged += _uiRoot.SetScore;
-            _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
-            _uiRoot.SetScore(_scoreCounter.Current);
-            _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
-            _passiveEntries = new List<UI.OwnedItemsView.Entry>();
-            _upgradeEntries = new List<UI.OwnedItemsView.Entry>();
-            RefreshOwnedItems();
+            InitRunModel(start);
+            InitStageFlow(start);
+            InitSceneComponents();
+            InitPlay();
+            InitPresentation();
+            InitStates();
 
             UIManager.OnEvent += OnUIEvent;
-            _uiRoot.OnPauseClicked += OnPauseButtonClicked;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
 
-            if (_isShopPending)
-                OpenShop();
+            if (start.IsShopPending)
+                _stateMachine.ChangeState(EIngameState.Shop, new ShopState.EnterParam(OpensImmediately: true));
             else
-                OpenStageSelect();
+                _stateMachine.ChangeState(EIngameState.StageSelect, new StageSelectState.EnterParam(IsAfterShop: false));
         }
 
         void OnDestroy()
@@ -239,193 +103,236 @@ namespace Pinball.Ingame
             UIManager.OnEvent -= OnUIEvent;
             UIManager.HideAll();
 
-            if (null != _cheatHandler)
-                _cheatHandler.Release();
+            for (int i = _releaseActions.Count - 1; i >= 0; --i)
+                _releaseActions[i]();
 
-            if (null != _stageSelectController)
-            {
-                _stageSelectController.Release();
-                _stageSelectController = null;
-            }
-
-            if (null != _stageTracker)
-            {
-                _stageTracker.Release();
-                _stageTracker = null;
-            }
-
-            if (null != _gimmickResolver)
-            {
-                _gimmickResolver.Release();
-                _gimmickResolver = null;
-            }
-
-            if (null != _gimmickRoller)
-            {
-                _gimmickRoller.Release();
-                _gimmickRoller = null;
-            }
-
-            if (null != _ballFlow)
-            {
-                _ballFlow.Release();
-                _ballFlow = null;
-            }
-
-            if (null != _playerController)
-            {
-                _playerController.Release();
-                _playerController = null;
-            }
-
-            if (null != _shopController)
-            {
-                _shopController.Release();
-                _shopController = null;
-            }
-
-            if (null != _scoreCounter)
-            {
-                _scoreCounter.Release();
-                _scoreCounter = null;
-            }
-
-            if (null != _damageCalculator)
-            {
-                _damageCalculator.Release();
-                _damageCalculator = null;
-            }
-
-            if (null != _breakMoneyGranter)
-            {
-                _breakMoneyGranter.Release();
-                _breakMoneyGranter = null;
-            }
-
-            if (null != _powerSurgeCharger)
-            {
-                _powerSurgeCharger.Release();
-                _powerSurgeCharger = null;
-            }
-
-            if (null != _statProvider)
-            {
-                _statProvider.Release();
-                _statProvider = null;
-            }
-
-            if (null != _loadout)
-            {
-                _loadout.Release();
-                _loadout = null;
-            }
-
-            if (null != _wallet)
-            {
-                _wallet.Release();
-                _wallet = null;
-            }
-
-            if (null != _unlockProgress)
-            {
-                _unlockProgress.Release();
-                _unlockProgress = null;
-            }
-
+            _releaseActions.Clear();
             _selectedFlipper = null;
             _runSetup = null;
-
-            if (null != _passiveEntries)
-            {
-                _passiveEntries.Clear();
-                _passiveEntries = null;
-            }
-
-            if (null != _upgradeEntries)
-            {
-                _upgradeEntries.Clear();
-                _upgradeEntries = null;
-            }
-
-            if (null != _drainZone)
-                _drainZone.Release();
-
-            if (null != _inputRouter)
-                _inputRouter.Release();
-
-            if (null != _uiRoot)
-                _uiRoot.Release();
-
-            if (null != _mapLoader)
-                _mapLoader.Release();
-
-            _currentMap = null;
-
-            if (null != _director)
-            {
-                _director.Release();
-                _director = null;
-            }
-
-            if (null != _cameraController)
-                _cameraController.Release();
-
-            if (null != _ballSpawner)
-                _ballSpawner.Release();
-
             _saveHandler = null;
         }
 
         void Update()
         {
-            if (null == _scoreCounter)
+            if (null == _stateMachine)
                 return;
 
-            if (_isPaused)
+            _stateMachine.Tick(Time.deltaTime);
+        }
+
+        void Track(Action release)
+        {
+            _releaseActions.Add(release);
+        }
+
+        IngameRunSetupResolver.RunStart ResolveRunStart()
+        {
+            _saveHandler.TryLoad(out IngamePlayData savedData);
+            int baseSlotCount = null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount;
+            return IngameRunSetupResolver.Resolve(new IngameRunSetupResolver.ResolveParam(
+                SavedData: savedData,
+                RequestedFlipperIndex: SceneFlow.RequestedFlipperIndex,
+                FlipperCatalog: _flipperCatalog,
+                IsFlipperUnlockedGetter: _unlockProgress.IsFlipperUnlocked,
+                BasePassiveSlotCount: baseSlotCount,
+                BaseStageClearMoney: STAGE_CLEAR_BASE_MONEY));
+        }
+
+        void InitRunModel(IngameRunSetupResolver.RunStart start)
+        {
+            _wallet = new MoneyWallet(start.Money);
+            _loadout = new PlayerLoadout(start.PassiveSlotCount);
+            if (start.IsNewRun)
+                _loadout.GrantRandomPassives(_shopCatalog, _unlockProgress.IsItemUnlocked, _runSetup.StartPassiveCount);
+            else
+                _loadout.Restore(start.SavedData, _shopCatalog);
+
+            StatProvider.Init(_statData, _loadout, _selectedFlipper, GetRemainingBallCount, GetComboCount);
+            Track(StatProvider.Release);
+
+            _powerSurgeCharger = new PowerSurgeCharger(GetIsPlaying);
+            _breakMoneyGranter = new BreakMoneyGranter(_wallet);
+        }
+
+        void InitStageFlow(IngameRunSetupResolver.RunStart start)
+        {
+            _gimmickRoller = new StageGimmickRoller(_gimmickCatalog);
+            _gimmickResolver = new StageGimmickResolver(_gimmickRoller);
+            _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver);
+            _stageTracker.OnStageStarted += OnStageStarted;
+            _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage());
+
+            _scoreCounter = new ScoreCounter(start.Score, _comboConfig, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier);
+            _scoreCounter.OnComboChanged += OnComboChanged;
+            _scoreCounter.OnComboEnded += OnComboEnded;
+        }
+
+        void InitSceneComponents()
+        {
+            _inputRouter.Init();
+            Track(_inputRouter.Release);
+            _inputRouter.OnEscapePressed += OnPauseToggleRequested;
+
+            _ballSpawner.Init();
+            Track(_ballSpawner.Release);
+            _drainZone.Init();
+            Track(_drainZone.Release);
+            _uiRoot.Init();
+            Track(_uiRoot.Release);
+            _uiRoot.OnPauseClicked += OnPauseToggleRequested;
+            _cameraController.Init();
+            Track(_cameraController.Release);
+
+            _director = new IngameDirector(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
+            Track(_director.Dispose);
+
+            _mapLoader.Init();
+            Track(_mapLoader.Release);
+        }
+
+        void InitPlay()
+        {
+            _ballFlow = new BallFlowController(new BallFlowController.InitParam(
+                IsControlBlockedGetter: GetIsControlBlocked,
+                IsPlayingGetter: GetIsPlaying), _ballSpawner);
+            _drainZone.OnColliderEntered += _ballFlow.HandleBallDrained;
+
+            _damageCalculator = new DamageCalculator(new DamageCalculator.InitParam(
+                SurgeMultiplierConsumer: _powerSurgeCharger.ConsumeMultiplier,
+                IsCloneBallGetter: _ballFlow.IsCloneBall));
+            _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
+            _powerSurgeCharger.OnChargedChanged += OnSurgeChargedChanged;
+
+            _playerController = new PlayerController(new PlayerController.InitParam(
+                IsControlBlockedGetter: GetIsControlBlocked,
+                IsPlayingGetter: GetIsPlaying,
+                NudgeImpulseApplier: _ballFlow.TryApplyImpulseToActiveBall,
+                NudgePresenter: _director.PlayNudge), _inputRouter);
+            Track(_playerController.Dispose);
+        }
+
+        void InitPresentation()
+        {
+            _resultPresenter = new IngameResultPresenter(_loadout, _uiRoot.SetOwnedItems);
+
+            _scoreCounter.OnChanged += _uiRoot.SetScore;
+            _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
+            _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
+            _stageTracker.OnRemainingSecondsChanged += OnStageRemainingSecondsChanged;
+            _uiRoot.SetScore(_scoreCounter.Current);
+            _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
+            RefreshOwnedItems();
+        }
+
+        void InitStates()
+        {
+            _stateMachine = new IngameStateMachine();
+
+            _shopState = new ShopState(new ShopState.InitParam(
+                Config: _shopConfig,
+                Catalog: _shopCatalog,
+                MoneyGetter: GetMoney,
+                MoneySpender: _wallet.TrySpend,
+                IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked,
+                OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
+                IsInterestDisabled: _runSetup.IsInterestDisabled), _loadout);
+            _shopState.OnLoadoutChanged += OnShopLoadoutChanged;
+
+            _stageSelectState = new StageSelectState(new StageSelectState.InitParam(
+                StageCatalog: _stageCatalog,
+                StageNumberGetter: GetStageNumber,
+                MoneyGetter: GetMoney,
+                MoneySpender: _wallet.TrySpend,
+                RemainingBallGetter: GetRemainingBallCount,
+                NextStagePreparer: PrepareNextStage,
+                ProgressSaver: SaveProgress,
+                StageClearBaseMoney: _stageClearMoney), _gimmickRoller, _gimmickResolver);
+
+            _playState = new PlayState(new PlayState.InitParam(
+                MapLoader: _mapLoader.Load,
+                DamageEvaluator: _damageCalculator.Calculate,
+                SurgeTicker: _powerSurgeCharger.Tick,
+                OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
+                StageClearSettler: SettleStageClear,
+                MapIndex: DEFAULT_MAP_INDEX), _stageTracker, _ballFlow, _playerController, _scoreCounter, _director, _gimmickResolver);
+
+            _resultState = new ResultState(new ResultState.InitParam(
+                SummaryGetter: BuildRunSummary,
+                ResultAudioPlayer: _director.PlayGameResult,
+                RewardAudioPlayer: _director.PlayRewardUnlock,
+                PlayDataClearer: _saveHandler.ClearPlayData,
+                ClearRewardGranter: _unlockProgress.GrantClearReward), _resultPresenter);
+
+            _stateMachine.Register(_stageSelectState);
+            _stateMachine.Register(_shopState);
+            _stateMachine.Register(_playState);
+            _stateMachine.Register(_resultState);
+            Track(_stateMachine.Dispose);
+
+            if (null == _cheatHandler)
                 return;
 
-            _scoreCounter.Tick(Time.deltaTime);
-            _playerController.Tick(Time.deltaTime);
-            _powerSurgeCharger.Tick(Time.deltaTime);
-            _ballFlow.Tick(Time.deltaTime);
-
-            if (!IsControlBlocked)
-                _stageTracker.Tick(Time.deltaTime);
+            _cheatHandler.Init(new IngameCheatHandler.InitParam(
+                MoneyGetter: GetMoney,
+                MoneyAdder: _wallet.Add,
+                OnCheatApplied: OnCheatApplied), _loadout);
+            Track(_cheatHandler.Release);
         }
 
-        void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
+        void PrepareNextStage()
         {
-            _director.PlayFlipperHit(grade, worldPoint);
-            _scoreCounter.HandleBallStruck(grade, worldPoint);
+            _breakMoneyGranter.ResetStage();
+            _ballFlow.RefillStock();
         }
 
-        void OnBumperDamaged(BumperInteractable bumper, float damage)
+        void SettleStageClear()
         {
-            if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperBurn))
-            {
-                float burnDamage = damage * _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
-                bumper.Ignite(burnDamage, _statProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.SUB_VALUE_INDEX), PoolableFX.EFXType.Fireball);
-            }
+            int remainingBalls = _ballFlow.RemainingBalls;
+            int resupplyMoney = Mathf.RoundToInt(remainingBalls * StatProvider.GetBallResupplyMoney());
+            _wallet.Add(remainingBalls + _stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
+            _stageTracker.AdvanceToNextStage();
+            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            SaveProgress(true);
+        }
 
-            if (_statProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze))
-                bumper.ApplyFrostHit(_statProvider.GetEffectSum(ShopItemData.EEffectType.BumperFreeze), PoolableFX.EFXType.Frostbite, PoolableFX.EFXType.FrostShatter);
+        void OnStageStarted(int stageNumber, StageData stage)
+        {
+            _saveHandler.UpdateBestStage(stageNumber);
+            SaveProgress(false);
+            ShowStageInfo();
+        }
 
-            if (!_statProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
+        void OnStageScoreChanged(int stageScore)
+        {
+            ShowStageInfo();
+        }
+
+        void OnStageRemainingSecondsChanged(int remainingSeconds)
+        {
+            ShowStageInfo();
+        }
+
+        void ShowStageInfo()
+        {
+            if (GetIsControlBlocked())
                 return;
 
-            float chainRatio = _statProvider.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
-            int maxChainCount = Mathf.RoundToInt(_statProvider.GetEffectValue(ShopItemData.EEffectType.BumperChainLightning, ShopItemData.SUB_VALUE_INDEX));
-            _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount);
+            if (null == _stageTracker.GetCurrentStage())
+                return;
+
+            int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
+            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds);
         }
 
-        void OnBumperBroken()
+        void OnShopLoadoutChanged()
         {
-            _breakMoneyGranter.HandleGimmickBroken();
+            SaveProgress(true);
+            RefreshOwnedItems();
         }
 
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
         {
-            AudioManager.Play(AudioStorage.EAudioClipType.ComboUp);
+            _director.PlayComboUp();
             _uiRoot.SetCombo(comboCount, multiplier, pendingBonus);
         }
 
@@ -434,7 +341,7 @@ namespace Pinball.Ingame
             if (!isCharged)
                 return;
 
-            AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
+            _director.PlaySurgeCharged();
         }
 
         void OnComboEnded(int comboCount, float multiplier, int bonusScore)
@@ -448,258 +355,37 @@ namespace Pinball.Ingame
             _uiRoot.ShowComboBonus(comboCount, multiplier, bonusScore);
         }
 
-        void OnStageStarted(int stageNumber, StageData stage)
-        {
-            _saveHandler.UpdateBestStage(stageNumber);
-            SaveProgress();
-            ShowStageInfo();
-        }
-
-        void OnStageCleared(int stageNumber, StageData stage)
-        {
-            _gameState = EGameState.Shopping;
-            _playerController.ResetControlStates();
-            _scoreCounter.EndCombo();
-            _ballFlow.DespawnBalls();
-            SuspendCurrentMap();
-
-            int remainingBalls = _ballFlow.RemainingBalls;
-            int resupplyMoney = Mathf.RoundToInt(remainingBalls * _statProvider.GetBallResupplyMoney());
-            _wallet.Add(remainingBalls + _stageClearMoney + _shopController.CalculateInterest() + resupplyMoney);
-            AudioManager.Play(AudioStorage.EAudioClipType.StageClear);
-
-            _stageTracker.AdvanceToNextStage();
-            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
-            _isShopPending = true;
-            SaveProgress();
-
-            UIManager.Show(new StageClearView.Args(stageNumber));
-        }
-
-        void OnAllStagesCleared()
-        {
-            _gameState = EGameState.Cleared;
-            _playerController.ResetControlStates();
-            _scoreCounter.EndCombo();
-            _ballFlow.DespawnBalls();
-            SuspendCurrentMap();
-            _saveHandler.ClearPlayData();
-            ClearRewardData reward = _unlockProgress.GrantClearReward();
-            ShowGameResult(GameResultView.EResult.Clear);
-            ShowRewardUnlock(reward);
-        }
-
-        void ShowRewardUnlock(ClearRewardData reward)
-        {
-            if (null == reward)
-                return;
-
-            int entryCount = reward.FlipperCount + reward.ItemCount;
-            if (entryCount <= 0)
-                return;
-
-            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
-
-            RewardUnlockView.Entry[] entries = new RewardUnlockView.Entry[entryCount];
-            for (int i = 0; i < reward.FlipperCount; ++i)
-                entries[i] = BuildFlipperRewardEntry(reward.GetFlipper(i));
-
-            for (int i = 0; i < reward.ItemCount; ++i)
-                entries[reward.FlipperCount + i] = BuildItemRewardEntry(reward.GetItem(i));
-
-            UIManager.Show(new RewardUnlockView.Args(entries));
-        }
-
-        static RewardUnlockView.Entry BuildFlipperRewardEntry(FlipperData flipper)
-        {
-            if (null == flipper)
-                return null;
-
-            return new RewardUnlockView.Entry(
-                Kind: RewardUnlockView.ERewardKind.Flipper,
-                Icon: flipper.GetIcon(),
-                DisplayName: flipper.GetDisplayName(),
-                Description: flipper.GetAbilityDescription());
-        }
-
-        static RewardUnlockView.Entry BuildItemRewardEntry(ShopItemData item)
-        {
-            if (null == item)
-                return null;
-
-            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
-            return new RewardUnlockView.Entry(
-                Kind: isPassive ? RewardUnlockView.ERewardKind.Passive : RewardUnlockView.ERewardKind.Upgrade,
-                Icon: item.GetIcon(),
-                DisplayName: item.GetDisplayName(),
-                Description: item.GetDescription());
-        }
-
         void RefreshOwnedItems()
         {
-            if (null == _passiveEntries || null == _upgradeEntries)
+            if (null == _resultPresenter)
                 return;
 
-            _passiveEntries.Clear();
-            for (int i = 0; i < _loadout.PassiveCount; ++i)
-                _passiveEntries.Add(new UI.OwnedItemsView.Entry(_loadout.GetPassive(i).GetIcon(), PASSIVE_OWNED_COUNT));
-
-            _upgradeEntries.Clear();
-            for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
-                _upgradeEntries.Add(new UI.OwnedItemsView.Entry(_loadout.GetUpgrade(i).GetIcon(), _loadout.GetUpgradeCount(i)));
-
-            _uiRoot.SetOwnedItems(_passiveEntries, _upgradeEntries);
+            _resultPresenter.RefreshOwnedItems();
         }
 
-        string[] BuildPassiveIds()
+        IngameResultPresenter.RunSummary BuildRunSummary()
         {
-            string[] passiveIds = new string[_loadout.PassiveCount];
-            for (int i = 0; i < passiveIds.Length; ++i)
-                passiveIds[i] = _loadout.GetPassive(i).GetId();
-
-            return passiveIds;
-        }
-
-        IngamePlayData.UpgradeEntry[] BuildUpgradeEntries()
-        {
-            IngamePlayData.UpgradeEntry[] entries = new IngamePlayData.UpgradeEntry[_loadout.UpgradeKindCount];
-            for (int i = 0; i < entries.Length; ++i)
-                entries[i] = new IngamePlayData.UpgradeEntry(_loadout.GetUpgrade(i).GetId(), _loadout.GetUpgradeCount(i));
-
-            return entries;
-        }
-
-        void RestoreLoadout(IngamePlayData savedData)
-        {
-            if (null == savedData || null == _shopCatalog)
-                return;
-
-            string[] passiveIds = savedData.GetPassiveIds();
-            if (null != passiveIds)
-            {
-                for (int i = 0; i < passiveIds.Length; ++i)
-                    _loadout.TryAddPassive(_shopCatalog.FindById(passiveIds[i]));
-            }
-
-            IngamePlayData.UpgradeEntry[] upgrades = savedData.GetUpgrades();
-            if (null == upgrades)
-                return;
-
-            for (int i = 0; i < upgrades.Length; ++i)
-            {
-                IngamePlayData.UpgradeEntry entry = upgrades[i];
-                ShopItemData item = _shopCatalog.FindById(entry.Id);
-                if (null == item)
-                    continue;
-
-                for (int k = 0; k < entry.Count; ++k)
-                    _loadout.AddUpgrade(item);
-            }
-        }
-
-        void GrantStartPassives(int passiveCount)
-        {
-            if (passiveCount <= 0 || null == _shopCatalog)
-                return;
-
-            List<ShopItemData> candidates = new List<ShopItemData>();
-            for (int i = 0; i < _shopCatalog.Count; ++i)
-            {
-                ShopItemData item = _shopCatalog.GetItem(i);
-                if (null == item || item.Kind != ShopItemData.EItemKind.Passive)
-                    continue;
-
-                if (!_unlockProgress.IsItemUnlocked(item))
-                    continue;
-
-                if (!_loadout.CanAddPassive(item))
-                    continue;
-
-                candidates.Add(item);
-            }
-
-            for (int i = 0; i < passiveCount && candidates.Count > 0; ++i)
-            {
-                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
-                _loadout.TryAddPassive(candidates[pickIndex]);
-                candidates.RemoveAt(pickIndex);
-            }
-        }
-
-        int ResolveSavedFlipperIndex(string flipperId)
-        {
-            if (null == _flipperCatalog)
-                return FlipperCatalogData.DEFAULT_INDEX;
-
-            int index = _flipperCatalog.IndexOfId(flipperId);
-            return index == FlipperCatalogData.INVALID_INDEX ? FlipperCatalogData.DEFAULT_INDEX : index;
-        }
-
-        FlipperData ResolveFlipper(int flipperIndex)
-        {
-            if (null == _flipperCatalog)
-                return null;
-
-            FlipperData flipper = _flipperCatalog.GetFlipper(flipperIndex);
-            if (null != flipper && _unlockProgress.IsFlipperUnlocked(flipper))
-                return flipper;
-
-            return _flipperCatalog.GetFlipper(FlipperCatalogData.DEFAULT_INDEX);
-        }
-
-        void OnStageScoreChanged(int stageScore)
-        {
-            ShowStageInfo();
-        }
-
-        void OnStageRemainingSecondsChanged(int remainingSeconds)
-        {
-            ShowStageInfo();
-        }
-
-        void OnStageTimeExpired()
-        {
-            _scoreCounter.EndCombo();
-            _ballFlow.DespawnBalls();
-            EndGame();
-        }
-
-        void ShowStageInfo()
-        {
-            if (_gameState != EGameState.Ready && _gameState != EGameState.Playing)
-                return;
-
-            if (null == _stageTracker.GetCurrentStage())
-                return;
-
-            int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
-            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds);
-        }
-
-        void OnBallLaunched()
-        {
-            _gameState = EGameState.Playing;
-            _playerController.ResetNudgeCooldown();
-        }
-
-        void OnBallLost()
-        {
-            _scoreCounter.EndCombo();
-        }
-
-        void OnBallReady()
-        {
-            _gameState = EGameState.Ready;
+            return new IngameResultPresenter.RunSummary(
+                StageNumber: _stageTracker.StageNumber,
+                Score: _scoreCounter.Current,
+                Money: _wallet.Current,
+                UsedBallCount: _ballFlow.UsedBallCount);
         }
 
         bool GetIsControlBlocked()
         {
-            return IsControlBlocked;
+            if (null == _stateMachine || !_stateMachine.IsCurrent(EIngameState.Play))
+                return true;
+
+            return _playState.IsControlBlocked;
         }
 
         bool GetIsPlaying()
         {
-            return !_isPaused && _gameState == EGameState.Playing;
+            if (null == _stateMachine || !_stateMachine.IsCurrent(EIngameState.Play))
+                return false;
+
+            return _playState.IsPlaying;
         }
 
         int GetRemainingBallCount()
@@ -718,113 +404,40 @@ namespace Pinball.Ingame
             return _scoreCounter.ComboCount;
         }
 
-        void LoadMap()
+        int GetMoney()
         {
-            _currentMap = _mapLoader.Load(DEFAULT_MAP_INDEX);
-            _playerController.SetMap(_currentMap);
-            _ballFlow.SetMap(_currentMap);
-            if (null == _currentMap)
-                return;
+            if (null == _wallet)
+                return 0;
 
-            _currentMap.Init(new MapRoot.InitParam(
-                OnScoreGained: _scoreCounter.HandleMapScoreGained,
-                DamageEvaluator: _damageCalculator.Calculate,
-                FlipperParam: new Flipper.InitParam(
-                    FlipPowerGetter: _statProvider.GetFlipPower,
-                    PerfectTimingRelaxGetter: _statProvider.GetPerfectTimingRelax,
-                    PerfectImpulseScaleGetter: _statProvider.GetPerfectImpulseScale,
-                    LengthScaleGetter: _statProvider.GetFlipperLengthScale,
-                    RotateSpeedScaleGetter: _statProvider.GetFlipperRotateSpeedScale),
-                OnBallStruck: OnBallStruck,
-                OnBumperDamaged: OnBumperDamaged,
-                OnBumperBroken: OnBumperBroken,
-                OnSpringChargeEvent: _director.PlaySpringCharge,
-                FXPlayer: _director.PlayFX,
-                LineFXPlayer: _director.PlayLineFX,
-                OnGimmickBallHit: _ballFlow.CountGimmickHit,
-                IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
-                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit,
-                IsBumperUnbreakable: _gimmickResolver.IsBumperUnbreakable()));
+            return _wallet.Current;
         }
 
-        void EndGame()
+        int GetStageNumber()
         {
-            _gameState = EGameState.GameOver;
-            _playerController.ResetControlStates();
-            SuspendCurrentMap();
-            _saveHandler.ClearPlayData();
-            ShowGameResult(GameResultView.EResult.GameOver);
+            if (null == _stageTracker)
+                return 0;
+
+            return _stageTracker.StageNumber;
         }
 
-        void SuspendCurrentMap()
-        {
-            if (null == _currentMap)
-                return;
-
-            _currentMap.Suspend();
-        }
-
-        void ShowGameResult(GameResultView.EResult result)
-        {
-            AudioManager.Play(result == GameResultView.EResult.Clear ? AudioStorage.EAudioClipType.GameClear : AudioStorage.EAudioClipType.GameOver);
-            UIManager.Show(new GameResultView.Args(result, BuildResultStats()));
-        }
-
-        ResultStatsView.Args BuildResultStats()
-        {
-            ResultStatsView.ItemEntry[] passives = new ResultStatsView.ItemEntry[_loadout.PassiveCount];
-            for (int i = 0; i < passives.Length; ++i)
-                passives[i] = BuildResultItemEntry(_loadout.GetPassive(i), PASSIVE_OWNED_COUNT);
-
-            ResultStatsView.ItemEntry[] upgrades = new ResultStatsView.ItemEntry[_loadout.UpgradeKindCount];
-            for (int i = 0; i < upgrades.Length; ++i)
-                upgrades[i] = BuildResultItemEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i));
-
-            return new ResultStatsView.Args(
-                StageNumber: _stageTracker.StageNumber,
-                Score: _scoreCounter.Current,
-                Money: _wallet.Current,
-                UsedBallCount: _ballFlow.UsedBallCount,
-                Passives: passives,
-                Upgrades: upgrades);
-        }
-
-        static ResultStatsView.ItemEntry BuildResultItemEntry(ShopItemData item, int count)
-        {
-            if (null == item)
-                return null;
-
-            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
-        }
-
-        void SaveProgress()
+        void SaveProgress(bool isShopPending)
         {
             _saveHandler.Save(new IngameSaveHandler.SaveParam(
                 StageNumber: _stageTracker.StageNumber,
-                IsShopPending: _isShopPending,
+                IsShopPending: isShopPending,
                 Money: _wallet.Current,
                 TotalScore: _scoreCounter.Current,
                 GimmickIndices: _gimmickRoller.GetCatalogIndices(),
                 FlipperId: null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId(),
-                PassiveIds: BuildPassiveIds(),
-                Upgrades: BuildUpgradeEntries()));
-        }
-
-        void RestoreCurrentStageGimmicks(int[] savedGimmickIndices)
-        {
-            if (null == savedGimmickIndices || savedGimmickIndices.Length <= 0)
-            {
-                _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
-                return;
-            }
-
-            _gimmickRoller.RestoreGimmicks(savedGimmickIndices);
+                PassiveIds: _loadout.CollectPassiveIds(),
+                Upgrades: _loadout.CollectUpgradeEntries()));
         }
 
         void OnCheatApplied()
         {
-            _shopController.RefreshOpenedView();
-            _stageSelectController.RefreshOpenedView();
+            _shopState.RefreshOpenedView();
+            _stageSelectState.RefreshOpenedView();
+            RefreshOwnedItems();
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)
@@ -835,88 +448,25 @@ namespace Pinball.Ingame
                     OnLobbyExitRequested();
                     break;
                 case UIManager.EEvent.PauseResumeRequested:
-                    ResumeGame();
+                    OnPauseResumeRequested();
                     break;
             }
         }
 
-        void OpenNextStageSelect()
+        void OnPauseToggleRequested()
         {
-            _breakMoneyGranter.ResetStage();
-            _ballFlow.RefillStock();
-            _isShopPending = false;
-            SaveProgress();
-            OpenStageSelect();
-        }
-
-        void OpenShop()
-        {
-            _gameState = EGameState.Shopping;
-            _playerController.ResetControlStates();
-            _shopController.Open();
-        }
-
-        void OpenStageSelect()
-        {
-            _gameState = EGameState.StageSelecting;
-            _playerController.ResetControlStates();
-            _stageSelectController.Open();
-        }
-
-        void StartCurrentStage()
-        {
-            _gameState = EGameState.Ready;
-            _stageTracker.StartCurrentStage();
-            LoadMap();
-            _ballFlow.LoadBallOnSpring();
-        }
-
-        void OnEscapePressed()
-        {
-            TogglePausePopup();
-        }
-
-        void OnPauseButtonClicked()
-        {
-            TogglePausePopup();
-        }
-
-        void TogglePausePopup()
-        {
-            if (UIManager.IsOpen(UIViewCatalogData.EViewType.Settings))
+            if (!_stateMachine.IsCurrent(EIngameState.Play))
                 return;
 
-            if (_isPaused)
-            {
-                ResumeGame();
-                return;
-            }
-
-            if (IsControlBlocked)
-                return;
-
-            PauseGame();
+            _playState.TogglePause();
         }
 
-        void PauseGame()
+        void OnPauseResumeRequested()
         {
-            if (_isPaused)
+            if (!_stateMachine.IsCurrent(EIngameState.Play))
                 return;
 
-            _isPaused = true;
-            _playerController.ResetControlStates();
-            _director.SetPaused(true);
-            UIManager.Show(new PausePopupView.Args());
-        }
-
-        void ResumeGame()
-        {
-            if (!_isPaused)
-                return;
-
-            _isPaused = false;
-            _director.SetPaused(false);
-            UIManager.Hide(UIViewCatalogData.EViewType.PausePopup);
+            _playState.Resume();
         }
 
         void OnLobbyExitRequested()

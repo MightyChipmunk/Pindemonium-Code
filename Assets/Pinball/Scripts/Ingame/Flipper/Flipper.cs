@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Ingame.Stat;
 using Pinball.Util;
 using UnityEngine;
 
@@ -13,13 +14,6 @@ namespace Pinball.Ingame
             SweetSpot = 1,
             Perfect = 2,
         }
-
-        public record InitParam(
-            Func<float> FlipPowerGetter,
-            Func<float> PerfectTimingRelaxGetter,
-            Func<float> PerfectImpulseScaleGetter,
-            Func<float> LengthScaleGetter,
-            Func<float> RotateSpeedScaleGetter);
 
         public enum ESide
         {
@@ -41,9 +35,6 @@ namespace Pinball.Ingame
 
         public event Action<EHitGrade, Vector2> OnBallStruck;
 
-        Func<float> _flipPowerGetter = null;
-        Func<float> _perfectTimingRelaxGetter = null;
-        Func<float> _perfectImpulseScaleGetter = null;
         Vector3 _baseLocalScale = Vector3.one;
         float _rotateSpeedScale = NORMAL_MULTIPLIER;
         List<Rigidbody2D> _touchingBodies = null;
@@ -58,14 +49,11 @@ namespace Pinball.Ingame
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;
 
-        public void Init(InitParam param)
+        public void Init()
         {
-            _flipPowerGetter = param.FlipPowerGetter;
-            _perfectTimingRelaxGetter = param.PerfectTimingRelaxGetter;
-            _perfectImpulseScaleGetter = param.PerfectImpulseScaleGetter;
             _baseLocalScale = transform.localScale;
-            _rotateSpeedScale = null == param.RotateSpeedScaleGetter ? NORMAL_MULTIPLIER : param.RotateSpeedScaleGetter();
-            ApplyLengthScale(null == param.LengthScaleGetter ? NORMAL_MULTIPLIER : param.LengthScaleGetter());
+            _rotateSpeedScale = StatProvider.GetFlipperRotateSpeedScale();
+            ApplyLengthScale(StatProvider.GetFlipperLengthScale());
             _touchingBodies = new List<Rigidbody2D>();
             _struckBodies = new List<Rigidbody2D>();
             _isPressed = false;
@@ -94,9 +82,6 @@ namespace Pinball.Ingame
 
             transform.localScale = _baseLocalScale;
             _rotateSpeedScale = NORMAL_MULTIPLIER;
-            _flipPowerGetter = null;
-            _perfectTimingRelaxGetter = null;
-            _perfectImpulseScaleGetter = null;
             OnBallStruck = null;
         }
 
@@ -209,7 +194,7 @@ namespace Pinball.Ingame
             float hitRatio = GetHitRatio(body.position);
             EHitGrade grade = EvaluateHitGrade(hitRatio);
             float impulseScale = GetImpulseScale(grade, hitRatio);
-            body.AddForce((Vector2)transform.up * (GetFlipPower() * impulseScale), ForceMode2D.Impulse);
+            body.AddForce((Vector2)transform.up * (StatProvider.GetFlipPower() * impulseScale), ForceMode2D.Impulse);
             LogHit(grade, hitRatio, impulseScale);
             OnBallStruck?.Invoke(grade, body.position);
         }
@@ -226,17 +211,9 @@ namespace Pinball.Ingame
             if (!isSweetSpot)
                 return EHitGrade.Normal;
 
-            float timingRelax = GetPerfectTimingRelax();
+            float timingRelax = StatProvider.GetPerfectTimingRelax();
             bool isPerfectTiming = _pressedElapsed >= _config.PerfectTimingMin - timingRelax && _pressedElapsed <= _config.PerfectTimingMax + timingRelax;
             return isPerfectTiming ? EHitGrade.Perfect : EHitGrade.SweetSpot;
-        }
-
-        float GetPerfectTimingRelax()
-        {
-            if (null == _perfectTimingRelaxGetter)
-                return 0f;
-
-            return _perfectTimingRelaxGetter();
         }
 
         void LogHit(EHitGrade grade, float hitRatio, float impulseScale)
@@ -263,7 +240,7 @@ namespace Pinball.Ingame
             switch (grade)
             {
                 case EHitGrade.Perfect:
-                    return _config.PerfectBonusMultiplier * GetPerfectImpulseScale();
+                    return _config.PerfectBonusMultiplier * StatProvider.GetPerfectImpulseScale();
                 case EHitGrade.SweetSpot:
                     return _config.SweetSpotBonusMultiplier * GetTimingScale(_config.SweetSpotTimingMinScale);
                 default:
@@ -314,25 +291,9 @@ namespace Pinball.Ingame
             return Mathf.Lerp(NORMAL_MULTIPLIER, minScale, Mathf.Clamp01(distance / falloffRange));
         }
 
-        float GetFlipPower()
-        {
-            if (null == _flipPowerGetter)
-                return 0f;
-
-            return _flipPowerGetter();
-        }
-
         void ApplyLengthScale(float lengthScale)
         {
             transform.localScale = new Vector3(_baseLocalScale.x * lengthScale, _baseLocalScale.y, _baseLocalScale.z);
-        }
-
-        float GetPerfectImpulseScale()
-        {
-            if (null == _perfectImpulseScaleGetter)
-                return NORMAL_MULTIPLIER;
-
-            return _perfectImpulseScaleGetter();
         }
     }
 }

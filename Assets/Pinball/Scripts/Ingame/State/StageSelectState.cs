@@ -1,62 +1,71 @@
 using System;
+using Pinball.Ingame.Stage;
 using Pinball.UI;
 
-namespace Pinball.Ingame.Stage
+namespace Pinball.Ingame.State
 {
-    public class IngameStageSelectController
+    public class StageSelectState : IngameStateBase
     {
         public record InitParam(
             StageCatalogData StageCatalog,
-            StageProgressTracker Tracker,
-            StageGimmickRoller Roller,
-            StageGimmickResolver Resolver,
-            MoneyWallet Wallet,
+            Func<int> StageNumberGetter,
+            Func<int> MoneyGetter,
+            Func<int, bool> MoneySpender,
             Func<int> RemainingBallGetter,
+            Action NextStagePreparer,
+            Action<bool> ProgressSaver,
             int StageClearBaseMoney);
 
+        public record EnterParam(bool IsAfterShop);
+
         StageCatalogData _stageCatalog = null;
-        StageProgressTracker _tracker = null;
+        Func<int> _stageNumberGetter = null;
         StageGimmickRoller _roller = null;
         StageGimmickResolver _resolver = null;
-        MoneyWallet _wallet = null;
+        Func<int> _moneyGetter = null;
+        Func<int, bool> _moneySpender = null;
         Func<int> _remainingBallGetter = null;
+        Action _nextStagePreparer = null;
+        Action<bool> _progressSaver = null;
         int _stageClearBaseMoney = 0;
         bool _isOpen = false;
 
-        public event Action OnStageStartRequested;
-        public event Action OnGimmickRerolled;
+        public override EIngameState Key => EIngameState.StageSelect;
 
-        public void Init(InitParam param)
+        public StageSelectState(InitParam param, StageGimmickRoller roller, StageGimmickResolver resolver)
         {
             _stageCatalog = param.StageCatalog;
-            _tracker = param.Tracker;
-            _roller = param.Roller;
-            _resolver = param.Resolver;
-            _wallet = param.Wallet;
+            _stageNumberGetter = param.StageNumberGetter;
+            _roller = roller;
+            _resolver = resolver;
+            _moneyGetter = param.MoneyGetter;
+            _moneySpender = param.MoneySpender;
             _remainingBallGetter = param.RemainingBallGetter;
+            _nextStagePreparer = param.NextStagePreparer;
+            _progressSaver = param.ProgressSaver;
             _stageClearBaseMoney = param.StageClearBaseMoney;
             _isOpen = false;
+        }
+
+        protected override void OnEnter(object param)
+        {
+            EnterParam enterParam = param as EnterParam;
+            if (null != enterParam && enterParam.IsAfterShop)
+            {
+                _nextStagePreparer?.Invoke();
+                _progressSaver?.Invoke(false);
+            }
+
             UIManager.OnEvent += HandleUIEvent;
-        }
-
-        public void Release()
-        {
-            UIManager.OnEvent -= HandleUIEvent;
-            OnStageStartRequested = null;
-            OnGimmickRerolled = null;
-            _isOpen = false;
-            _remainingBallGetter = null;
-            _wallet = null;
-            _resolver = null;
-            _roller = null;
-            _tracker = null;
-            _stageCatalog = null;
-        }
-
-        public void Open()
-        {
             _isOpen = true;
             RefreshView();
+        }
+
+        protected override void OnExit()
+        {
+            UIManager.OnEvent -= HandleUIEvent;
+            _isOpen = false;
+            UIManager.Hide(UIViewCatalogData.EViewType.StageSelect);
         }
 
         public void RefreshOpenedView()
@@ -75,7 +84,7 @@ namespace Pinball.Ingame.Stage
                     TryReroll();
                     break;
                 case UIManager.EEvent.StageSelectStartRequested:
-                    CloseAndRequestStart();
+                    RequestStart();
                     break;
             }
         }
@@ -83,15 +92,15 @@ namespace Pinball.Ingame.Stage
         void RefreshView()
         {
             int remainingBalls = null == _remainingBallGetter ? 0 : _remainingBallGetter();
-            int currentStageIndex = _tracker.StageNumber - 1;
+            int currentStageIndex = _stageNumberGetter() - 1;
             StageSelectView.CardArgs[] cards = new StageSelectView.CardArgs[StageSelectView.CARD_COUNT];
             for (int slot = 0; slot < cards.Length; ++slot)
                 cards[slot] = BuildCardArgs(slot, currentStageIndex + slot);
 
             UIManager.Show(new StageSelectView.Args(
-                Money: _wallet.Current,
+                Money: _moneyGetter(),
                 RemainingBalls: remainingBalls,
-                CurrentStageNumber: _tracker.StageNumber,
+                CurrentStageNumber: _stageNumberGetter(),
                 TotalStageCount: _stageCatalog.Count,
                 Cards: cards));
         }
@@ -121,7 +130,7 @@ namespace Pinball.Ingame.Stage
                 RewardMoney: _stageClearBaseMoney,
                 GimmickLabels: gimmickLabels,
                 RerollPrice: _roller.CurrentRerollPrice,
-                CanReroll: isCurrent && _roller.CanReroll && _wallet.Current >= _roller.CurrentRerollPrice);
+                CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
         }
 
         static StageSelectView.CardArgs BuildHiddenCardArgs()
@@ -147,21 +156,20 @@ namespace Pinball.Ingame.Stage
             if (!_roller.CanReroll)
                 return;
 
-            if (!_wallet.TrySpend(_roller.CurrentRerollPrice))
+            if (!_moneySpender(_roller.CurrentRerollPrice))
                 return;
 
             _roller.Reroll();
-            OnGimmickRerolled?.Invoke();
+            _progressSaver?.Invoke(false);
             RefreshView();
         }
 
-        void CloseAndRequestStart()
+        void RequestStart()
         {
             if (!_isOpen)
                 return;
 
-            _isOpen = false;
-            OnStageStartRequested?.Invoke();
+            ChangeState(EIngameState.Play);
         }
     }
 }

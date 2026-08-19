@@ -3,62 +3,68 @@ using Pinball.Audio;
 using Pinball.UI;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.State
 {
-    public class IngameShopController
+    public class ShopState : IngameStateBase
     {
         const int PASSIVE_OWNED_COUNT = 1;
 
         public record InitParam(
             ShopConfigData Config,
             ShopCatalogData Catalog,
-            MoneyWallet Wallet,
-            PlayerLoadout Loadout,
+            Func<int> MoneyGetter,
+            Func<int, bool> MoneySpender,
             Func<ShopItemData, bool> IsItemUnlockedGetter,
             int OfferSlotCount,
             bool IsInterestDisabled);
 
+        public record EnterParam(bool OpensImmediately);
+
         ShopConfigData _config = null;
         ShopCatalogData _catalog = null;
-        MoneyWallet _wallet = null;
+        Func<int> _moneyGetter = null;
+        Func<int, bool> _moneySpender = null;
         PlayerLoadout _loadout = null;
         Func<ShopItemData, bool> _isItemUnlockedGetter = null;
         ShopSession _session = null;
         int _offerSlotCount = ShopSession.DEFAULT_OFFER_SLOT_COUNT;
         bool _isInterestDisabled = false;
 
-        public event Action OnNextStageRequested;
         public event Action OnLoadoutChanged;
 
-        public void Init(InitParam param)
+        public override EIngameState Key => EIngameState.Shop;
+
+        public ShopState(InitParam param, PlayerLoadout loadout)
         {
             _config = param.Config;
             _catalog = param.Catalog;
-            _wallet = param.Wallet;
-            _loadout = param.Loadout;
+            _moneyGetter = param.MoneyGetter;
+            _moneySpender = param.MoneySpender;
+            _loadout = loadout;
             _isItemUnlockedGetter = param.IsItemUnlockedGetter;
             _offerSlotCount = param.OfferSlotCount;
             _isInterestDisabled = param.IsInterestDisabled;
-            UIManager.OnEvent += HandleUIEvent;
         }
 
-        public void Release()
+        protected override void OnEnter(object param)
+        {
+            UIManager.OnEvent += HandleUIEvent;
+
+            EnterParam enterParam = param as EnterParam;
+            if (null != enterParam && enterParam.OpensImmediately)
+                Open();
+        }
+
+        protected override void OnExit()
         {
             UIManager.OnEvent -= HandleUIEvent;
-            OnNextStageRequested = null;
+            _session = null;
+            UIManager.Hide(UIViewCatalogData.EViewType.Shop);
+        }
+
+        protected override void OnDispose()
+        {
             OnLoadoutChanged = null;
-
-            if (null != _session)
-            {
-                _session.Release();
-                _session = null;
-            }
-
-            _isItemUnlockedGetter = null;
-            _loadout = null;
-            _wallet = null;
-            _catalog = null;
-            _config = null;
         }
 
         public int CalculateInterest()
@@ -72,7 +78,7 @@ namespace Pinball.Ingame
             if (_config.InterestPerAmount <= 0)
                 return 0;
 
-            return Mathf.Min(_wallet.Current / _config.InterestPerAmount, _config.InterestMax);
+            return Mathf.Min(_moneyGetter() / _config.InterestPerAmount, _config.InterestMax);
         }
 
         public void RefreshOpenedView()
@@ -91,7 +97,7 @@ namespace Pinball.Ingame
                     Open();
                     break;
                 case UIManager.EEvent.ShopStartRequested:
-                    CloseAndRequestNextStage();
+                    RequestNextStage();
                     break;
                 case UIManager.EEvent.ShopBuyRequested:
                     TryBuyOffer(payload);
@@ -102,25 +108,15 @@ namespace Pinball.Ingame
             }
         }
 
-        public void Open()
+        void Open()
         {
-            if (null != _session)
-                _session.Release();
-
-            _session = new ShopSession();
-            _session.Init(_config, _catalog, CanOfferItem, _offerSlotCount);
+            _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount);
             RefreshShopView();
         }
 
-        void CloseAndRequestNextStage()
+        void RequestNextStage()
         {
-            if (null != _session)
-            {
-                _session.Release();
-                _session = null;
-            }
-
-            OnNextStageRequested?.Invoke();
+            ChangeState(EIngameState.StageSelect, new StageSelectState.EnterParam(IsAfterShop: true));
         }
 
         void RefreshShopView()
@@ -129,7 +125,7 @@ namespace Pinball.Ingame
                 return;
 
             UIManager.Show(new ShopView.Args(
-                Money: _wallet.Current,
+                Money: _moneyGetter(),
                 RerollPrice: _session.CurrentRerollPrice,
                 Offers: BuildOfferEntries(),
                 PassiveSlotCount: _loadout.PassiveSlotCount,
@@ -197,7 +193,7 @@ namespace Pinball.Ingame
             if (!CanApplyItem(item))
                 return;
 
-            if (!_wallet.TrySpend(item.Price))
+            if (!_moneySpender(item.Price))
                 return;
 
             ApplyItem(item);
@@ -212,7 +208,7 @@ namespace Pinball.Ingame
             if (null == _session)
                 return;
 
-            if (!_wallet.TrySpend(_session.CurrentRerollPrice))
+            if (!_moneySpender(_session.CurrentRerollPrice))
                 return;
 
             _session.Reroll();

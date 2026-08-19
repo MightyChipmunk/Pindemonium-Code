@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Map;
+using Pinball.Save;
 
 namespace Pinball.Ingame
 {
@@ -18,7 +20,7 @@ namespace Pinball.Ingame
         public int PassiveCount => null == _passives ? 0 : _passives.Count;
         public int UpgradeKindCount => null == _upgrades ? 0 : _upgrades.Count;
 
-        public void Init(int passiveSlotCount)
+        public PlayerLoadout(int passiveSlotCount)
         {
             _passiveSlotCount = passiveSlotCount;
             _passives = new List<ShopItemData>();
@@ -26,39 +28,6 @@ namespace Pinball.Ingame
             _upgradeCounts = new List<int>();
             _upgradeSums = new Dictionary<ShopItemData.EEffectType, float>();
             _gimmickScoreSums = new Dictionary<MapInteractable.EGimmickType, float>();
-        }
-
-        public void Release()
-        {
-            if (null != _passives)
-            {
-                _passives.Clear();
-                _passives = null;
-            }
-
-            if (null != _upgrades)
-            {
-                _upgrades.Clear();
-                _upgrades = null;
-            }
-
-            if (null != _upgradeCounts)
-            {
-                _upgradeCounts.Clear();
-                _upgradeCounts = null;
-            }
-
-            if (null != _upgradeSums)
-            {
-                _upgradeSums.Clear();
-                _upgradeSums = null;
-            }
-
-            if (null != _gimmickScoreSums)
-            {
-                _gimmickScoreSums.Clear();
-                _gimmickScoreSums = null;
-            }
         }
 
         public ShopItemData GetPassive(int index)
@@ -199,6 +168,81 @@ namespace Pinball.Ingame
 
             _gimmickScoreSums.TryGetValue(gimmickType, out float sum);
             return sum;
+        }
+
+        public void GrantRandomPassives(ShopCatalogData catalog, Func<ShopItemData, bool> isUnlocked, int passiveCount)
+        {
+            if (passiveCount <= 0 || null == catalog)
+                return;
+
+            List<ShopItemData> candidates = new List<ShopItemData>();
+            for (int i = 0; i < catalog.Count; ++i)
+            {
+                ShopItemData item = catalog.GetItem(i);
+                if (null == item || item.Kind != ShopItemData.EItemKind.Passive)
+                    continue;
+
+                if (null != isUnlocked && !isUnlocked(item))
+                    continue;
+
+                if (!CanAddPassive(item))
+                    continue;
+
+                candidates.Add(item);
+            }
+
+            for (int i = 0; i < passiveCount && candidates.Count > 0; ++i)
+            {
+                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
+                TryAddPassive(candidates[pickIndex]);
+                candidates.RemoveAt(pickIndex);
+            }
+        }
+
+        public void Restore(IngamePlayData savedData, ShopCatalogData catalog)
+        {
+            if (null == savedData || null == catalog)
+                return;
+
+            string[] passiveIds = savedData.GetPassiveIds();
+            if (null != passiveIds)
+            {
+                for (int i = 0; i < passiveIds.Length; ++i)
+                    TryAddPassive(catalog.FindById(passiveIds[i]));
+            }
+
+            IngamePlayData.UpgradeEntry[] upgrades = savedData.GetUpgrades();
+            if (null == upgrades)
+                return;
+
+            for (int i = 0; i < upgrades.Length; ++i)
+            {
+                IngamePlayData.UpgradeEntry entry = upgrades[i];
+                ShopItemData item = catalog.FindById(entry.Id);
+                if (null == item)
+                    continue;
+
+                for (int k = 0; k < entry.Count; ++k)
+                    AddUpgrade(item);
+            }
+        }
+
+        public string[] CollectPassiveIds()
+        {
+            string[] passiveIds = new string[PassiveCount];
+            for (int i = 0; i < passiveIds.Length; ++i)
+                passiveIds[i] = _passives[i].GetId();
+
+            return passiveIds;
+        }
+
+        public IngamePlayData.UpgradeEntry[] CollectUpgradeEntries()
+        {
+            IngamePlayData.UpgradeEntry[] entries = new IngamePlayData.UpgradeEntry[UpgradeKindCount];
+            for (int i = 0; i < entries.Length; ++i)
+                entries[i] = new IngamePlayData.UpgradeEntry(_upgrades[i].GetId(), _upgradeCounts[i]);
+
+            return entries;
         }
     }
 }

@@ -14,21 +14,23 @@ namespace Pinball.Ingame.Cheat
         }
 
         public record InitParam(
-            MoneyWallet Wallet,
-            PlayerLoadout Loadout,
+            Func<int> MoneyGetter,
+            Action<int> MoneyAdder,
             Action OnCheatApplied);
 
         const int MIN_APPLY_COUNT = 1;
         const int PASSIVE_OWNED_COUNT = 1;
 
-        MoneyWallet _wallet = null;
+        Func<int> _moneyGetter = null;
+        Action<int> _moneyAdder = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
-        public void Init(InitParam param)
+        public void Init(InitParam param, PlayerLoadout loadout)
         {
-            _wallet = param.Wallet;
-            _loadout = param.Loadout;
+            _moneyGetter = param.MoneyGetter;
+            _moneyAdder = param.MoneyAdder;
+            _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
 
@@ -36,20 +38,21 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
-            _wallet = null;
+            _moneyAdder = null;
+            _moneyGetter = null;
         }
 
         public bool IsReady()
         {
-            return null != _wallet && null != _loadout;
+            return null != _moneyGetter && null != _moneyAdder && null != _loadout;
         }
 
         public int GetMoney()
         {
-            if (null == _wallet)
+            if (null == _moneyGetter)
                 return 0;
 
-            return _wallet.Current;
+            return _moneyGetter();
         }
 
         public int GetPassiveCount()
@@ -99,7 +102,7 @@ namespace Pinball.Ingame.Cheat
             if (amount <= 0)
                 return EApplyResult.InvalidInput;
 
-            _wallet.Add(amount);
+            _moneyAdder(amount);
             _onCheatApplied?.Invoke();
             return EApplyResult.Success;
         }

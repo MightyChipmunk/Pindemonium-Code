@@ -18,7 +18,6 @@ namespace Pinball.Ingame.Map
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
             Func<Collider2D, float, float> DamageEvaluator,
-            Flipper.InitParam FlipperParam,
             Action<Flipper.EHitGrade, Vector2> OnBallStruck,
             Action<BumperInteractable, float> OnBumperDamaged,
             Action OnBumperBroken,
@@ -73,8 +72,8 @@ namespace Pinball.Ingame.Map
             }
 
             _onBallStruck = param.OnBallStruck;
-            _leftFlipper.Init(param.FlipperParam);
-            _rightFlipper.Init(param.FlipperParam);
+            _leftFlipper.Init();
+            _rightFlipper.Init();
             _leftFlipper.OnBallStruck += OnFlipperBallStruck;
             _rightFlipper.OnBallStruck += OnFlipperBallStruck;
             _spring.Init(param.OnSpringChargeEvent);
