@@ -10,7 +10,7 @@ namespace Pinball.UI
 
         const string STAGE_FORMAT = "STAGE {0}";
         const string STAGE_KEY = "ui.stage_info.stage";
-        const string SCORE_GOAL_FORMAT = "SCORE {0}";
+        const string SCORE_GOAL_FORMAT = "TARGET SCORE {0}";
         const string SCORE_GOAL_KEY = "ui.stage_info.score_goal";
         const string TIME_FORMAT = "TIME {0:00}:{1:00}";
         const string TIME_KEY = "ui.stage_info.time";

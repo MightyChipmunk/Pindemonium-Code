@@ -215,7 +215,6 @@ namespace Pinball.Ingame
         {
             _resultPresenter = new IngameResultPresenter(_loadout, _uiRoot.SetOwnedItems);
 
-            // _scoreCounter.OnChanged += _uiRoot.SetStageScore;
             _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
             _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
             _stageTracker.OnStageScoreChanged += _uiRoot.SetStageScore;
