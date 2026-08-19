@@ -37,6 +37,7 @@ namespace Pinball.Lobby
             _uiRoot.SetContinueInteractable(SaveManager.HasIngameSave);
             RefreshLobbyLabels();
             LocalizationManager.OnLanguageChanged += RefreshLobbyLabels;
+            _runSetupController.ShowPendingClearReward();
         }
 
         void RefreshLobbyLabels()

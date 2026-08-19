@@ -42,10 +42,20 @@ namespace Pinball.Ingame.Reward
             return SaveManager.IsItemUnlocked(item.GetId());
         }
 
-        public ClearRewardData GrantClearReward()
+        public void GrantClearReward()
         {
-            ClearRewardData tier = null == _catalog ? null : _catalog.GetTier(SaveManager.ClearCount);
-            SaveManager.RegisterRunClear(CollectFlipperIds(tier), CollectItemIds(tier));
+            int tierIndex = SaveManager.ClearCount;
+            ClearRewardData tier = null == _catalog ? null : _catalog.GetTier(tierIndex);
+            SaveManager.RegisterRunClear(
+                CollectFlipperIds(tier),
+                CollectItemIds(tier),
+                null == tier ? UserData.NO_PENDING_REWARD_TIER : tierIndex);
+        }
+
+        public ClearRewardData ConsumePendingReward()
+        {
+            ClearRewardData tier = null == _catalog ? null : _catalog.GetTier(SaveManager.PendingRewardTier);
+            SaveManager.ConsumePendingReward();
             return tier;
         }
 

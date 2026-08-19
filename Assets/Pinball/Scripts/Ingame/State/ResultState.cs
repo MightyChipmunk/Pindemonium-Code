@@ -1,6 +1,5 @@
 using System;
 using Pinball.Ingame.Presentation;
-using Pinball.Ingame.Reward;
 using Pinball.UI;
 
 namespace Pinball.Ingame.State
@@ -10,9 +9,8 @@ namespace Pinball.Ingame.State
         public record InitParam(
             Func<IngameResultPresenter.RunSummary> SummaryGetter,
             Action<bool> ResultAudioPlayer,
-            Action RewardAudioPlayer,
             Action PlayDataClearer,
-            Func<ClearRewardData> ClearRewardGranter);
+            Action ClearRewardGranter);
 
         public record EnterParam(GameResultView.EResult Result);
 
@@ -35,13 +33,11 @@ namespace Pinball.Ingame.State
 
             bool isClear = enterParam.Result == GameResultView.EResult.Clear;
             _param.PlayDataClearer?.Invoke();
-            ClearRewardData reward = isClear && null != _param.ClearRewardGranter ? _param.ClearRewardGranter() : null;
+            if (isClear)
+                _param.ClearRewardGranter?.Invoke();
 
             _param.ResultAudioPlayer?.Invoke(isClear);
             _presenter.ShowGameResult(enterParam.Result, _param.SummaryGetter());
-
-            if (_presenter.TryShowRewardUnlock(reward))
-                _param.RewardAudioPlayer?.Invoke();
         }
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Pinball.Ingame.Reward;
 using Pinball.Ingame.UI;
 using Pinball.UI;
 
@@ -46,26 +45,6 @@ namespace Pinball.Ingame.Presentation
             UIManager.Show(new GameResultView.Args(result, BuildResultStats(summary)));
         }
 
-        public bool TryShowRewardUnlock(ClearRewardData reward)
-        {
-            if (null == reward)
-                return false;
-
-            int entryCount = reward.FlipperCount + reward.ItemCount;
-            if (entryCount <= 0)
-                return false;
-
-            RewardUnlockView.Entry[] entries = new RewardUnlockView.Entry[entryCount];
-            for (int i = 0; i < reward.FlipperCount; ++i)
-                entries[i] = BuildFlipperRewardEntry(reward.GetFlipper(i));
-
-            for (int i = 0; i < reward.ItemCount; ++i)
-                entries[reward.FlipperCount + i] = BuildItemRewardEntry(reward.GetItem(i));
-
-            UIManager.Show(new RewardUnlockView.Args(entries));
-            return true;
-        }
-
         ResultStatsView.Args BuildResultStats(RunSummary summary)
         {
             ResultStatsView.ItemEntry[] passives = new ResultStatsView.ItemEntry[_loadout.PassiveCount];
@@ -91,31 +70,6 @@ namespace Pinball.Ingame.Presentation
                 return null;
 
             return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
-        }
-
-        static RewardUnlockView.Entry BuildFlipperRewardEntry(FlipperData flipper)
-        {
-            if (null == flipper)
-                return null;
-
-            return new RewardUnlockView.Entry(
-                Kind: RewardUnlockView.ERewardKind.Flipper,
-                Icon: flipper.GetIcon(),
-                DisplayName: flipper.GetDisplayName(),
-                Description: flipper.GetAbilityDescription());
-        }
-
-        static RewardUnlockView.Entry BuildItemRewardEntry(ShopItemData item)
-        {
-            if (null == item)
-                return null;
-
-            bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
-            return new RewardUnlockView.Entry(
-                Kind: isPassive ? RewardUnlockView.ERewardKind.Passive : RewardUnlockView.ERewardKind.Upgrade,
-                Icon: item.GetIcon(),
-                DisplayName: item.GetDisplayName(),
-                Description: item.GetDescription());
         }
     }
 }

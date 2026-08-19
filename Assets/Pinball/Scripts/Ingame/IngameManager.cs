@@ -263,7 +263,6 @@ namespace Pinball.Ingame
             _resultState = new ResultState(new ResultState.InitParam(
                 SummaryGetter: BuildRunSummary,
                 ResultAudioPlayer: _director.PlayGameResult,
-                RewardAudioPlayer: _director.PlayRewardUnlock,
                 PlayDataClearer: _saveHandler.ClearPlayData,
                 ClearRewardGranter: _unlockProgress.GrantClearReward), _resultPresenter);
 

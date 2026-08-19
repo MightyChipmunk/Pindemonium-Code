@@ -8,13 +8,21 @@ namespace Pinball.Save
     [Serializable]
     public class UserData : SaveDataBase
     {
+        public const int NO_PENDING_REWARD_TIER = -1;
+
+        const int PENDING_REWARD_EMPTY = 0;
+        const int PENDING_REWARD_TIER_OFFSET = 1;
+
         [SerializeField, FormerlySerializedAs("BestStageNumber")] int _bestStageNumber = 0;
         [SerializeField, FormerlySerializedAs("ClearCount")] int _clearCount = 0;
         [SerializeField, FormerlySerializedAs("UnlockedFlipperIds")] List<string> _unlockedFlipperIds = new List<string>();
         [SerializeField, FormerlySerializedAs("UnlockedItemIds")] List<string> _unlockedItemIds = new List<string>();
+        [SerializeField] int _pendingRewardTierNumber = PENDING_REWARD_EMPTY;
 
         public int BestStageNumber => _bestStageNumber;
         public int ClearCount => _clearCount;
+        public bool HasPendingReward => _pendingRewardTierNumber > PENDING_REWARD_EMPTY;
+        public int PendingRewardTier => _pendingRewardTierNumber - PENDING_REWARD_TIER_OFFSET;
 
         public bool IsFlipperUnlocked(string flipperId)
         {
@@ -35,11 +43,19 @@ namespace Pinball.Save
             return true;
         }
 
-        public void RegisterClear(IReadOnlyList<string> flipperIds, IReadOnlyList<string> itemIds)
+        public void RegisterClear(IReadOnlyList<string> flipperIds, IReadOnlyList<string> itemIds, int pendingRewardTier)
         {
             ++_clearCount;
             AddIds(_unlockedFlipperIds, flipperIds);
             AddIds(_unlockedItemIds, itemIds);
+
+            if (pendingRewardTier > NO_PENDING_REWARD_TIER)
+                _pendingRewardTierNumber = pendingRewardTier + PENDING_REWARD_TIER_OFFSET;
+        }
+
+        public void ClearPendingReward()
+        {
+            _pendingRewardTierNumber = PENDING_REWARD_EMPTY;
         }
 
         static bool Contains(List<string> ids, string id)

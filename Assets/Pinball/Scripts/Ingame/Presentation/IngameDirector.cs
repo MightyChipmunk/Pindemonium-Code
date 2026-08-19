@@ -110,11 +110,6 @@ namespace Pinball.Ingame.Presentation
             AudioManager.Play(isClear ? AudioStorage.EAudioClipType.GameClear : AudioStorage.EAudioClipType.GameOver);
         }
 
-        public void PlayRewardUnlock()
-        {
-            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
-        }
-
         void PlayCameraShake(HitPresentationData presentation)
         {
             if (!presentation.IsCameraShakeEnabled)

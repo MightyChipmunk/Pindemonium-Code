@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Pinball.Audio;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
@@ -45,8 +46,17 @@ namespace Pinball.Lobby
             UIManager.OnEvent -= HandleUIEvent;
             UIManager.Hide(UIViewCatalogData.EViewType.FlipperSelect);
             UIManager.Hide(UIViewCatalogData.EViewType.ContinueRun);
+            UIManager.Hide(UIViewCatalogData.EViewType.RewardUnlock);
             OnPlayRequested = null;
             OnContinueRequested = null;
+        }
+
+        public void ShowPendingClearReward()
+        {
+            if (!ClearRewardUnlockPresenter.TryShow(_unlockProgress.ConsumePendingReward()))
+                return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
         }
 
         public void OpenFlipperSelect()
