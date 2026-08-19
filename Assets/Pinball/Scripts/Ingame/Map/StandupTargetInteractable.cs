@@ -62,8 +62,8 @@ namespace Pinball.Ingame.Map
         {
             PlayHitMotion();
 
-            // if (null != _cancellationTokenSource)
-            //     CooldownAsync(_cancellationTokenSource.Token).Forget();
+            if (null != _cancellationTokenSource)
+                CooldownAsync(_cancellationTokenSource.Token).Forget();
         }
 
         async UniTaskVoid CooldownAsync(CancellationToken cancellationToken)
