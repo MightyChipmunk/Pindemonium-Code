@@ -215,11 +215,12 @@ namespace Pinball.Ingame
         {
             _resultPresenter = new IngameResultPresenter(_loadout, _uiRoot.SetOwnedItems);
 
-            _scoreCounter.OnChanged += _uiRoot.SetScore;
+            // _scoreCounter.OnChanged += _uiRoot.SetStageScore;
             _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
             _stageTracker.OnStageScoreChanged += OnStageScoreChanged;
+            _stageTracker.OnStageScoreChanged += _uiRoot.SetStageScore;
             _stageTracker.OnRemainingSecondsChanged += OnStageRemainingSecondsChanged;
-            _uiRoot.SetScore(_scoreCounter.Current);
+            _uiRoot.SetStageScore(_stageTracker.StageScore);
             _uiRoot.SetBallCount(_ballFlow.RemainingBalls);
             RefreshOwnedItems();
         }
@@ -321,7 +322,7 @@ namespace Pinball.Ingame
                 return;
 
             int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
-            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, _stageTracker.StageScore, remainingSeconds);
+            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, remainingSeconds);
         }
 
         void OnShopLoadoutChanged()

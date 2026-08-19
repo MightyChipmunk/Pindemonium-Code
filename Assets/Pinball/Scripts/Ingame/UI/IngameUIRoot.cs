@@ -43,7 +43,7 @@ namespace Pinball.Ingame.UI
             _scorePopupSpawner.Release();
         }
 
-        public void SetScore(int score)
+        public void SetStageScore(int score)
         {
             _score = score;
             _scoreView.SetValue(score);
@@ -60,9 +60,9 @@ namespace Pinball.Ingame.UI
             _ownedItemsView.SetItems(passives, upgrades);
         }
 
-        public void SetStageInfo(int stageNumber, int targetScore, int stageScore, int remainingSeconds)
+        public void SetStageInfo(int stageNumber, int targetScore, int remainingSeconds)
         {
-            _stageInfoView.SetInfo(stageNumber, targetScore, stageScore, remainingSeconds);
+            _stageInfoView.SetInfo(stageNumber, targetScore, remainingSeconds);
         }
 
         public void SetCombo(int comboCount, float multiplier, int pendingBonus)

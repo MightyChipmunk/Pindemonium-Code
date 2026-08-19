@@ -10,7 +10,7 @@ namespace Pinball.UI
 
         const string STAGE_FORMAT = "STAGE {0}";
         const string STAGE_KEY = "ui.stage_info.stage";
-        const string SCORE_GOAL_FORMAT = "SCORE {0} / {1}";
+        const string SCORE_GOAL_FORMAT = "SCORE {0}";
         const string SCORE_GOAL_KEY = "ui.stage_info.score_goal";
         const string TIME_FORMAT = "TIME {0:00}:{1:00}";
         const string TIME_KEY = "ui.stage_info.time";
@@ -21,10 +21,10 @@ namespace Pinball.UI
         [SerializeField] GameObject _timeRoot = null;
         [SerializeField] TMP_Text _timeLabel = null;
 
-        public void SetInfo(int stageNumber, int targetScore, int stageScore, int remainingSeconds)
+        public void SetInfo(int stageNumber, int targetScore, int remainingSeconds)
         {
             _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, stageNumber);
-            _goalLabel.text = LocalizationTable.Format(SCORE_GOAL_KEY, SCORE_GOAL_FORMAT, stageScore, targetScore);
+            _goalLabel.text = LocalizationTable.Format(SCORE_GOAL_KEY, SCORE_GOAL_FORMAT, targetScore);
             BindTime(remainingSeconds);
         }
 
