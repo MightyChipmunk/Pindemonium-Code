@@ -24,6 +24,8 @@ namespace Pinball.Ingame.Map
         const float MIN_SPIN_TIME = 0.2f;
         const float MIN_DIRECTION_SQR = 0.0001f;
         const int NO_LIT_INDEX = -1;
+        const float INDICATOR_STAGGER_INTERVAL = 0.035f;
+        const float NO_COOLDOWN = 0f;
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
@@ -32,6 +34,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] int _scoreRewardIncrement = 0;
         [SerializeField] int _maxRewardStep = 4;
         [SerializeField] float _holdDuration = 0.75f;
+        [SerializeField] float _cooldownDuration = 3f;
         [SerializeField] float _ejectSpeed = 14f;
         [SerializeField] PoolableFX.EFXType _captureFX = PoolableFX.EFXType.NonePooling;
 
@@ -170,6 +173,38 @@ namespace Pinball.Ingame.Map
             PlayEjectMotion();
             ++_captureCount;
             GainScore(reward);
+
+            await CooldownAsync(cancellationToken);
+        }
+
+        async UniTask CooldownAsync(CancellationToken cancellationToken)
+        {
+            if (_cooldownDuration <= NO_COOLDOWN)
+                return;
+
+            _collider.enabled = false;
+            PlayIndicatorsHide();
+            await UniTask.Delay(TimeSpan.FromSeconds(_cooldownDuration), cancellationToken: cancellationToken);
+            PlayIndicatorsShow();
+            _collider.enabled = true;
+        }
+
+        void PlayIndicatorsHide()
+        {
+            if (null == _indicators)
+                return;
+
+            for (int i = 0; i < _indicators.Length; ++i)
+                _indicators[i].PlayHide(i * INDICATOR_STAGGER_INTERVAL);
+        }
+
+        void PlayIndicatorsShow()
+        {
+            if (null == _indicators)
+                return;
+
+            for (int i = 0; i < _indicators.Length; ++i)
+                _indicators[i].PlayShow(i * INDICATOR_STAGGER_INTERVAL);
         }
 
         int PickTargetIndex()
