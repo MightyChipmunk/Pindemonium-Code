@@ -23,6 +23,7 @@ namespace Pinball.Ingame.Map
         float _remainingRevolutions = 0f;
         float _currentAngle = 0f;
         bool _isSpinning = false;
+        bool _hasPendingBallHit = false;
 
         public override EGimmickType GimmickType => EGimmickType.Spinner;
 
@@ -32,6 +33,7 @@ namespace Pinball.Ingame.Map
             _remainingRevolutions = 0f;
             _currentAngle = REST_ANGLE;
             _isSpinning = false;
+            _hasPendingBallHit = false;
             ApplyVisualAngle(REST_ANGLE);
         }
 
@@ -46,6 +48,7 @@ namespace Pinball.Ingame.Map
 
             _remainingRevolutions = 0f;
             _isSpinning = false;
+            _hasPendingBallHit = false;
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -61,6 +64,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             _remainingRevolutions += GetRevolutions(body.linearVelocity.magnitude);
+            _hasPendingBallHit = true;
             PlayGimmickHitSound();
 
             if (_isSpinning)
@@ -95,7 +99,7 @@ namespace Pinball.Ingame.Map
                 if (_currentAngle >= FULL_ROTATION)
                 {
                     _currentAngle -= FULL_ROTATION;
-                    GainScore(_scoreRewardPerRevolution);
+                    GainScore(_scoreRewardPerRevolution, transform.position, ConsumeScoreSource());
                 }
 
                 ApplyVisualAngle(_currentAngle);
@@ -105,6 +109,15 @@ namespace Pinball.Ingame.Map
             _currentAngle = REST_ANGLE;
             ApplyVisualAngle(REST_ANGLE);
             _isSpinning = false;
+        }
+
+        EScoreSource ConsumeScoreSource()
+        {
+            if (!_hasPendingBallHit)
+                return EScoreSource.PassiveEffect;
+
+            _hasPendingBallHit = false;
+            return EScoreSource.BallHit;
         }
 
         void ApplyVisualAngle(float angle)
