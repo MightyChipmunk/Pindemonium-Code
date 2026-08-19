@@ -19,10 +19,15 @@ namespace Pinball.Ingame.UI
         {
             _valueLabel.text = value.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);
 
-            if (value == _lastValue)
-                return;
-
+            bool isIncreased = value > _lastValue;
             _lastValue = value;
+
+            if (!isIncreased)
+            {
+                _punch.Stop();
+                return;
+            }
+
             _punch.Play();
         }
     }

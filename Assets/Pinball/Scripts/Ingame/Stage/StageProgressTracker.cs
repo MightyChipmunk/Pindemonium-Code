@@ -64,6 +64,7 @@ namespace Pinball.Ingame.Stage
             _timeLimit = _gimmickResolver.GetTimeLimit();
             _remainingTime = _timeLimit;
             _isTimeExpired = false;
+            OnStageScoreChanged?.Invoke(StageScore);
             OnStageStarted?.Invoke(StageNumber, GetCurrentStage());
         }
 
