@@ -119,9 +119,9 @@ namespace Pinball.Ingame.State
             StageCardView.EState state = GetCardState(stageIndex, currentStageIndex);
             bool isCurrent = state == StageCardView.EState.Current;
             IStageGimmickSource source = isCurrent ? _roller : stage;
-            string[] gimmickLabels = new string[source.GimmickCount];
-            for (int i = 0; i < gimmickLabels.Length; ++i)
-                gimmickLabels[i] = StageGimmickLabelFormatter.Format(source.GetGimmick(i));
+            StageGimmickData[] gimmicks = new StageGimmickData[source.GimmickCount];
+            for (int i = 0; i < gimmicks.Length; ++i)
+                gimmicks[i] = source.GetGimmick(i);
 
             return new StageSelectView.CardArgs(
                 IsVisible: true,
@@ -131,7 +131,7 @@ namespace Pinball.Ingame.State
                 TargetScore: _resolver.GetTargetScore(source, stage.TargetScore),
                 TargetScoreMultiplier: _resolver.GetTargetScoreMultiplier(source),
                 RewardMoney: _stageClearBaseMoney,
-                GimmickLabels: gimmickLabels,
+                Gimmicks: gimmicks,
                 RerollPrice: _roller.CurrentRerollPrice,
                 CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
         }
@@ -157,7 +157,7 @@ namespace Pinball.Ingame.State
                 TargetScore: 0,
                 TargetScoreMultiplier: StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
                 RewardMoney: 0,
-                GimmickLabels: null,
+                Gimmicks: null,
                 RerollPrice: 0,
                 CanReroll: false);
         }

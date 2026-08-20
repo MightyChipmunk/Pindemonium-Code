@@ -69,14 +69,24 @@ namespace Pinball.Ingame
             return name;
         }
 
+        public string GetNameKey()
+        {
+            return _nameKey;
+        }
+
+        public string GetDescriptionKey()
+        {
+            return _descriptionKey;
+        }
+
         public string GetDisplayName()
         {
-            return LocalizationTable.Get(_nameKey, _nameKey);
+            return LocalizationTable.GetOrKey(_nameKey);
         }
 
         public string GetDescription()
         {
-            return LocalizationTable.Get(_descriptionKey, _descriptionKey);
+            return LocalizationTable.GetOrKey(_descriptionKey);
         }
 
         public Sprite GetIcon()

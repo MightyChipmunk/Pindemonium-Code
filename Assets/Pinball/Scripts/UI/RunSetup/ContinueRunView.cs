@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text;
+using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -9,13 +11,13 @@ namespace Pinball.UI
     public class ContinueRunView : UIViewBase
     {
         public record Args(
-            string FlipperName,
+            string FlipperNameKey,
             Sprite FlipperIcon,
             int StageNumber,
             int TotalStageCount,
             int Money,
             int Score,
-            string GimmickText) : UIViewArgs
+            StageGimmickData[] Gimmicks) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.ContinueRun;
         }
@@ -26,6 +28,7 @@ namespace Pinball.UI
         const string SCORE_FORMAT = "N0";
         const string EMPTY_GIMMICK_TEXT = "NONE";
         const string EMPTY_GIMMICK_KEY = "ui.continue.empty_gimmick";
+        const string GIMMICK_SEPARATOR = " / ";
 
         [SerializeField] FlipperCardView _card = null;
         [SerializeField] TMP_Text _stageLabel = null;
@@ -54,14 +57,32 @@ namespace Pinball.UI
                 return;
 
             _card.Bind(new FlipperCardView.BindParam(
-                DisplayName: viewArgs.FlipperName ?? string.Empty,
+                DisplayName: LocalizationTable.GetOrKey(viewArgs.FlipperNameKey),
                 Icon: viewArgs.FlipperIcon,
                 IsUnlocked: true,
                 LockedHint: string.Empty));
             _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
             _moneyLabel.text = string.Format(MONEY_FORMAT, viewArgs.Money);
             _scoreLabel.text = viewArgs.Score.ToString(SCORE_FORMAT, CultureInfo.InvariantCulture);
-            _gimmickLabel.text = string.IsNullOrEmpty(viewArgs.GimmickText) ? LocalizationTable.Get(EMPTY_GIMMICK_KEY, EMPTY_GIMMICK_TEXT) : viewArgs.GimmickText;
+            BindGimmicks(viewArgs.Gimmicks);
+        }
+
+        void BindGimmicks(StageGimmickData[] gimmicks)
+        {
+            StringBuilder builder = new StringBuilder();
+            int gimmickCount = null == gimmicks ? 0 : gimmicks.Length;
+            for (int i = 0; i < gimmickCount; ++i)
+            {
+                if (null == gimmicks[i])
+                    continue;
+
+                if (builder.Length > 0)
+                    builder.Append(GIMMICK_SEPARATOR);
+
+                builder.Append(StageGimmickLabelFormatter.Format(gimmicks[i]));
+            }
+
+            _gimmickLabel.text = builder.Length > 0 ? builder.ToString() : LocalizationTable.Get(EMPTY_GIMMICK_KEY, EMPTY_GIMMICK_TEXT);
         }
 
         void OnContinueClicked()

@@ -69,7 +69,7 @@ namespace Pinball.Ingame.Presentation
             if (null == item)
                 return null;
 
-            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
+            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
         }
     }
 }

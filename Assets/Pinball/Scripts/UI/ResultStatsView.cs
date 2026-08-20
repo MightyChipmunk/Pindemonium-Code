@@ -1,4 +1,5 @@
 using System.Globalization;
+using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,7 +8,7 @@ namespace Pinball.UI
 {
     public class ResultStatsView : UIViewBase
     {
-        public record ItemEntry(Sprite Icon, int Count, string Title, string Description);
+        public record ItemEntry(Sprite Icon, int Count, string TitleKey, string DescriptionKey);
 
         public record Args(
             int StageNumber,
@@ -90,7 +91,7 @@ namespace Pinball.UI
                 if (null == item)
                     continue;
 
-                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.Title, item.Description);
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), LocalizationTable.GetOrKey(item.TitleKey), LocalizationTable.GetOrKey(item.DescriptionKey));
             }
 
             return entries;

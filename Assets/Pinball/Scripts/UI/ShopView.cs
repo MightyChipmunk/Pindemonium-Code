@@ -9,13 +9,13 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record OfferEntry(string Title, Sprite Icon, string Description, int Price, bool IsPassive);
+        public record OfferEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, bool IsPassive);
 
-        public record OwnedEntry(Sprite Icon, int Count, string Title, string Description);
+        public record OwnedEntry(Sprite Icon, int Count, string TitleKey, string DescriptionKey);
 
-        public record PackEntry(string Title, Sprite Icon, string Description, int Price, Sprite BandSprite, bool CanBuy);
+        public record PackEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, Sprite BandSprite, bool CanBuy);
 
-        public record VoucherEntry(string Title, Sprite Icon, string Description, int Price, bool CanBuy);
+        public record VoucherEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, bool CanBuy);
 
         public record Args(
             int Money,
@@ -171,9 +171,9 @@ namespace Pinball.UI
             }
 
             _voucherSlot.Bind(new ShopCardSlotView.BindParam(
-                Title: voucher.Title,
+                Title: LocalizationTable.GetOrKey(voucher.TitleKey),
                 Icon: voucher.Icon,
-                Description: voucher.Description,
+                Description: LocalizationTable.GetOrKey(voucher.DescriptionKey),
                 PriceText: string.Format(PRICE_FORMAT, voucher.Price),
                 BandSprite: _voucherBandSprite,
                 CanBuy: voucher.CanBuy));
@@ -192,9 +192,9 @@ namespace Pinball.UI
                 }
 
                 _packSlots[i].Bind(new ShopCardSlotView.BindParam(
-                    Title: pack.Title,
+                    Title: LocalizationTable.GetOrKey(pack.TitleKey),
                     Icon: pack.Icon,
-                    Description: pack.Description,
+                    Description: LocalizationTable.GetOrKey(pack.DescriptionKey),
                     PriceText: string.Format(PRICE_FORMAT, pack.Price),
                     BandSprite: pack.BandSprite,
                     CanBuy: pack.CanBuy));
@@ -292,9 +292,9 @@ namespace Pinball.UI
 
             slot.BindItem(new ShopItemView.BindParam(
                 IsPassive: offer.IsPassive,
-                Title: offer.Title,
+                Title: LocalizationTable.GetOrKey(offer.TitleKey),
                 Icon: offer.Icon,
-                Description: offer.Description,
+                Description: LocalizationTable.GetOrKey(offer.DescriptionKey),
                 PriceText: string.Format(PRICE_FORMAT, offer.Price),
                 ShowPrice: true));
         }
@@ -323,7 +323,7 @@ namespace Pinball.UI
                 if (null == item)
                     continue;
 
-                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.Title, item.Description);
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), LocalizationTable.GetOrKey(item.TitleKey), LocalizationTable.GetOrKey(item.DescriptionKey));
             }
 
             return entries;

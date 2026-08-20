@@ -1,4 +1,3 @@
-using Pinball.Localization;
 using UnityEngine;
 
 namespace Pinball.Ingame
@@ -49,22 +48,19 @@ namespace Pinball.Ingame
             return name;
         }
 
-        public string GetDisplayName()
+        public string GetNameKey()
         {
-            return LocalizationTable.Get(_nameKey, _nameKey);
+            return _nameKey;
         }
 
-        public string GetAbilityDescription()
+        public string GetAbilityKey()
         {
-            return LocalizationTable.Get(_abilityKey, _abilityKey);
+            return _abilityKey;
         }
 
-        public string GetDrawbackDescription()
+        public string GetDrawbackKey()
         {
-            if (string.IsNullOrEmpty(_drawbackKey))
-                return string.Empty;
-
-            return LocalizationTable.Get(_drawbackKey, _drawbackKey);
+            return _drawbackKey;
         }
 
         public Sprite GetIcon()

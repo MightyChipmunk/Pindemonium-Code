@@ -1,4 +1,5 @@
 using System;
+using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -22,7 +23,7 @@ namespace Pinball.UI
             int TargetScore,
             float TargetScoreMultiplier,
             int RewardMoney,
-            string[] GimmickLabels,
+            StageGimmickData[] Gimmicks,
             int RerollPrice,
             bool CanReroll);
 
@@ -103,7 +104,7 @@ namespace Pinball.UI
             _targetScoreLabel.text = param.TargetScore.ToString(TARGET_SCORE_FORMAT);
             BindMultiplier(param.TargetScoreMultiplier);
             _rewardLabel.text = string.Format(REWARD_FORMAT, param.RewardMoney);
-            BindGimmicks(param.GimmickLabels);
+            BindGimmicks(param.Gimmicks);
             BindActions(param);
         }
 
@@ -122,25 +123,25 @@ namespace Pinball.UI
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, multiplier);
         }
 
-        void BindGimmicks(string[] labels)
+        void BindGimmicks(StageGimmickData[] gimmicks)
         {
-            int labelCount = null == labels ? 0 : labels.Length;
-            _gimmickPanel.SetActive(labelCount > 0);
-            _emptyGimmickRoot.SetActive(labelCount <= 0);
+            int gimmickCount = null == gimmicks ? 0 : gimmicks.Length;
+            _gimmickPanel.SetActive(gimmickCount > 0);
+            _emptyGimmickRoot.SetActive(gimmickCount <= 0);
 
             for (int i = 0; i < _gimmickLabels.Length; ++i)
             {
-                bool isUsed = i < labelCount;
+                bool isUsed = i < gimmickCount;
                 _gimmickLabels[i].gameObject.SetActive(isUsed);
                 if (isUsed)
-                    _gimmickLabels[i].text = labels[i];
+                    _gimmickLabels[i].text = StageGimmickLabelFormatter.Format(gimmicks[i]);
             }
         }
 
         void BindActions(BindParam param)
         {
             bool isCurrent = param.State == EState.Current;
-            bool hasGimmick = null != param.GimmickLabels && param.GimmickLabels.Length > 0;
+            bool hasGimmick = null != param.Gimmicks && param.Gimmicks.Length > 0;
             _startButton.gameObject.SetActive(isCurrent);
             _rerollButton.gameObject.SetActive(isCurrent && hasGimmick);
             _rerollButton.interactable = param.CanReroll;

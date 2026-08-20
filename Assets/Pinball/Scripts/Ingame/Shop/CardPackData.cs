@@ -1,4 +1,3 @@
-using Pinball.Localization;
 using UnityEngine;
 
 namespace Pinball.Ingame
@@ -30,14 +29,14 @@ namespace Pinball.Ingame
         public int RevealCount => Mathf.Max(MIN_REVEAL_COUNT, _revealCount);
         public int PickCount => Mathf.Clamp(_pickCount, MIN_PICK_COUNT, RevealCount);
 
-        public string GetDisplayName()
+        public string GetNameKey()
         {
-            return LocalizationTable.Get(_nameKey, _nameKey);
+            return _nameKey;
         }
 
-        public string GetDescription()
+        public string GetDescriptionKey()
         {
-            return LocalizationTable.Get(_descriptionKey, _descriptionKey);
+            return _descriptionKey;
         }
 
         public Sprite GetIcon()

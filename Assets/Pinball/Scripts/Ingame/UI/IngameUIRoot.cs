@@ -8,6 +8,8 @@ namespace Pinball.Ingame.UI
 {
     public class IngameUIRoot : MonoBehaviour
     {
+        const int NO_STAGE_NUMBER = 0;
+
         [SerializeField] ScoreView _scoreView = null;
         [SerializeField] BallCountView _ballCountView = null;
         [SerializeField] OwnedItemsView _ownedItemsView = null;
@@ -20,6 +22,9 @@ namespace Pinball.Ingame.UI
 
         int _score = 0;
         int _ballCount = 0;
+        int _stageNumber = NO_STAGE_NUMBER;
+        int _stageTargetScore = 0;
+        int _stageRemainingSeconds = Pinball.UI.StageInfoView.NO_TIME_LIMIT;
 
         public void Init()
         {
@@ -62,6 +67,9 @@ namespace Pinball.Ingame.UI
 
         public void SetStageInfo(int stageNumber, int targetScore, int remainingSeconds)
         {
+            _stageNumber = stageNumber;
+            _stageTargetScore = targetScore;
+            _stageRemainingSeconds = remainingSeconds;
             _stageInfoView.SetInfo(stageNumber, targetScore, remainingSeconds);
         }
 
@@ -84,6 +92,11 @@ namespace Pinball.Ingame.UI
         {
             _scoreView.SetValue(_score);
             _ballCountView.SetValue(_ballCount);
+
+            if (_stageNumber == NO_STAGE_NUMBER)
+                return;
+
+            _stageInfoView.SetInfo(_stageNumber, _stageTargetScore, _stageRemainingSeconds);
         }
 
         public void PlayScorePopup(int score, Vector2 worldPoint)

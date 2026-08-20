@@ -8,9 +8,9 @@ namespace Pinball.UI
 {
     public class CardPackPopupView : UIViewBase
     {
-        public record CardArgs(string Title, Sprite Icon, string Description, bool IsTaken);
+        public record CardArgs(string TitleKey, Sprite Icon, string DescriptionKey, bool IsTaken);
 
-        public record Args(string PackTitle, int RemainingPicks, CardArgs[] Cards) : UIViewArgs
+        public record Args(string PackTitleKey, int RemainingPicks, CardArgs[] Cards) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.CardPackPopup;
         }
@@ -66,7 +66,7 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            _titleLabel.text = viewArgs.PackTitle;
+            _titleLabel.text = LocalizationTable.GetOrKey(viewArgs.PackTitleKey);
             _hintLabel.text = LocalizationTable.Format(HINT_KEY, HINT_FORMAT, viewArgs.RemainingPicks);
             _skipLabel.text = LocalizationTable.Get(SKIP_KEY, SKIP_FORMAT);
             BindCards(viewArgs.Cards);
@@ -102,9 +102,9 @@ namespace Pinball.UI
 
             card.BindItem(new ShopItemView.BindParam(
                 IsPassive: false,
-                Title: args.Title,
+                Title: LocalizationTable.GetOrKey(args.TitleKey),
                 Icon: args.Icon,
-                Description: args.Description,
+                Description: LocalizationTable.GetOrKey(args.DescriptionKey),
                 PriceText: string.Empty,
                 ShowPrice: false));
         }

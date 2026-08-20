@@ -13,7 +13,7 @@ namespace Pinball.UI
             Upgrade = 2,
         }
 
-        public record Entry(ERewardKind Kind, Sprite Icon, string DisplayName, string Description);
+        public record Entry(ERewardKind Kind, Sprite Icon, string NameKey, string DescriptionKey);
 
         public record Args(Entry[] Entries) : UIViewArgs
         {
@@ -76,7 +76,7 @@ namespace Pinball.UI
             _tiles[tileIndex].Bind(new RewardTileView.BindParam(
                 TileIndex: tileIndex,
                 Icon: entry.Icon,
-                DisplayName: entry.DisplayName,
+                DisplayName: LocalizationTable.GetOrKey(entry.NameKey),
                 KindText: GetKindText(entry.Kind),
                 HoverCallback: OnTooltipHovered));
         }
@@ -103,13 +103,13 @@ namespace Pinball.UI
         void OnTooltipHovered(int tileIndex, Vector3 anchorPosition, bool isEntered)
         {
             Entry entry = GetBoundEntry(tileIndex);
-            if (!isEntered || null == entry || string.IsNullOrEmpty(entry.Description))
+            if (!isEntered || null == entry || string.IsNullOrEmpty(entry.DescriptionKey))
             {
                 _tooltip.Hide();
                 return;
             }
 
-            _tooltip.Show(entry.DisplayName, entry.Description, anchorPosition);
+            _tooltip.Show(LocalizationTable.GetOrKey(entry.NameKey), LocalizationTable.GetOrKey(entry.DescriptionKey), anchorPosition);
         }
 
         Entry GetBoundEntry(int tileIndex)

@@ -1,10 +1,8 @@
 using System;
-using System.Text;
 using Pinball.Audio;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
-using Pinball.Localization;
 using Pinball.Save;
 using Pinball.UI;
 
@@ -17,12 +15,6 @@ namespace Pinball.Lobby
             ClearRewardCatalogData RewardCatalog,
             StageCatalogData StageCatalog,
             StageGimmickCatalogData GimmickCatalog);
-
-        const string FIRST_CLEAR_HINT = "CLEAR THE RUN TO UNLOCK";
-        const string FIRST_CLEAR_HINT_KEY = "ui.lobby.unlock_hint_first";
-        const string CLEAR_COUNT_HINT_FORMAT = "CLEAR THE RUN x{0} TO UNLOCK";
-        const string CLEAR_COUNT_HINT_KEY = "ui.lobby.unlock_hint_count";
-        const string GIMMICK_SEPARATOR = " / ";
 
         FlipperCatalogData _flipperCatalog = null;
         StageCatalogData _stageCatalog = null;
@@ -75,12 +67,12 @@ namespace Pinball.Lobby
                 return null;
 
             return new FlipperSelectView.FlipperEntry(
-                DisplayName: flipper.GetDisplayName(),
+                NameKey: flipper.GetNameKey(),
                 Icon: flipper.GetIcon(),
-                AbilityDescription: flipper.GetAbilityDescription(),
-                DrawbackDescription: flipper.GetDrawbackDescription(),
+                AbilityKey: flipper.GetAbilityKey(),
+                DrawbackKey: flipper.GetDrawbackKey(),
                 IsUnlocked: _unlockProgress.IsFlipperUnlocked(flipper),
-                UnlockHint: BuildUnlockHint(flipper));
+                UnlockTier: _unlockProgress.GetFlipperUnlockTier(flipper));
         }
 
         public void OpenContinue()
@@ -91,13 +83,13 @@ namespace Pinball.Lobby
 
             FlipperData flipper = ResolveSavedFlipper(saved.FlipperId);
             UIManager.Show(new ContinueRunView.Args(
-                FlipperName: null == flipper ? string.Empty : flipper.GetDisplayName(),
+                FlipperNameKey: null == flipper ? string.Empty : flipper.GetNameKey(),
                 FlipperIcon: null == flipper ? null : flipper.GetIcon(),
                 StageNumber: saved.StageNumber,
                 TotalStageCount: null == _stageCatalog ? 0 : _stageCatalog.Count,
                 Money: saved.Money,
                 Score: saved.TotalScore,
-                GimmickText: BuildGimmickText(saved)));
+                Gimmicks: BuildGimmicks(saved)));
         }
 
         FlipperData ResolveSavedFlipper(string flipperId)
@@ -108,49 +100,27 @@ namespace Pinball.Lobby
             return _flipperCatalog.GetFlipper(_flipperCatalog.IndexOfIdOrDefault(flipperId));
         }
 
-        string BuildUnlockHint(FlipperData flipper)
+        StageGimmickData[] BuildGimmicks(IngamePlayData saved)
         {
-            int tier = _unlockProgress.GetFlipperUnlockTier(flipper);
-            if (tier == ClearRewardCatalogData.INVALID_TIER)
-                return string.Empty;
-
-            if (tier <= 0)
-                return LocalizationTable.Get(FIRST_CLEAR_HINT_KEY, FIRST_CLEAR_HINT);
-
-            return LocalizationTable.Format(CLEAR_COUNT_HINT_KEY, CLEAR_COUNT_HINT_FORMAT, tier + 1);
-        }
-
-        string BuildGimmickText(IngamePlayData saved)
-        {
-            StringBuilder builder = new StringBuilder();
             int[] gimmickIndices = saved.GetGimmickIndices();
             if (null != gimmickIndices && gimmickIndices.Length > 0)
             {
-                for (int i = 0; i < gimmickIndices.Length; ++i)
-                    AppendGimmickLabel(builder, null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]));
+                StageGimmickData[] rolledGimmicks = new StageGimmickData[gimmickIndices.Length];
+                for (int i = 0; i < rolledGimmicks.Length; ++i)
+                    rolledGimmicks[i] = null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]);
 
-                return builder.ToString();
+                return rolledGimmicks;
             }
 
             StageData stage = null == _stageCatalog ? null : _stageCatalog.GetStage(saved.StageNumber - 1);
             if (null == stage)
-                return string.Empty;
+                return null;
 
-            for (int i = 0; i < stage.GimmickCount; ++i)
-                AppendGimmickLabel(builder, stage.GetGimmick(i));
+            StageGimmickData[] stageGimmicks = new StageGimmickData[stage.GimmickCount];
+            for (int i = 0; i < stageGimmicks.Length; ++i)
+                stageGimmicks[i] = stage.GetGimmick(i);
 
-            return builder.ToString();
-        }
-
-        static void AppendGimmickLabel(StringBuilder builder, StageGimmickData gimmick)
-        {
-            if (null == gimmick)
-                return;
-
-            if (builder.Length > 0)
-                builder.Append(GIMMICK_SEPARATOR);
-
-            builder.Append(StageGimmickLabelFormatter.Format(gimmick));
+            return stageGimmicks;
         }
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)

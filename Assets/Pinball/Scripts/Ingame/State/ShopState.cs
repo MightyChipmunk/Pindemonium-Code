@@ -240,9 +240,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.PackEntry(
-                Title: pack.GetDisplayName(),
+                TitleKey: pack.GetNameKey(),
                 Icon: pack.GetIcon(),
-                Description: pack.GetDescription(),
+                DescriptionKey: pack.GetDescriptionKey(),
                 Price: pack.Price,
                 BandSprite: pack.BandSprite,
                 CanBuy: _packShop.HasCandidates(pack));
@@ -254,9 +254,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.VoucherEntry(
-                Title: _offeredVoucher.GetDisplayName(),
+                TitleKey: _offeredVoucher.GetNameKey(),
                 Icon: _offeredVoucher.GetIcon(),
-                Description: _offeredVoucher.GetDescription(),
+                DescriptionKey: _offeredVoucher.GetDescriptionKey(),
                 Price: PlayerVouchers.PRICE,
                 CanBuy: _moneyGetter() >= PlayerVouchers.PRICE);
         }
@@ -346,14 +346,14 @@ namespace Pinball.Ingame.State
             {
                 ShopItemData item = _packShop.GetRevealedItem(i);
                 cards[i] = new CardPackPopupView.CardArgs(
-                    Title: item.GetDisplayName(),
+                    TitleKey: item.GetNameKey(),
                     Icon: item.GetIcon(),
-                    Description: item.GetDescription(),
+                    DescriptionKey: item.GetDescriptionKey(),
                     IsTaken: _packShop.IsTaken(i));
             }
 
             UIManager.Show(new CardPackPopupView.Args(
-                PackTitle: _packShop.GetOpeningPackName(),
+                PackTitleKey: _packShop.GetOpeningPackNameKey(),
                 RemainingPicks: _packShop.RemainingPicks,
                 Cards: cards));
         }
@@ -383,9 +383,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.OfferEntry(
-                Title: item.GetDisplayName(),
+                TitleKey: item.GetNameKey(),
                 Icon: item.GetIcon(),
-                Description: item.GetDescription(),
+                DescriptionKey: item.GetDescriptionKey(),
                 Price: GetOfferPrice(item),
                 IsPassive: item.Kind == ShopItemData.EItemKind.Passive);
         }
@@ -422,7 +422,7 @@ namespace Pinball.Ingame.State
             if (null == item)
                 return null;
 
-            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetDisplayName(), item.GetDescription());
+            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
         }
 
         void TryBuyOffer(int slotIndex)

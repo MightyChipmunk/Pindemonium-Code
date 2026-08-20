@@ -1,3 +1,4 @@
+using Pinball.Ingame.Reward;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -8,12 +9,12 @@ namespace Pinball.UI
     public class FlipperSelectView : UIViewBase
     {
         public record FlipperEntry(
-            string DisplayName,
+            string NameKey,
             Sprite Icon,
-            string AbilityDescription,
-            string DrawbackDescription,
+            string AbilityKey,
+            string DrawbackKey,
             bool IsUnlocked,
-            string UnlockHint);
+            int UnlockTier);
 
         public record Args(FlipperEntry[] Flippers) : UIViewArgs
         {
@@ -28,6 +29,11 @@ namespace Pinball.UI
         const string DEFAULT_LINE_KEY = "ui.flipper_select.default_line";
         const string UNLOCKED_REWARD_LINE = "REWARD: RUN CLEAR";
         const string UNLOCKED_REWARD_LINE_KEY = "ui.flipper_select.unlocked_line";
+        const string FIRST_CLEAR_HINT = "CLEAR THE RUN TO UNLOCK";
+        const string FIRST_CLEAR_HINT_KEY = "ui.lobby.unlock_hint_first";
+        const string CLEAR_COUNT_HINT_FORMAT = "CLEAR THE RUN x{0} TO UNLOCK";
+        const string CLEAR_COUNT_HINT_KEY = "ui.lobby.unlock_hint_count";
+        const int FIRST_CLEAR_TIER = 0;
         const int DEFAULT_INDEX = 0;
 
         [SerializeField] FlipperCardView _card = null;
@@ -80,8 +86,8 @@ namespace Pinball.UI
         {
             FlipperEntry flipper = GetFlipper(_selectedIndex);
             bool isUnlocked = null != flipper && flipper.IsUnlocked;
-            string hint = null == flipper || null == flipper.UnlockHint ? string.Empty : flipper.UnlockHint;
-            string displayName = null == flipper ? string.Empty : flipper.DisplayName;
+            string hint = GetUnlockHint(flipper);
+            string displayName = null == flipper ? string.Empty : LocalizationTable.GetOrKey(flipper.NameKey);
 
             _card.Bind(new FlipperCardView.BindParam(
                 DisplayName: displayName,
@@ -90,8 +96,8 @@ namespace Pinball.UI
                 LockedHint: hint));
             _pageLabel.text = string.Format(PAGE_FORMAT, _selectedIndex + 1, GetFlipperCount());
             _flipperNameLabel.text = isUnlocked ? displayName : LOCKED_NAME;
-            _abilityLabel.text = isUnlocked ? flipper.AbilityDescription : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
-            BindDrawback(isUnlocked ? flipper.DrawbackDescription : string.Empty);
+            _abilityLabel.text = isUnlocked ? LocalizationTable.GetOrKey(flipper.AbilityKey) : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
+            BindDrawback(isUnlocked ? LocalizationTable.GetOrKey(flipper.DrawbackKey) : string.Empty);
             _unlockLineLabel.text = GetUnlockLine(isUnlocked, hint);
             _playButton.interactable = isUnlocked;
 
@@ -104,6 +110,20 @@ namespace Pinball.UI
         {
             _drawbackLabel.gameObject.SetActive(!string.IsNullOrEmpty(drawback));
             _drawbackLabel.text = drawback;
+        }
+
+        static string GetUnlockHint(FlipperEntry flipper)
+        {
+            if (null == flipper)
+                return string.Empty;
+
+            if (flipper.UnlockTier == ClearRewardCatalogData.INVALID_TIER)
+                return string.Empty;
+
+            if (flipper.UnlockTier <= FIRST_CLEAR_TIER)
+                return LocalizationTable.Get(FIRST_CLEAR_HINT_KEY, FIRST_CLEAR_HINT);
+
+            return LocalizationTable.Format(CLEAR_COUNT_HINT_KEY, CLEAR_COUNT_HINT_FORMAT, flipper.UnlockTier + 1);
         }
 
         static string GetUnlockLine(bool isUnlocked, string hint)

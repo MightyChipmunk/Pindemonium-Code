@@ -32,8 +32,8 @@ namespace Pinball.Ingame.Reward
             return new RewardUnlockView.Entry(
                 Kind: RewardUnlockView.ERewardKind.Flipper,
                 Icon: flipper.GetIcon(),
-                DisplayName: flipper.GetDisplayName(),
-                Description: flipper.GetAbilityDescription());
+                NameKey: flipper.GetNameKey(),
+                DescriptionKey: flipper.GetAbilityKey());
         }
 
         static RewardUnlockView.Entry BuildItemEntry(ShopItemData item)
@@ -45,8 +45,8 @@ namespace Pinball.Ingame.Reward
             return new RewardUnlockView.Entry(
                 Kind: isPassive ? RewardUnlockView.ERewardKind.Passive : RewardUnlockView.ERewardKind.Upgrade,
                 Icon: item.GetIcon(),
-                DisplayName: item.GetDisplayName(),
-                Description: item.GetDescription());
+                NameKey: item.GetNameKey(),
+                DescriptionKey: item.GetDescriptionKey());
         }
     }
 }

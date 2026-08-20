@@ -80,9 +80,9 @@ namespace Pinball.Ingame
             return true;
         }
 
-        public string GetOpeningPackName()
+        public string GetOpeningPackNameKey()
         {
-            return null == _openedPack ? string.Empty : _openedPack.GetDisplayName();
+            return null == _openedPack ? string.Empty : _openedPack.GetNameKey();
         }
 
         public ShopItemData GetRevealedItem(int index)

@@ -1,3 +1,4 @@
+using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -14,7 +15,7 @@ namespace Pinball.UI
             int TargetScore,
             float TargetScoreMultiplier,
             int RewardMoney,
-            string[] GimmickLabels,
+            StageGimmickData[] Gimmicks,
             int RerollPrice,
             bool CanReroll);
 
@@ -95,7 +96,7 @@ namespace Pinball.UI
                 TargetScore: args.TargetScore,
                 TargetScoreMultiplier: args.TargetScoreMultiplier,
                 RewardMoney: args.RewardMoney,
-                GimmickLabels: args.GimmickLabels,
+                Gimmicks: args.Gimmicks,
                 RerollPrice: args.RerollPrice,
                 CanReroll: args.CanReroll));
         }
