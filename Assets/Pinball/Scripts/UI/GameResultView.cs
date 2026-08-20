@@ -51,6 +51,7 @@ namespace Pinball.UI
         Args _args = null;
         Vector2 _panelBasePosition = Vector2.zero;
         Tween _appearTween = null;
+        bool _isOpened = false;
 
         public override void OnGenerate()
         {
@@ -74,12 +75,18 @@ namespace Pinball.UI
 
             _args = viewArgs;
             ApplyResult(viewArgs);
+
+            if (_isOpened)
+                return;
+
+            _isOpened = true;
             PlayAppear();
         }
 
         public override void OnReturn()
         {
             KillAppear();
+            _isOpened = false;
             _args = null;
         }
 

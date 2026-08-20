@@ -94,6 +94,7 @@ namespace Pinball.UI
         Tween _offerRevealTween = null;
         Tween _moneyDeniedTween = null;
         OfferEntry[] _pendingOffers = null;
+        Args _revealedArgs = null;
         Transform _lastRequestSource = null;
         Vector2 _moneyPlaqueBasePosition = Vector2.zero;
         Color _moneyPlaqueBaseColor = Color.white;
@@ -140,6 +141,7 @@ namespace Pinball.UI
         {
             KillOfferReveal();
             KillMoneyDenied();
+            _revealedArgs = null;
             _lastRequestSource = null;
             _passiveGrid.Clear();
             _upgradeGrid.Clear();
@@ -203,8 +205,9 @@ namespace Pinball.UI
 
         void BindOfferSection(Args args)
         {
-            if (args.PlaysOfferReveal)
+            if (args.PlaysOfferReveal && !ReferenceEquals(_revealedArgs, args))
             {
+                _revealedArgs = args;
                 PlayOfferReveal(args.Offers);
                 return;
             }

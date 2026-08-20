@@ -65,6 +65,7 @@ namespace Pinball.UI
         string _capturingLabelBackup = string.Empty;
         EKeyAction _capturingAction = EKeyAction.FlipperLeft;
         bool _isCapturing = false;
+        bool _isOpened = false;
 
         public override void OnGenerate()
         {
@@ -115,11 +116,17 @@ namespace Pinball.UI
         public override void OnReturn()
         {
             CancelCapture();
+            _isOpened = false;
         }
 
         public override void Bind(UIViewArgs args)
         {
             RefreshLabels();
+
+            if (_isOpened)
+                return;
+
+            _isOpened = true;
             ResetSystemScroll();
         }
 
