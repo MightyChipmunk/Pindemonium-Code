@@ -13,6 +13,7 @@ namespace Pinball.Ingame.Cheat
             InvalidInput = 2,
             PassiveSlotFull = 3,
             NotInStage = 4,
+            NotOwned = 5,
         }
 
         public record InitParam(
@@ -143,6 +144,20 @@ namespace Pinball.Ingame.Cheat
             return ApplyUpgrade(item, count);
         }
 
+        public EApplyResult RemoveItem(ShopItemData item, int count)
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            if (null == item)
+                return EApplyResult.InvalidInput;
+
+            if (item.Kind == ShopItemData.EItemKind.Passive)
+                return RemovePassive(item);
+
+            return RemoveUpgrade(item, count);
+        }
+
         bool IsStageClearable()
         {
             if (null == _isStageClearableGetter)
@@ -165,6 +180,30 @@ namespace Pinball.Ingame.Cheat
             int applyCount = Mathf.Max(count, MIN_APPLY_COUNT);
             for (int i = 0; i < applyCount; ++i)
                 _loadout.AddUpgrade(item);
+
+            _onCheatApplied?.Invoke();
+            return EApplyResult.Success;
+        }
+
+        EApplyResult RemovePassive(ShopItemData item)
+        {
+            if (!_loadout.TryRemovePassive(item))
+                return EApplyResult.NotOwned;
+
+            _onCheatApplied?.Invoke();
+            return EApplyResult.Success;
+        }
+
+        EApplyResult RemoveUpgrade(ShopItemData item, int count)
+        {
+            int removeCount = Mathf.Max(count, MIN_APPLY_COUNT);
+            int removedCount = 0;
+            for (int i = 0; i < removeCount; ++i)
+                if (_loadout.TryRemoveUpgrade(item))
+                    ++removedCount;
+
+            if (removedCount <= 0)
+                return EApplyResult.NotOwned;
 
             _onCheatApplied?.Invoke();
             return EApplyResult.Success;

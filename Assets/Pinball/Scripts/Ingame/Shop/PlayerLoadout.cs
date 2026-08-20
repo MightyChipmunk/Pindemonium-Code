@@ -120,7 +120,11 @@ namespace Pinball.Ingame
                 return;
 
             RecordUpgrade(item);
+            AccumulateUpgrade(item);
+        }
 
+        void AccumulateUpgrade(ShopItemData item)
+        {
             if (item.EffectType == ShopItemData.EEffectType.GimmickScoreRatioAdd)
             {
                 _gimmickScoreSums.TryGetValue(item.GimmickType, out float gimmickSum);
@@ -144,6 +148,46 @@ namespace Pinball.Ingame
 
             ++_upgradeCounts[index];
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool TryRemovePassive(ShopItemData item)
+        {
+            if (null == _passives || null == item)
+                return false;
+
+            return _passives.Remove(item);
+        }
+
+        public bool TryRemoveUpgrade(ShopItemData item)
+        {
+            if (null == _upgrades || null == item)
+                return false;
+
+            int index = _upgrades.IndexOf(item);
+            if (index < 0)
+                return false;
+
+            --_upgradeCounts[index];
+            if (_upgradeCounts[index] <= 0)
+            {
+                _upgrades.RemoveAt(index);
+                _upgradeCounts.RemoveAt(index);
+            }
+
+            RebuildUpgradeSums();
+            return true;
+        }
+
+        void RebuildUpgradeSums()
+        {
+            _upgradeSums.Clear();
+            _gimmickScoreSums.Clear();
+
+            for (int i = 0; i < _upgrades.Count; ++i)
+                for (int k = 0; k < _upgradeCounts[i]; ++k)
+                    AccumulateUpgrade(_upgrades[i]);
+        }
+#endif
 
         public float GetEffectSum(ShopItemData.EEffectType effectType)
         {

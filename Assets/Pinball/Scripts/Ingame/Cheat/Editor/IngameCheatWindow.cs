@@ -40,9 +40,12 @@ namespace Pinball.Ingame.Cheat.Editor
         const string UNREGISTERED_LABEL = "미등록";
         const string UNREGISTERED_TOOLTIP = "ShopCatalogData에 등록되지 않아 상점 목록에는 뜨지 않는 아이템입니다.";
         const string APPLY_LABEL = "적용";
+        const string REMOVE_LABEL = "제거";
         const string EMPTY_LIST_LABEL = "조건에 맞는 아이템이 없습니다.";
         const string NOT_PLAYING_WARNING = "[IngameCheat] 플레이 중이 아니거나 인게임이 초기화되지 않았습니다.";
         const string APPLIED_LOG_FORMAT = "[IngameCheat] 적용: {0}";
+        const string REMOVED_LOG_FORMAT = "[IngameCheat] 제거: {0}";
+        const string NOT_OWNED_WARNING_FORMAT = "[IngameCheat] 보유하지 않은 아이템입니다: {0}";
         const string MONEY_LOG_FORMAT = "[IngameCheat] 돈 +{0}";
         const string STAGE_CLEAR_LOG = "[IngameCheat] 현재 스테이지 클리어";
         const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
@@ -59,6 +62,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const float PRICE_LABEL_WIDTH = 64f;
         const float OWNED_LABEL_WIDTH = 56f;
         const float APPLY_BUTTON_WIDTH = 52f;
+        const float REMOVE_BUTTON_WIDTH = 52f;
         const float ROW_PADDING = 3f;
         const float BADGE_PADDING = 4f;
         const float STATUS_PADDING = 6f;
@@ -78,7 +82,7 @@ namespace Pinball.Ingame.Cheat.Editor
         [SerializeField, BoxGroup(MONEY_GROUP), LabelText("추가할 금액")] int _moneyAmount = DEFAULT_MONEY_AMOUNT;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("종류")] EKindFilter _kindFilter = EKindFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("이름 검색")] string _searchText = string.Empty;
-        [SerializeField, BoxGroup(ITEM_GROUP), LabelText("업그레이드 적용 횟수")] int _applyCount = MIN_APPLY_COUNT;
+        [SerializeField, BoxGroup(ITEM_GROUP), LabelText("업그레이드 적용/제거 횟수")] int _applyCount = MIN_APPLY_COUNT;
 
         Label _statusLabel = null;
         ScrollView _listView = null;
@@ -276,6 +280,11 @@ namespace Pinball.Ingame.Cheat.Editor
             applyButton.style.width = APPLY_BUTTON_WIDTH;
             row.Add(applyButton);
 
+            Button removeButton = new Button(() => RemoveItem(item));
+            removeButton.text = REMOVE_LABEL;
+            removeButton.style.width = REMOVE_BUTTON_WIDTH;
+            row.Add(removeButton);
+
             ItemRow itemRow = new ItemRow();
             itemRow.Item = item;
             itemRow.CountLabel = countLabel;
@@ -325,6 +334,25 @@ namespace Pinball.Ingame.Cheat.Editor
             Debug.Log(string.Format(APPLIED_LOG_FORMAT, item.GetDisplayName()));
         }
 
+        void RemoveItem(ShopItemData item)
+        {
+            IngameCheatHandler handler = GetHandler();
+            if (null == handler)
+            {
+                Debug.LogWarning(NOT_PLAYING_WARNING);
+                return;
+            }
+
+            IngameCheatHandler.EApplyResult result = handler.RemoveItem(item, _applyCount);
+            if (result != IngameCheatHandler.EApplyResult.Success)
+            {
+                LogFailure(result, item.GetDisplayName());
+                return;
+            }
+
+            Debug.Log(string.Format(REMOVED_LOG_FORMAT, item.GetDisplayName()));
+        }
+
         void LogFailure(IngameCheatHandler.EApplyResult result, string itemName)
         {
             switch (result)
@@ -337,6 +365,9 @@ namespace Pinball.Ingame.Cheat.Editor
                     break;
                 case IngameCheatHandler.EApplyResult.NotInStage:
                     Debug.LogWarning(NOT_IN_STAGE_WARNING);
+                    break;
+                case IngameCheatHandler.EApplyResult.NotOwned:
+                    Debug.LogWarning(string.Format(NOT_OWNED_WARNING_FORMAT, itemName));
                     break;
                 default:
                     Debug.LogWarning(INVALID_INPUT_WARNING);
