@@ -1,4 +1,3 @@
-using Pinball.Core;
 using Pinball.Save;
 
 namespace Pinball.Ingame
@@ -17,9 +16,9 @@ namespace Pinball.Ingame
             string[] VoucherIds,
             int VoucherPurchasedRound);
 
-        public bool TryLoad(out IngamePlayData savedData)
+        public bool TryLoad(bool isContinueRequested, out IngamePlayData savedData)
         {
-            savedData = SceneFlow.IsContinueRequested ? SaveManager.GetIngameData() : null;
+            savedData = isContinueRequested ? SaveManager.GetIngameData() : null;
             return null != savedData;
         }
 

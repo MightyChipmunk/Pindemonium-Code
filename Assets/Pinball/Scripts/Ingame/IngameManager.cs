@@ -134,11 +134,13 @@ namespace Pinball.Ingame
 
         IngameRunSetupResolver.RunStart ResolveRunStart()
         {
-            _saveHandler.TryLoad(out IngamePlayData savedData);
+            bool isContinueRequested = SceneFlow.ConsumeContinueRequested();
+            int requestedFlipperIndex = SceneFlow.ConsumeRequestedFlipperIndex();
+            _saveHandler.TryLoad(isContinueRequested, out IngamePlayData savedData);
             int baseSlotCount = null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount;
             return IngameRunSetupResolver.Resolve(new IngameRunSetupResolver.ResolveParam(
                 SavedData: savedData,
-                RequestedFlipperIndex: SceneFlow.RequestedFlipperIndex,
+                RequestedFlipperIndex: requestedFlipperIndex,
                 FlipperCatalog: _flipperCatalog,
                 IsFlipperUnlockedGetter: _unlockProgress.IsFlipperUnlocked,
                 BasePassiveSlotCount: baseSlotCount,
