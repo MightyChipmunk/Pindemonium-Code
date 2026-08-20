@@ -21,7 +21,7 @@ namespace Pinball.Ingame
 
         public bool TrySpend(int amount)
         {
-            if (amount <= 0)
+            if (amount < 0)
                 return false;
 
             if (_current < amount)

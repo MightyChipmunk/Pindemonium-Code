@@ -12,6 +12,7 @@ namespace Pinball.Ingame.Stat
 
         static PinballStatData _statData = null;
         static PlayerLoadout _loadout = null;
+        static PlayerVouchers _vouchers = null;
         static FlipperData.Tuning _tuning = null;
         static FlipperData.RunSetup _runSetup = null;
         static Func<int> _remainingBallGetter = null;
@@ -21,10 +22,11 @@ namespace Pinball.Ingame.Stat
 
         public static bool IsInitialized => _isInitialized;
 
-        public static void Init(PinballStatData statData, PlayerLoadout loadout, FlipperData flipper, Func<int> remainingBallGetter, Func<int> comboCountGetter)
+        public static void Init(PinballStatData statData, PlayerLoadout loadout, PlayerVouchers vouchers, FlipperData flipper, Func<int> remainingBallGetter, Func<int> comboCountGetter)
         {
             _statData = statData;
             _loadout = loadout;
+            _vouchers = vouchers;
             _tuning = null == flipper ? FlipperData.DEFAULT_TUNING : flipper.GetTuning();
             _runSetup = null == flipper ? FlipperData.DEFAULT_RUN_SETUP : flipper.GetRunSetup();
             _remainingBallGetter = remainingBallGetter;
@@ -38,6 +40,7 @@ namespace Pinball.Ingame.Stat
             _isInitialized = false;
             _statData = null;
             _loadout = null;
+            _vouchers = null;
             _tuning = null;
             _runSetup = null;
             _remainingBallGetter = null;
@@ -72,7 +75,8 @@ namespace Pinball.Ingame.Stat
             if (!EnsureReady() || null == _statData)
                 return 0;
 
-            return Mathf.Max(MIN_SCALING_BALL_COUNT, _statData.InitialBallCount + _runSetup.StartBallAdd);
+            int voucherBallAdd = null == _vouchers ? 0 : Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.BallAdd));
+            return Mathf.Max(MIN_SCALING_BALL_COUNT, _statData.InitialBallCount + _runSetup.StartBallAdd + voucherBallAdd);
         }
 
         public static float GetBallMass()
@@ -144,7 +148,8 @@ namespace Pinball.Ingame.Stat
             if (!EnsureReady())
                 return 0f;
 
-            return GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney) + _runSetup.BallResupplyMoneyAdd;
+            float voucherBonus = null == _vouchers ? 0f : _vouchers.GetEffectSum(VoucherData.EEffect.BallResupplyMoney);
+            return GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney) + _runSetup.BallResupplyMoneyAdd + voucherBonus;
         }
 
         public static float GetComboMultiplierBonus()

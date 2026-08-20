@@ -12,7 +12,8 @@ namespace Pinball.UI
             string Title,
             Sprite Icon,
             string Description,
-            string PriceText);
+            string PriceText,
+            bool ShowPrice);
 
         const float SOLD_ALPHA = 0.55f;
 
@@ -58,7 +59,7 @@ namespace Pinball.UI
             _iconImage.enabled = null != param.Icon;
             _descriptionLabel.text = param.Description;
             _priceLabel.text = param.PriceText;
-            _priceRoot.SetActive(true);
+            _priceRoot.SetActive(param.ShowPrice);
             _soldStamp.SetActive(false);
         }
 

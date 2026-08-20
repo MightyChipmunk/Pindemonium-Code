@@ -6,7 +6,6 @@ namespace Pinball.Ingame.UI
 {
     public class ScorePopup : MonoBehaviour, IPoolObject
     {
-        const string SCORE_FORMAT = "+{0}";
         const float START_RATIO = 0f;
 
         [SerializeField] TMP_Text _text = null;
@@ -38,9 +37,9 @@ namespace Pinball.Ingame.UI
 
         public void OnTerminate() { }
 
-        public void SetValue(int score)
+        public void SetText(string text)
         {
-            _text.text = string.Format(SCORE_FORMAT, score);
+            _text.text = text;
         }
 
         public void Prepare(Vector2 anchoredPosition, float riseDistance)

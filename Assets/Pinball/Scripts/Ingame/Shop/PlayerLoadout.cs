@@ -41,6 +41,31 @@ namespace Pinball.Ingame
             return _passives[index];
         }
 
+        public void AddPassiveSlot(int count)
+        {
+            if (count <= 0)
+                return;
+
+            _passiveSlotCount += count;
+        }
+
+        public bool IsMostUpgraded(ShopItemData item)
+        {
+            if (null == _upgrades || null == item)
+                return false;
+
+            int itemIndex = _upgrades.IndexOf(item);
+            if (itemIndex < 0)
+                return false;
+
+            int itemCount = _upgradeCounts[itemIndex];
+            for (int i = 0; i < _upgradeCounts.Count; ++i)
+                if (_upgradeCounts[i] > itemCount)
+                    return false;
+
+            return true;
+        }
+
         public bool CanAddPassive(ShopItemData item)
         {
             if (null == _passives)

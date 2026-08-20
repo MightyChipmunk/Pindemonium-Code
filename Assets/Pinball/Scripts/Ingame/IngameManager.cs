@@ -42,6 +42,8 @@ namespace Pinball.Ingame
         [SerializeField] ComboConfigData _comboConfig = null;
         [SerializeField] ShopConfigData _shopConfig = null;
         [SerializeField] ShopCatalogData _shopCatalog = null;
+        [SerializeField] CardPackCatalogData _cardPackCatalog = null;
+        [SerializeField] VoucherCatalogData _voucherCatalog = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -66,6 +68,7 @@ namespace Pinball.Ingame
         StageGimmickRoller _gimmickRoller = null;
         MoneyWallet _wallet = null;
         PlayerLoadout _loadout = null;
+        PlayerVouchers _vouchers = null;
         PowerSurgeCharger _powerSurgeCharger = null;
         BreakMoneyGranter _breakMoneyGranter = null;
         IngameSaveHandler _saveHandler = null;
@@ -146,21 +149,47 @@ namespace Pinball.Ingame
         {
             _wallet = new MoneyWallet(start.Money);
             _loadout = new PlayerLoadout(start.PassiveSlotCount);
+            _vouchers = new PlayerVouchers();
             if (start.IsNewRun)
+            {
                 _loadout.GrantRandomPassives(_shopCatalog, _unlockProgress.IsItemUnlocked, _runSetup.StartPassiveCount);
+            }
             else
+            {
                 _loadout.Restore(start.SavedData, _shopCatalog);
+                RestoreVouchers(start.SavedData);
+            }
 
-            StatProvider.Init(_statData, _loadout, _selectedFlipper, GetRemainingBallCount, GetComboCount);
+            StatProvider.Init(_statData, _loadout, _vouchers, _selectedFlipper, GetRemainingBallCount, GetComboCount);
             Track(StatProvider.Release);
 
             _powerSurgeCharger = new PowerSurgeCharger(GetIsPlaying);
             _breakMoneyGranter = new BreakMoneyGranter(_wallet);
         }
 
+        void RestoreVouchers(IngamePlayData savedData)
+        {
+            if (null == savedData)
+                return;
+
+            _vouchers.Restore(savedData.GetVoucherIds(), savedData.VoucherPurchasedRound, _voucherCatalog);
+            for (int i = 0; i < _vouchers.OwnedCount; ++i)
+            {
+                VoucherData voucher = _vouchers.GetOwned(i);
+                if (voucher.Effect == VoucherData.EEffect.PassiveSlotAdd)
+                    _loadout.AddPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
+            }
+        }
+
+        void OnVoucherPurchased()
+        {
+            _gimmickRoller.SetFirstRerollFree(_vouchers.Has(VoucherData.EEffect.StageFirstRerollFree));
+        }
+
         void InitStageFlow(IngameRunSetupResolver.RunStart start)
         {
             _gimmickRoller = new StageGimmickRoller(_gimmickCatalog);
+            _gimmickRoller.SetFirstRerollFree(_vouchers.Has(VoucherData.EEffect.StageFirstRerollFree));
             _gimmickResolver = new StageGimmickResolver(_gimmickRoller);
             _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver);
             _stageTracker.OnStageStarted += OnStageStarted;
@@ -235,12 +264,17 @@ namespace Pinball.Ingame
             _shopState = new ShopState(new ShopState.InitParam(
                 Config: _shopConfig,
                 Catalog: _shopCatalog,
+                PackCatalog: _cardPackCatalog,
+                VoucherCatalog: _voucherCatalog,
+                StageCatalog: _stageCatalog,
                 MoneyGetter: GetMoney,
                 MoneySpender: _wallet.TrySpend,
+                StageNumberGetter: GetStageNumber,
                 IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked,
                 OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
-                IsInterestDisabled: _runSetup.IsInterestDisabled), _loadout);
+                IsInterestDisabled: _runSetup.IsInterestDisabled), _loadout, _vouchers);
             _shopState.OnLoadoutChanged += OnShopLoadoutChanged;
+            _shopState.OnVoucherPurchased += OnVoucherPurchased;
 
             _stageSelectState = new StageSelectState(new StageSelectState.InitParam(
                 StageCatalog: _stageCatalog,
@@ -465,7 +499,9 @@ namespace Pinball.Ingame
                 GimmickIndices: _gimmickRoller.GetCatalogIndices(),
                 FlipperId: null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId(),
                 PassiveIds: _loadout.CollectPassiveIds(),
-                Upgrades: _loadout.CollectUpgradeEntries()));
+                Upgrades: _loadout.CollectUpgradeEntries(),
+                VoucherIds: _vouchers.CollectIds(),
+                VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex));
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)

@@ -6,6 +6,7 @@ namespace Pinball.Ingame.UI
 {
     public class ScorePopupSpawner : MonoBehaviour
     {
+        const string SCORE_FORMAT = "+{0}";
         const float SCALE_DURATION = 0.3f;
         const float FADE_DURATION = 0.35f;
         const float RISE_DISTANCE = 60f;
@@ -36,6 +37,17 @@ namespace Pinball.Ingame.UI
 
         public void Play(int score, Vector2 worldPoint)
         {
+            PlayText(string.Format(SCORE_FORMAT, score), GetAnchoredPosition(worldPoint));
+        }
+
+        public void PlayTextAt(string text, Vector3 uiWorldPosition)
+        {
+            Vector3 localPoint = _rectTransform.InverseTransformPoint(uiWorldPosition);
+            PlayText(text, new Vector2(localPoint.x, localPoint.y));
+        }
+
+        void PlayText(string text, Vector2 anchoredPosition)
+        {
             if (null == _pool)
                 return;
 
@@ -43,8 +55,8 @@ namespace Pinball.Ingame.UI
             if (null == popup)
                 return;
 
-            popup.SetValue(score);
-            popup.Prepare(GetAnchoredPosition(worldPoint), RISE_DISTANCE);
+            popup.SetText(text);
+            popup.Prepare(anchoredPosition, RISE_DISTANCE);
 
             Sequence sequence = DOTween.Sequence();
             sequence.Append(DOTween.To(popup.GetScaleRatio, popup.SetScaleRatio, END_RATIO, SCALE_DURATION).SetEase(Ease.OutElastic));

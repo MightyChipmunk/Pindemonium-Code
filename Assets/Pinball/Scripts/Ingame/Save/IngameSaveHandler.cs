@@ -13,7 +13,9 @@ namespace Pinball.Ingame
             int[] GimmickIndices,
             string FlipperId,
             string[] PassiveIds,
-            IngamePlayData.UpgradeEntry[] Upgrades);
+            IngamePlayData.UpgradeEntry[] Upgrades,
+            string[] VoucherIds,
+            int VoucherPurchasedRound);
 
         public bool TryLoad(out IngamePlayData savedData)
         {
@@ -31,7 +33,9 @@ namespace Pinball.Ingame
                 param.GimmickIndices,
                 param.FlipperId,
                 param.PassiveIds,
-                param.Upgrades));
+                param.Upgrades,
+                param.VoucherIds,
+                param.VoucherPurchasedRound));
         }
 
         public void UpdateBestStage(int stageNumber)

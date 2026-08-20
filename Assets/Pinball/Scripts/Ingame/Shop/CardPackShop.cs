@@ -1,0 +1,173 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Pinball.Ingame
+{
+    public class CardPackShop
+    {
+        public const int DEFAULT_PACK_SLOT_COUNT = 2;
+
+        ShopCatalogData _itemCatalog = null;
+        Func<ShopItemData, bool> _offerFilter = null;
+        CardPackData[] _packs = null;
+        CardPackData _openedPack = null;
+        List<ShopItemData> _revealedItems = null;
+        List<bool> _takenFlags = null;
+        int _remainingPicks = 0;
+
+        public int PackSlotCount => null == _packs ? 0 : _packs.Length;
+        public bool IsOpening => null != _openedPack;
+        public bool IsOpeningFinished => _remainingPicks <= 0;
+        public int RemainingPicks => _remainingPicks;
+        public int RevealedItemCount => null == _revealedItems ? 0 : _revealedItems.Count;
+
+        public CardPackShop(CardPackCatalogData packCatalog, ShopCatalogData itemCatalog, Func<ShopItemData, bool> offerFilter, int packSlotCount)
+        {
+            _itemCatalog = itemCatalog;
+            _offerFilter = offerFilter;
+            _revealedItems = new List<ShopItemData>();
+            _takenFlags = new List<bool>();
+            _packs = new CardPackData[Mathf.Max(0, packSlotCount)];
+            RollPacks(packCatalog);
+        }
+
+        public CardPackData GetPack(int slotIndex)
+        {
+            if (null == _packs)
+                return null;
+
+            if (slotIndex < 0 || slotIndex >= _packs.Length)
+                return null;
+
+            return _packs[slotIndex];
+        }
+
+        public bool HasCandidates(CardPackData pack)
+        {
+            if (null == pack)
+                return false;
+
+            return CollectCandidates(pack).Count > 0;
+        }
+
+        public bool TryStartOpening(int slotIndex)
+        {
+            if (IsOpening)
+                return false;
+
+            CardPackData pack = GetPack(slotIndex);
+            if (null == pack)
+                return false;
+
+            List<ShopItemData> candidates = CollectCandidates(pack);
+            if (candidates.Count <= 0)
+                return false;
+
+            _revealedItems.Clear();
+            _takenFlags.Clear();
+            for (int i = 0; i < pack.RevealCount && candidates.Count > 0; ++i)
+            {
+                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
+                _revealedItems.Add(candidates[pickIndex]);
+                _takenFlags.Add(false);
+                candidates.RemoveAt(pickIndex);
+            }
+
+            _openedPack = pack;
+            _remainingPicks = Mathf.Min(pack.PickCount, _revealedItems.Count);
+            _packs[slotIndex] = null;
+            return true;
+        }
+
+        public string GetOpeningPackName()
+        {
+            return null == _openedPack ? string.Empty : _openedPack.GetDisplayName();
+        }
+
+        public ShopItemData GetRevealedItem(int index)
+        {
+            if (index < 0 || index >= RevealedItemCount)
+                return null;
+
+            return _revealedItems[index];
+        }
+
+        public bool IsTaken(int index)
+        {
+            if (index < 0 || index >= RevealedItemCount)
+                return true;
+
+            return _takenFlags[index];
+        }
+
+        public ShopItemData TakePick(int index)
+        {
+            if (!IsOpening || IsOpeningFinished)
+                return null;
+
+            if (IsTaken(index))
+                return null;
+
+            _takenFlags[index] = true;
+            --_remainingPicks;
+            return _revealedItems[index];
+        }
+
+        public void CloseOpening()
+        {
+            _openedPack = null;
+            _revealedItems.Clear();
+            _takenFlags.Clear();
+            _remainingPicks = 0;
+        }
+
+        void RollPacks(CardPackCatalogData packCatalog)
+        {
+            List<CardPackData> candidates = new List<CardPackData>();
+            if (null != packCatalog)
+            {
+                for (int i = 0; i < packCatalog.Count; ++i)
+                {
+                    CardPackData pack = packCatalog.GetPack(i);
+                    if (null != pack)
+                        candidates.Add(pack);
+                }
+            }
+
+            for (int i = 0; i < _packs.Length; ++i)
+            {
+                if (candidates.Count <= 0)
+                {
+                    _packs[i] = null;
+                    continue;
+                }
+
+                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
+                _packs[i] = candidates[pickIndex];
+                candidates.RemoveAt(pickIndex);
+            }
+        }
+
+        List<ShopItemData> CollectCandidates(CardPackData pack)
+        {
+            List<ShopItemData> candidates = new List<ShopItemData>();
+            if (null == _itemCatalog)
+                return candidates;
+
+            for (int i = 0; i < _itemCatalog.Count; ++i)
+            {
+                ShopItemData item = _itemCatalog.GetItem(i);
+                if (!pack.Accepts(item))
+                    continue;
+
+                if (null != _offerFilter && !_offerFilter(item))
+                    continue;
+
+                candidates.Add(item);
+            }
+
+            return candidates;
+        }
+    }
+}

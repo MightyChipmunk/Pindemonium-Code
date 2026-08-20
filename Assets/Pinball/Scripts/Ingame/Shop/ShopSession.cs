@@ -14,17 +14,32 @@ namespace Pinball.Ingame
         Func<ShopItemData, bool> _offerFilter = null;
         ShopItemData[] _offers = null;
         int _rerollCount = 0;
+        bool _isFirstRerollFree = false;
 
         public int OfferSlotCount => null == _offers ? 0 : _offers.Length;
-        public int CurrentRerollPrice => null == _config ? 0 : _config.RerollBasePrice + _config.RerollPriceIncrement * _rerollCount;
 
-        public ShopSession(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter, int offerSlotCount)
+        public int CurrentRerollPrice
+        {
+            get
+            {
+                if (null == _config)
+                    return 0;
+
+                if (_isFirstRerollFree && _rerollCount <= 0)
+                    return 0;
+
+                return _config.RerollBasePrice + _config.RerollPriceIncrement * _rerollCount;
+            }
+        }
+
+        public ShopSession(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter, int offerSlotCount, bool isFirstRerollFree)
         {
             _config = config;
             _catalog = catalog;
             _offerFilter = offerFilter;
             _offers = new ShopItemData[Mathf.Clamp(offerSlotCount, 1, MAX_OFFER_SLOT_COUNT)];
             _rerollCount = 0;
+            _isFirstRerollFree = isFirstRerollFree;
             RollOffers();
         }
 
