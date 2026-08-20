@@ -26,6 +26,14 @@ namespace Pinball.Ingame.Map
             PassiveEffect = 1,
         }
 
+        public record InitParam(
+            Action<EGimmickType, int, Vector2, EScoreSource> OnScoreGained,
+            Func<Collider2D, float, float> DamageEvaluator,
+            Action<PoolableFX.EFXType, Vector2> FXPlayer,
+            Action<Collider2D> OnBallHit,
+            Action GimmickHitPresenter,
+            int ScoreGainLimit);
+
         public const int NO_SCORE_GAIN_LIMIT = 0;
 
         [SerializeField] LayerMask _ballLayerMask = default;
@@ -34,6 +42,7 @@ namespace Pinball.Ingame.Map
         Func<Collider2D, float, float> _damageEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<Collider2D> _onBallHit = null;
+        Action _gimmickHitPresenter = null;
         int _scoreGainLimit = NO_SCORE_GAIN_LIMIT;
         int _scoreGainCount = 0;
         bool _isDeactivated = false;
@@ -42,13 +51,14 @@ namespace Pinball.Ingame.Map
         public virtual bool IsDeactivatable => true;
         public bool IsDeactivated => _isDeactivated;
 
-        public void Init(Action<EGimmickType, int, Vector2, EScoreSource> onScoreGained, Func<Collider2D, float, float> damageEvaluator, Action<PoolableFX.EFXType, Vector2> fxPlayer, Action<Collider2D> onBallHit, int scoreGainLimit)
+        public void Init(InitParam param)
         {
-            _onScoreGained = onScoreGained;
-            _damageEvaluator = damageEvaluator;
-            _fxPlayer = fxPlayer;
-            _onBallHit = onBallHit;
-            _scoreGainLimit = scoreGainLimit;
+            _onScoreGained = param.OnScoreGained;
+            _damageEvaluator = param.DamageEvaluator;
+            _fxPlayer = param.FXPlayer;
+            _onBallHit = param.OnBallHit;
+            _gimmickHitPresenter = param.GimmickHitPresenter;
+            _scoreGainLimit = param.ScoreGainLimit;
             _scoreGainCount = 0;
             _isDeactivated = false;
             OnInit();
@@ -61,6 +71,7 @@ namespace Pinball.Ingame.Map
             _damageEvaluator = null;
             _fxPlayer = null;
             _onBallHit = null;
+            _gimmickHitPresenter = null;
         }
 
         public void Deactivate()
@@ -124,12 +135,13 @@ namespace Pinball.Ingame.Map
             _onBallHit?.Invoke(ballCollider);
         }
 
-        protected void PlayGimmickHitSound()
+        protected void PlayGimmickHit()
         {
             if (_isDeactivated)
                 return;
 
             AudioManager.Play(GetHitClipType());
+            _gimmickHitPresenter?.Invoke();
         }
 
         protected void PlayBankClearedSound()
@@ -156,7 +168,7 @@ namespace Pinball.Ingame.Map
                 case EGimmickType.Lane:
                     return AudioStorage.EAudioClipType.GimmickHitLane;
                 case EGimmickType.Saucer:
-                    return AudioStorage.EAudioClipType.GimmickHitSaucer;
+                    return AudioStorage.EAudioClipType.GimmickSaucerCapture;
                 default:
                     return AudioStorage.EAudioClipType.None;
             }

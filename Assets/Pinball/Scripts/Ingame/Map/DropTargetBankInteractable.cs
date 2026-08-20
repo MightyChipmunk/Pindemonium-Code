@@ -48,7 +48,7 @@ namespace Pinball.Ingame.Map
         void OnTargetDropped(Collider2D ballCollider)
         {
             NotifyBallHit(ballCollider);
-            PlayGimmickHitSound();
+            PlayGimmickHit();
             GainScore(_dropScoreReward);
             ++_droppedCount;
 

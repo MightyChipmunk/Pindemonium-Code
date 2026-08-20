@@ -25,6 +25,7 @@ namespace Pinball.Ingame.Map
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
             Action<Collider2D> OnGimmickBallHit,
+            Action GimmickHitPresenter,
             Func<MapInteractable.EGimmickType, bool> IsGimmickAbsentGetter,
             Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter,
             bool IsBumperUnbreakable);
@@ -55,7 +56,13 @@ namespace Pinball.Ingame.Map
                 {
                     MapInteractable interactable = _interactables[i];
                     int scoreGainLimit = interactable.IsDeactivatable ? param.ScoreGainLimitGetter(interactable.GimmickType) : MapInteractable.NO_SCORE_GAIN_LIMIT;
-                    interactable.Init(param.OnScoreGained, param.DamageEvaluator, param.FXPlayer, param.OnGimmickBallHit, scoreGainLimit);
+                    interactable.Init(new MapInteractable.InitParam(
+                        OnScoreGained: param.OnScoreGained,
+                        DamageEvaluator: param.DamageEvaluator,
+                        FXPlayer: param.FXPlayer,
+                        OnBallHit: param.OnGimmickBallHit,
+                        GimmickHitPresenter: param.GimmickHitPresenter,
+                        ScoreGainLimit: scoreGainLimit));
 
                     if (interactable.IsDeactivatable && param.IsGimmickAbsentGetter(interactable.GimmickType))
                         interactable.Deactivate();
@@ -229,9 +236,9 @@ namespace Pinball.Ingame.Map
             _spring.SetCharging(isCharging);
         }
 
-        public bool TryLaunch()
+        public bool TryLaunch(out float launchPowerRatio)
         {
-            return _spring.TryLaunch();
+            return _spring.TryLaunch(out launchPowerRatio);
         }
 
         void OnFlipperBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)

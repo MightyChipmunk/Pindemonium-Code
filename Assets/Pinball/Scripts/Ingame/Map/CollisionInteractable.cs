@@ -18,7 +18,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             NotifyBallHit(collision.collider);
-            PlayGimmickHitSound();
+            PlayGimmickHit();
 
             float collisionImpulse = collision.relativeVelocity.magnitude * collision.rigidbody.mass;
             float damage = EvaluateDamage(collision.collider, collisionImpulse) * GetDamageMultiplier();

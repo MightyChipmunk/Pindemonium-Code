@@ -113,7 +113,7 @@ namespace Pinball.Ingame.Map
             if (Vector2.Dot(body.linearVelocity, GetEnterDirection(isForward)) <= 0f)
                 return;
 
-            PlayGimmickHitSound();
+            PlayGimmickHit();
 
             float entrySpeed = body.linearVelocity.magnitude;
             TravelAsync(body, Mathf.Clamp(entrySpeed, _minTravelSpeed, _maxTravelSpeed), isForward, _cancellationTokenSource.Token).Forget();

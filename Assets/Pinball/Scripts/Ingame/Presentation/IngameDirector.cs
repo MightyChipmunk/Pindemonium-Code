@@ -10,6 +10,11 @@ namespace Pinball.Ingame.Presentation
     public class IngameDirector : IDisposable
     {
         const float NUDGE_SHAKE_DELAY = 0f;
+        const float SPRING_LAUNCH_SHAKE_DELAY = 0f;
+        const float BUMPER_BROKEN_SHAKE_DELAY = 0f;
+        const float GIMMICK_HIT_SHAKE_DELAY = 0f;
+        const float SPRING_LAUNCH_HARD_POWER_RATIO = 0.85f;
+        const float SPRING_LAUNCH_NORMAL_POWER_RATIO = 0.65f;
 
         PresentationConfigData _config = null;
         HitStopPlayer _hitStopPlayer = null;
@@ -88,6 +93,32 @@ namespace Pinball.Ingame.Presentation
         {
             _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectNudge);
+        }
+
+        public void PlaySpringLaunch(float launchPowerRatio)
+        {
+            _cameraShaker?.Invoke(GetSpringLaunchShakeType(launchPowerRatio), SPRING_LAUNCH_SHAKE_DELAY);
+        }
+
+        static CameraController.ECameraShakeType GetSpringLaunchShakeType(float launchPowerRatio)
+        {
+            if (launchPowerRatio >= SPRING_LAUNCH_HARD_POWER_RATIO)
+                return CameraController.ECameraShakeType.Hard;
+
+            if (launchPowerRatio >= SPRING_LAUNCH_NORMAL_POWER_RATIO)
+                return CameraController.ECameraShakeType.Normal;
+
+            return CameraController.ECameraShakeType.Soft;
+        }
+
+        public void PlayBumperBroken()
+        {
+            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Normal, BUMPER_BROKEN_SHAKE_DELAY);
+        }
+
+        public void PlayGimmickHit()
+        {
+            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Soft, GIMMICK_HIT_SHAKE_DELAY);
         }
 
         public void PlayComboUp()

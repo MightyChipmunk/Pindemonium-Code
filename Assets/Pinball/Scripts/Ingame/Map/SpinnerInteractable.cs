@@ -65,7 +65,7 @@ namespace Pinball.Ingame.Map
 
             _remainingRevolutions += GetRevolutions(body.linearVelocity.magnitude);
             _hasPendingBallHit = true;
-            PlayGimmickHitSound();
+            PlayGimmickHit();
 
             if (_isSpinning)
                 return;

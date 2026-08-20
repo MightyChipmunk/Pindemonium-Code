@@ -68,7 +68,7 @@ namespace Pinball.Ingame.Map
             Lamp lamp = _lamps[_litCount];
             lamp.PlayLightUp();
             PlayFX(_lightUpFX, lamp.transform.position);
-            PlayGimmickHitSound();
+            PlayGimmickHit();
             ++_litCount;
 
             if (_litCount < _lamps.Length)

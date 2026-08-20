@@ -25,7 +25,7 @@ namespace Pinball.Ingame
         Action _nudgePresenter = null;
         float _remainingNudgeCooldown = 0f;
 
-        public event Action OnLaunched;
+        public event Action<float> OnLaunched;
 
         public PlayerController(InitParam param, IngameInputRouter inputRouter)
         {
@@ -118,8 +118,8 @@ namespace Pinball.Ingame
                 return;
             }
 
-            if (_map.TryLaunch())
-                OnLaunched?.Invoke();
+            if (_map.TryLaunch(out float launchPowerRatio))
+                OnLaunched?.Invoke(launchPowerRatio);
         }
 
         void HandleNudgePressed()

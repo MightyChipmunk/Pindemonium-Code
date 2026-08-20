@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Pinball.Audio;
 using Pinball.FX;
 using UnityEngine;
 
@@ -26,6 +27,9 @@ namespace Pinball.Ingame.Map
         const int NO_LIT_INDEX = -1;
         const float INDICATOR_STAGGER_INTERVAL = 0.035f;
         const float NO_COOLDOWN = 0f;
+        const float SPIN_TICK_MIN_PITCH = 0.85f;
+        const float SPIN_TICK_MAX_PITCH = 1.6f;
+        const float SPIN_TICK_END_PROGRESS = 1f;
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
@@ -160,7 +164,7 @@ namespace Pinball.Ingame.Map
 
             NotifyBallHit(ballCollider);
             PlayFX(_captureFX, transform.position);
-            PlayGimmickHitSound();
+            PlayGimmickHit();
             PlayCaptureMotion();
 
             int targetIndex = PickTargetIndex();
@@ -171,6 +175,7 @@ namespace Pinball.Ingame.Map
             ReleaseHeldBody(GetEjectDirection(targetIndex));
             SetLitIndex(NO_LIT_INDEX);
             PlayEjectMotion();
+            AudioManager.Play(AudioStorage.EAudioClipType.GimmickSaucerEject);
             ++_captureCount;
             GainScore(reward);
 
@@ -230,8 +235,14 @@ namespace Pinball.Ingame.Map
             for (int i = 0; i < stepCount; ++i)
             {
                 SetLitIndex((startIndex + i) % count);
+                PlaySpinTick(stepCount <= 1 ? SPIN_TICK_END_PROGRESS : (float)i / (stepCount - 1));
                 await UniTask.Delay(TimeSpan.FromSeconds(_spinIntervals[i]), cancellationToken: cancellationToken);
             }
+        }
+
+        static void PlaySpinTick(float progress)
+        {
+            AudioManager.PlaySequenced(AudioStorage.EAudioClipType.GimmickSaucerSpinTick, Mathf.Lerp(SPIN_TICK_MIN_PITCH, SPIN_TICK_MAX_PITCH, progress));
         }
 
         void SetLitIndex(int index)

@@ -28,6 +28,7 @@ namespace Pinball.Ingame
         [SerializeField] SpringConfigData _config = null;
 
         Action<EChargeEvent, Vector2> _chargeEventPlayer = null;
+        int _chargeLoopId = AudioManager.INVALID_LOOP_ID;
         Ball _loadedBall = null;
         Tween _launchTween = null;
         float _chargeElapsed = 0f;
@@ -80,14 +81,19 @@ namespace Pinball.Ingame
             {
                 KillLaunchTween(true);
                 AudioManager.Play(AudioStorage.EAudioClipType.SpringChargeStart);
+                StartChargeLoop();
                 return;
             }
 
+            StopChargeLoop();
             ApplyChargeVisual(EMPTY_CHARGE_RATIO);
         }
 
-        public bool TryLaunch()
+        public bool TryLaunch(out float launchPowerRatio)
         {
+            launchPowerRatio = EMPTY_CHARGE_RATIO;
+            StopChargeLoop();
+
             if (null == _config)
                 return false;
 
@@ -104,11 +110,11 @@ namespace Pinball.Ingame
             }
 
             Ball ball = _loadedBall;
-            float powerRatio = Mathf.Lerp(_config.MinPowerRatio, 1f, GetChargeRatio());
+            launchPowerRatio = Mathf.Lerp(_config.MinPowerRatio, 1f, GetChargeRatio());
             _loadedBall = null;
             ResetCharge();
             ball.SetKinematic(false);
-            ball.AddImpulse(Vector2.up * (_config.LaunchImpulse * powerRatio));
+            ball.AddImpulse(Vector2.up * (_config.LaunchImpulse * launchPowerRatio));
             PlayLaunchMotion();
             AudioManager.Play(AudioStorage.EAudioClipType.SpringLaunch);
             return true;
@@ -136,7 +142,24 @@ namespace Pinball.Ingame
                 return;
             }
 
-            ApplyChargeVisual(GetVisualChargeRatio());
+            float visualChargeRatio = GetVisualChargeRatio();
+            ApplyChargeVisual(visualChargeRatio);
+            AudioManager.SetLoopVolumeRatio(_chargeLoopId, visualChargeRatio);
+        }
+
+        void StartChargeLoop()
+        {
+            StopChargeLoop();
+            _chargeLoopId = AudioManager.PlayLoop(AudioStorage.EAudioClipType.SpringChargeLoop);
+        }
+
+        void StopChargeLoop()
+        {
+            if (_chargeLoopId == AudioManager.INVALID_LOOP_ID)
+                return;
+
+            AudioManager.StopLoop(_chargeLoopId);
+            _chargeLoopId = AudioManager.INVALID_LOOP_ID;
         }
 
         void CancelCharge()
@@ -150,6 +173,7 @@ namespace Pinball.Ingame
 
         void ResetCharge()
         {
+            StopChargeLoop();
             _isCharging = false;
             _isPeakReached = false;
             _isChargeCanceled = false;

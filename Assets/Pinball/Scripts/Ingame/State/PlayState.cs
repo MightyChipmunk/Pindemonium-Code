@@ -173,6 +173,7 @@ namespace Pinball.Ingame.State
                 FXPlayer: _director.PlayFX,
                 LineFXPlayer: _director.PlayLineFX,
                 OnGimmickBallHit: _ballFlow.CountGimmickHit,
+                GimmickHitPresenter: _director.PlayGimmickHit,
                 IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
                 ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit,
                 IsBumperUnbreakable: _gimmickResolver.IsBumperUnbreakable()));
@@ -209,10 +210,11 @@ namespace Pinball.Ingame.State
             ChangeState(EIngameState.Result, new ResultState.EnterParam(GameResultView.EResult.GameOver));
         }
 
-        void OnBallLaunched()
+        void OnBallLaunched(float launchPowerRatio)
         {
             _isBallInPlay = true;
             _playerController.ResetNudgeCooldown();
+            _director.PlaySpringLaunch(launchPowerRatio);
         }
 
         void OnBallLost()
@@ -255,6 +257,7 @@ namespace Pinball.Ingame.State
 
         void OnBumperBroken()
         {
+            _director.PlayBumperBroken();
             _param.OnGimmickBroken?.Invoke();
         }
     }
