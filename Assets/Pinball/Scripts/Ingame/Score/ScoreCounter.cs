@@ -111,6 +111,13 @@ namespace Pinball.Ingame
             _comboTracker.EndCombo();
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void AddCheatScore(int amount)
+        {
+            Add(amount);
+        }
+#endif
+
         void HandleComboChanged(int comboCount, float multiplier, int pendingBonus)
         {
             OnComboChanged?.Invoke(comboCount, multiplier, pendingBonus);

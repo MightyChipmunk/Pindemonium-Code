@@ -12,11 +12,14 @@ namespace Pinball.Ingame.Cheat
             NotReady = 1,
             InvalidInput = 2,
             PassiveSlotFull = 3,
+            NotInStage = 4,
         }
 
         public record InitParam(
             Func<int> MoneyGetter,
             Action<int> MoneyAdder,
+            Func<bool> IsStageClearableGetter,
+            Action StageClearer,
             Action OnCheatApplied);
 
         const int MIN_APPLY_COUNT = 1;
@@ -24,6 +27,8 @@ namespace Pinball.Ingame.Cheat
 
         Func<int> _moneyGetter = null;
         Action<int> _moneyAdder = null;
+        Func<bool> _isStageClearableGetter = null;
+        Action _stageClearer = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
@@ -31,6 +36,8 @@ namespace Pinball.Ingame.Cheat
         {
             _moneyGetter = param.MoneyGetter;
             _moneyAdder = param.MoneyAdder;
+            _isStageClearableGetter = param.IsStageClearableGetter;
+            _stageClearer = param.StageClearer;
             _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
@@ -39,13 +46,15 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
+            _stageClearer = null;
+            _isStageClearableGetter = null;
             _moneyAdder = null;
             _moneyGetter = null;
         }
 
         public bool IsReady()
         {
-            return null != _moneyGetter && null != _moneyAdder && null != _loadout;
+            return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter && null != _stageClearer && null != _loadout;
         }
 
         public int GetMoney()
@@ -108,6 +117,18 @@ namespace Pinball.Ingame.Cheat
             return EApplyResult.Success;
         }
 
+        public EApplyResult ClearStage()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            if (!IsStageClearable())
+                return EApplyResult.NotInStage;
+
+            _stageClearer();
+            return EApplyResult.Success;
+        }
+
         public EApplyResult ApplyItem(ShopItemData item, int count)
         {
             if (!IsReady())
@@ -120,6 +141,14 @@ namespace Pinball.Ingame.Cheat
                 return ApplyPassive(item);
 
             return ApplyUpgrade(item, count);
+        }
+
+        bool IsStageClearable()
+        {
+            if (null == _isStageClearableGetter)
+                return false;
+
+            return _isStageClearableGetter();
         }
 
         EApplyResult ApplyPassive(ShopItemData item)

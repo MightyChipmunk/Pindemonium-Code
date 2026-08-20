@@ -275,6 +275,8 @@ namespace Pinball.Ingame
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        const int MIN_CHEAT_CLEAR_SCORE = 1;
+
         void InitCheatHandler()
         {
             if (null == _cheatHandler)
@@ -283,8 +285,21 @@ namespace Pinball.Ingame
             _cheatHandler.Init(new IngameCheatHandler.InitParam(
                 MoneyGetter: GetMoney,
                 MoneyAdder: _wallet.Add,
+                IsStageClearableGetter: GetIsStageClearable,
+                StageClearer: ClearCurrentStage,
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
+        }
+
+        bool GetIsStageClearable()
+        {
+            return !GetIsControlBlocked();
+        }
+
+        void ClearCurrentStage()
+        {
+            int remainingScore = _stageTracker.TargetScore - _stageTracker.StageScore;
+            _scoreCounter.AddCheatScore(Mathf.Max(remainingScore, MIN_CHEAT_CLEAR_SCORE));
         }
 
         void OnCheatApplied()

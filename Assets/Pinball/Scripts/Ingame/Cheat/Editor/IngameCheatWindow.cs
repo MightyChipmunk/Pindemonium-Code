@@ -26,6 +26,7 @@ namespace Pinball.Ingame.Cheat.Editor
 
         const string MENU_PATH = "Window/Pinball Cheat";
         const string WINDOW_TITLE = "Pinball Cheat";
+        const string STAGE_GROUP = "스테이지";
         const string MONEY_GROUP = "돈";
         const string ITEM_GROUP = "아이템 목록 필터";
         const string ITEM_ASSET_FILTER = "t:ShopItemData";
@@ -43,6 +44,8 @@ namespace Pinball.Ingame.Cheat.Editor
         const string NOT_PLAYING_WARNING = "[IngameCheat] 플레이 중이 아니거나 인게임이 초기화되지 않았습니다.";
         const string APPLIED_LOG_FORMAT = "[IngameCheat] 적용: {0}";
         const string MONEY_LOG_FORMAT = "[IngameCheat] 돈 +{0}";
+        const string STAGE_CLEAR_LOG = "[IngameCheat] 현재 스테이지 클리어";
+        const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
         const string SLOT_FULL_WARNING_FORMAT = "[IngameCheat] 패시브 슬롯이 가득 찼거나 이미 보유한 아이템입니다: {0}";
         const string INVALID_INPUT_WARNING = "[IngameCheat] 입력값이 올바르지 않습니다.";
         const string FILTER_KEY_FORMAT = "{0}|{1}";
@@ -140,6 +143,26 @@ namespace Pinball.Ingame.Cheat.Editor
             }
 
             Debug.Log(string.Format(MONEY_LOG_FORMAT, _moneyAmount));
+        }
+
+        [Button, BoxGroup(STAGE_GROUP), LabelText("현재 스테이지 클리어")]
+        void ClearStage()
+        {
+            IngameCheatHandler handler = GetHandler();
+            if (null == handler)
+            {
+                Debug.LogWarning(NOT_PLAYING_WARNING);
+                return;
+            }
+
+            IngameCheatHandler.EApplyResult result = handler.ClearStage();
+            if (result != IngameCheatHandler.EApplyResult.Success)
+            {
+                LogFailure(result, string.Empty);
+                return;
+            }
+
+            Debug.Log(STAGE_CLEAR_LOG);
         }
 
         [Button, BoxGroup(ITEM_GROUP), LabelText("목록 새로고침")]
@@ -311,6 +334,9 @@ namespace Pinball.Ingame.Cheat.Editor
                     break;
                 case IngameCheatHandler.EApplyResult.PassiveSlotFull:
                     Debug.LogWarning(string.Format(SLOT_FULL_WARNING_FORMAT, itemName));
+                    break;
+                case IngameCheatHandler.EApplyResult.NotInStage:
+                    Debug.LogWarning(NOT_IN_STAGE_WARNING);
                     break;
                 default:
                     Debug.LogWarning(INVALID_INPUT_WARNING);
