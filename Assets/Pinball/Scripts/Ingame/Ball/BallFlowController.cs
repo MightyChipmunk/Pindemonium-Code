@@ -12,6 +12,8 @@ namespace Pinball.Ingame
         const float CLONE_ALPHA = 0.6f;
         const float CLONE_SPAWN_OFFSET = 0.4f;
         const float MIN_CLONE_OFFSET_SQR_SPEED = 0.01f;
+        const float CLONE_SPLIT_IMPULSE = 2f;
+        const float FULL_CIRCLE_DEGREE = 360f;
 
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
@@ -72,7 +74,6 @@ namespace Pinball.Ingame
             ball.SetMass(StatProvider.GetBallMass());
             ApplyPassiveAura(ball);
             ball.SetAura(BallAura.EAuraType.Surge, _isSurgeCharged);
-            _map.SetFlipperCollisionIgnored(ball, false);
             _activeBall = ball;
             _gimmickHitCount = 0;
             _cloneSpawnElapsed = 0f;
@@ -255,8 +256,14 @@ namespace Pinball.Ingame
             clone.SetKinematic(false);
             clone.SetAlpha(CLONE_ALPHA);
             ApplyPassiveAura(clone);
-            _map.SetFlipperCollisionIgnored(clone, true);
+            clone.AddImpulse(GetRandomSplitImpulse());
             AudioManager.Play(AudioStorage.EAudioClipType.BallCloneSpawn);
+        }
+
+        Vector2 GetRandomSplitImpulse()
+        {
+            float angleRadian = UnityEngine.Random.Range(0f, FULL_CIRCLE_DEGREE) * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(angleRadian), Mathf.Sin(angleRadian)) * CLONE_SPLIT_IMPULSE;
         }
 
         Vector3 GetCloneSpawnPosition()

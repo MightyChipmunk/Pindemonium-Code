@@ -29,14 +29,6 @@ namespace Pinball.Ingame
             _renderer.color = color;
         }
 
-        public void SetCollisionIgnored(Collider2D other, bool isIgnored)
-        {
-            if (null == other)
-                return;
-
-            Physics2D.IgnoreCollision(_collider, other, isIgnored);
-        }
-
         public Vector2 GetVelocity()
         {
             return _rigidbody.linearVelocity;

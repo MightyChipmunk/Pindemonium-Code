@@ -225,12 +225,6 @@ namespace Pinball.Ingame.Map
             _spring.LoadBall(ball);
         }
 
-        public void SetFlipperCollisionIgnored(Ball ball, bool isIgnored)
-        {
-            _leftFlipper.SetBallCollisionIgnored(ball, isIgnored);
-            _rightFlipper.SetBallCollisionIgnored(ball, isIgnored);
-        }
-
         public void SetSpringCharging(bool isCharging)
         {
             _spring.SetCharging(isCharging);
