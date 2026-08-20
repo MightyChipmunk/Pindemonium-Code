@@ -96,29 +96,7 @@ namespace Pinball.Ingame
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            AudioManager.Play(GetHitClipType());
-        }
-
-        AudioStorage.EAudioClipType GetHitClipType()
-        {
-            if (!_auraController.TryGetDominantAuraType(out BallAura.EAuraType auraType))
-                return AudioStorage.EAudioClipType.BallHitNormal;
-
-            switch (auraType)
-            {
-                case BallAura.EAuraType.Fire:
-                    return AudioStorage.EAudioClipType.BallHitFire;
-                case BallAura.EAuraType.Lightning:
-                    return AudioStorage.EAudioClipType.BallHitLightning;
-                case BallAura.EAuraType.Frost:
-                    return AudioStorage.EAudioClipType.BallHitFrost;
-                case BallAura.EAuraType.Gold:
-                    return AudioStorage.EAudioClipType.BallHitGold;
-                case BallAura.EAuraType.Surge:
-                    return AudioStorage.EAudioClipType.BallHitSurge;
-                default:
-                    return AudioStorage.EAudioClipType.BallHitNormal;
-            }
+            AudioManager.Play(AudioStorage.EAudioClipType.BallHitNormal);
         }
 
         void RefreshTrailColor()
