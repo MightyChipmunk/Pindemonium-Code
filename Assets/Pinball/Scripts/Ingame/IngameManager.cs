@@ -174,7 +174,13 @@ namespace Pinball.Ingame
             if (null == savedData)
                 return;
 
-            _vouchers.Restore(savedData.GetVoucherIds(), savedData.VoucherPurchasedRound, _voucherCatalog);
+            _vouchers.Restore(new PlayerVouchers.RestoreParam(
+                OwnedIds: savedData.GetVoucherIds(),
+                OfferedIds: savedData.GetVoucherOfferedIds(),
+                OfferId: savedData.VoucherOfferId,
+                OfferRoundIndex: savedData.VoucherOfferRound,
+                PurchasedRoundIndex: savedData.VoucherPurchasedRound,
+                Catalog: _voucherCatalog));
             for (int i = 0; i < _vouchers.OwnedCount; ++i)
             {
                 VoucherData voucher = _vouchers.GetOwned(i);
@@ -503,6 +509,9 @@ namespace Pinball.Ingame
                 PassiveIds: _loadout.CollectPassiveIds(),
                 Upgrades: _loadout.CollectUpgradeEntries(),
                 VoucherIds: _vouchers.CollectIds(),
+                VoucherOfferedIds: _vouchers.CollectOfferedIds(),
+                VoucherOfferId: _vouchers.GetOfferId(),
+                VoucherOfferRound: _vouchers.OfferRoundIndex,
                 VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex));
         }
 

@@ -19,6 +19,7 @@ namespace Pinball.UI
         [SerializeField] CanvasGroup _fxGroup = null;
 
         Vector2 _basePosition = Vector2.zero;
+        Vector3 _baseScale = Vector3.one;
         float _progress = IDLE_PROGRESS;
         bool _isInited = false;
         bool _isInteractable = true;
@@ -28,6 +29,7 @@ namespace Pinball.UI
         public void Init()
         {
             _basePosition = _visual.anchoredPosition;
+            _baseScale = _visual.localScale;
             _isInited = true;
             ApplyProgress(IDLE_PROGRESS);
         }
@@ -126,7 +128,7 @@ namespace Pinball.UI
         void ApplyProgress(float progress)
         {
             _progress = progress;
-            _visual.localScale = Vector3.one * Mathf.LerpUnclamped(1f, HOVER_SCALE, progress);
+            _visual.localScale = _baseScale * Mathf.LerpUnclamped(1f, HOVER_SCALE, progress);
             _visual.anchoredPosition = _basePosition + Vector2.up * (HOVER_LIFT * progress);
             _fxGroup.alpha = Mathf.Clamp01(progress);
         }

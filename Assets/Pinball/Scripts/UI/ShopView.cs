@@ -15,12 +15,15 @@ namespace Pinball.UI
 
         public record PackEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, Sprite BandSprite, bool CanBuy);
 
-        public record VoucherEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, bool CanBuy);
+        public record VoucherEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price);
+
+        public record PurchaseEntry(int SlotIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
         public record Args(
             int Money,
             int RerollPrice,
             OfferEntry[] Offers,
+            PurchaseEntry Purchase,
             int PassiveSlotCount,
             OwnedEntry[] Passives,
             OwnedEntry[] Upgrades,
@@ -30,7 +33,7 @@ namespace Pinball.UI
             int TotalStageCount,
             int RoundNumber,
             int RoundCount,
-            bool PlaysOfferReveal) : UIViewArgs
+            bool PlaysRerollReveal) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
         }
@@ -58,16 +61,23 @@ namespace Pinball.UI
         const int STACKED_COUNT_MIN = 2;
         const string NOT_ENOUGH_MONEY_TEXT = "NOT ENOUGH MONEY";
         const string NOT_ENOUGH_MONEY_KEY = "ui.shop.not_enough_money";
+        const string PASSIVE_SLOT_FULL_TEXT = "PASSIVE SLOTS FULL";
+        const string PASSIVE_SLOT_FULL_KEY = "ui.shop.passive_slots_full";
+        const float PASSIVE_SHAKE_DURATION = 0.42f;
+        const float PASSIVE_SHAKE_STRENGTH = 18f;
+        const int PASSIVE_SHAKE_VIBRATO = 16;
+        const float PASSIVE_SHAKE_RANDOMNESS = 0f;
+        const float VIEWPORT_CENTER_RATIO = 0.5f;
         const float MONEY_SHAKE_DURATION = 0.42f;
         const float MONEY_SHAKE_STRENGTH = 24f;
         const int MONEY_SHAKE_VIBRATO = 16;
         const float MONEY_SHAKE_RANDOMNESS = 0f;
         const float MONEY_COLOR_DURATION = 0.21f;
         const int MONEY_COLOR_LOOPS = 2;
-        const float OFFER_HIDE_DURATION = 0.14f;
-        const float OFFER_HIDE_STAGGER = 0.05f;
-        const float OFFER_SHOW_DURATION = 0.26f;
-        const float OFFER_SHOW_STAGGER = 0.07f;
+        const float REVEAL_HIDE_DURATION = 0.14f;
+        const float REVEAL_HIDE_STAGGER = 0.05f;
+        const float REVEAL_SHOW_DURATION = 0.26f;
+        const float REVEAL_SHOW_STAGGER = 0.07f;
 
         [SerializeField] TMP_Text _moneyLabel = null;
         [SerializeField] ShopItemView[] _offerSlots = null;
@@ -75,6 +85,9 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _passiveHeaderLabel = null;
         [SerializeField] TMP_Text _upgradeHeaderLabel = null;
         [SerializeField] ItemIconGridView _passiveGrid = null;
+        [SerializeField] RectTransform _passiveSlotRoot = null;
+        [SerializeField] RectTransform _upgradeSlotRoot = null;
+        [SerializeField] ScrollRect _upgradeScroll = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
         [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
@@ -83,7 +96,7 @@ namespace Pinball.UI
         [SerializeField] ShopCardSlotView[] _packSlots = null;
         [SerializeField] ShopCardSlotView _voucherSlot = null;
         [SerializeField] Sprite _voucherBandSprite = null;
-        [SerializeField] Button _settingsButton = null;
+        [SerializeField] Button _menuButton = null;
         [SerializeField] TMP_Text _roundLabel = null;
         [SerializeField] TMP_Text _stageLabel = null;
         [SerializeField] RectTransform _moneyPlaque = null;
@@ -92,11 +105,19 @@ namespace Pinball.UI
         [SerializeField] ScorePopupSpawner _messagePopup = null;
 
         Tween _offerRevealTween = null;
+        Tween _packRevealTween = null;
         Tween _moneyDeniedTween = null;
+        Tween _passiveDeniedTween = null;
         OfferEntry[] _pendingOffers = null;
-        Args _revealedArgs = null;
+        PackEntry[] _pendingPacks = null;
+        Transform[] _offerSlotRoots = null;
+        Transform[] _packSlotRoots = null;
+        Vector3[] _offerSlotBaseScales = null;
+        Vector3[] _packSlotBaseScales = null;
+        Args _animatedArgs = null;
         Transform _lastRequestSource = null;
         Vector2 _moneyPlaqueBasePosition = Vector2.zero;
+        Vector2 _passiveSlotBasePosition = Vector2.zero;
         Color _moneyPlaqueBaseColor = Color.white;
 
         public override void OnGenerate()
@@ -104,16 +125,31 @@ namespace Pinball.UI
             _passiveGrid.Init(_tooltip);
             _upgradeGrid.Init(_tooltip);
 
+            _offerSlotRoots = new Transform[_offerSlots.Length];
+            _packSlotRoots = new Transform[_packSlots.Length];
+            _offerSlotBaseScales = new Vector3[_offerSlots.Length];
+            _packSlotBaseScales = new Vector3[_packSlots.Length];
             for (int i = 0; i < _offerSlots.Length; ++i)
+            {
                 _offerSlots[i].Init(i, OnOfferClicked);
+                _offerSlotRoots[i] = _offerSlots[i].transform;
+                _offerSlotBaseScales[i] = _offerSlotRoots[i].localScale;
+            }
+
             for (int i = 0; i < _packSlots.Length; ++i)
+            {
                 _packSlots[i].Init(i, OnPackClicked);
+                _packSlotRoots[i] = _packSlots[i].transform;
+                _packSlotBaseScales[i] = _packSlotRoots[i].localScale;
+            }
+
             _voucherSlot.Init(0, OnVoucherClicked);
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
-            _settingsButton.onClick.AddListener(OnSettingsClicked);
+            _menuButton.onClick.AddListener(OnMenuClicked);
             _messagePopup.Init();
             _moneyPlaqueBasePosition = _moneyPlaque.anchoredPosition;
+            _passiveSlotBasePosition = _passiveSlotRoot.anchoredPosition;
             _moneyPlaqueBaseColor = _moneyPlaqueImage.color;
             UIManager.OnEvent += HandleUIEvent;
             _tooltip.Hide();
@@ -123,7 +159,9 @@ namespace Pinball.UI
         {
             UIManager.OnEvent -= HandleUIEvent;
             KillOfferReveal();
+            KillPackReveal();
             KillMoneyDenied();
+            KillPassiveDenied();
             _messagePopup.Release();
             for (int i = 0; i < _offerSlots.Length; ++i)
                 _offerSlots[i].Release();
@@ -132,16 +170,22 @@ namespace Pinball.UI
             _voucherSlot.Release();
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
-            _settingsButton.onClick.RemoveListener(OnSettingsClicked);
+            _menuButton.onClick.RemoveListener(OnMenuClicked);
             _passiveGrid.Release();
             _upgradeGrid.Release();
+            _offerSlotRoots = null;
+            _packSlotRoots = null;
+            _offerSlotBaseScales = null;
+            _packSlotBaseScales = null;
         }
 
         public override void OnReturn()
         {
             KillOfferReveal();
+            KillPackReveal();
             KillMoneyDenied();
-            _revealedArgs = null;
+            KillPassiveDenied();
+            _animatedArgs = null;
             _lastRequestSource = null;
             _passiveGrid.Clear();
             _upgradeGrid.Clear();
@@ -154,21 +198,73 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
+            bool isReplay = ReferenceEquals(_animatedArgs, viewArgs);
+            bool playsReveal = viewArgs.PlaysRerollReveal && !isReplay;
+            PurchaseEntry purchase = isReplay ? null : viewArgs.Purchase;
+            if (playsReveal || null != purchase)
+                _animatedArgs = viewArgs;
+
             _moneyLabel.text = string.Format(MONEY_FORMAT, viewArgs.Money);
             _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, viewArgs.RerollPrice);
             _roundLabel.text = LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, viewArgs.RoundNumber, viewArgs.RoundCount);
             _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
-            BindOfferSection(viewArgs);
-            BindPacks(viewArgs.Packs);
-            BindVoucher(viewArgs.Voucher);
             BindOwned(viewArgs);
+            BindOfferSection(viewArgs.Offers, playsReveal, purchase);
+            BindPackSection(viewArgs.Packs, playsReveal);
+            BindVoucher(viewArgs.Voucher);
+        }
+
+        public bool TryBeginPurchaseFly(bool isPassive, int ownedIndex, int previousCount, out Vector3 position, out float width)
+        {
+            position = Vector3.zero;
+            width = 0f;
+
+            RectTransform slotRoot = isPassive ? _passiveSlotRoot : _upgradeSlotRoot;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(slotRoot);
+
+            ItemIconGridView grid = isPassive ? _passiveGrid : _upgradeGrid;
+            RectTransform iconRect = grid.GetSlotIconRect(ownedIndex);
+            if (null == iconRect)
+                return false;
+
+            if (!isPassive)
+                ScrollUpgradeSlotIntoView(iconRect);
+
+            position = iconRect.TransformPoint(iconRect.rect.center);
+            width = iconRect.rect.width * iconRect.lossyScale.x;
+
+            if (previousCount > 0)
+                grid.PlaySlotCountChange(ownedIndex, GetCountText(previousCount), ShopItemView.PURCHASE_FLY_DURATION);
+            else
+                grid.PlaySlotAppear(ownedIndex, ShopItemView.PURCHASE_FLY_DURATION);
+
+            return true;
+        }
+
+        void ScrollUpgradeSlotIntoView(RectTransform iconRect)
+        {
+            if (null == _upgradeScroll)
+                return;
+
+            RectTransform content = _upgradeScroll.content;
+            RectTransform viewport = _upgradeScroll.viewport;
+            if (null == content || null == viewport)
+                return;
+
+            float viewportWidth = viewport.rect.width;
+            float scrollableWidth = content.rect.width - viewportWidth;
+            if (scrollableWidth <= 0f)
+                return;
+
+            float slotOffset = content.InverseTransformPoint(iconRect.TransformPoint(iconRect.rect.center)).x - content.rect.xMin;
+            _upgradeScroll.horizontalNormalizedPosition = Mathf.Clamp01((slotOffset - viewportWidth * VIEWPORT_CENTER_RATIO) / scrollableWidth);
         }
 
         void BindVoucher(VoucherEntry voucher)
         {
             if (null == voucher)
             {
-                _voucherSlot.Hide();
+                _voucherSlot.BindSold();
                 return;
             }
 
@@ -178,7 +274,7 @@ namespace Pinball.UI
                 Description: LocalizationTable.GetOrKey(voucher.DescriptionKey),
                 PriceText: string.Format(PRICE_FORMAT, voucher.Price),
                 BandSprite: _voucherBandSprite,
-                CanBuy: voucher.CanBuy));
+                CanBuy: true));
         }
 
         void BindPacks(PackEntry[] packs)
@@ -186,10 +282,16 @@ namespace Pinball.UI
             int packCount = null == packs ? 0 : packs.Length;
             for (int i = 0; i < _packSlots.Length; ++i)
             {
-                PackEntry pack = i < packCount ? packs[i] : null;
-                if (null == pack)
+                if (i >= packCount)
                 {
                     _packSlots[i].Hide();
+                    continue;
+                }
+
+                PackEntry pack = packs[i];
+                if (null == pack)
+                {
+                    _packSlots[i].BindSold();
                     continue;
                 }
 
@@ -203,17 +305,28 @@ namespace Pinball.UI
             }
         }
 
-        void BindOfferSection(Args args)
+        void BindOfferSection(OfferEntry[] offers, bool playsReveal, PurchaseEntry purchase)
         {
-            if (args.PlaysOfferReveal && !ReferenceEquals(_revealedArgs, args))
+            if (playsReveal)
             {
-                _revealedArgs = args;
-                PlayOfferReveal(args.Offers);
+                PlayOfferReveal(offers);
                 return;
             }
 
             KillOfferReveal();
-            BindOffers(args.Offers);
+            BindOffers(offers, purchase);
+        }
+
+        void BindPackSection(PackEntry[] packs, bool playsReveal)
+        {
+            if (playsReveal)
+            {
+                PlayPackReveal(packs);
+                return;
+            }
+
+            KillPackReveal();
+            BindPacks(packs);
         }
 
         void PlayOfferReveal(OfferEntry[] offers)
@@ -221,29 +334,45 @@ namespace Pinball.UI
             KillOfferReveal();
             _pendingOffers = offers;
 
+            Sequence sequence = BuildRevealSequence(_offerSlotRoots, _offerSlotBaseScales, BindPendingOffers);
+            sequence.OnComplete(OnOfferRevealCompleted);
+            _offerRevealTween = sequence;
+        }
+
+        void PlayPackReveal(PackEntry[] packs)
+        {
+            KillPackReveal();
+            _pendingPacks = packs;
+
+            Sequence sequence = BuildRevealSequence(_packSlotRoots, _packSlotBaseScales, BindPendingPacks);
+            sequence.OnComplete(OnPackRevealCompleted);
+            _packRevealTween = sequence;
+        }
+
+        static Sequence BuildRevealSequence(Transform[] slotRoots, Vector3[] baseScales, TweenCallback bindCallback)
+        {
             Sequence sequence = DOTween.Sequence();
             float hideEndTime = 0f;
-            for (int i = 0; i < _offerSlots.Length; ++i)
+            for (int i = 0; i < slotRoots.Length; ++i)
             {
-                if (!_offerSlots[i].gameObject.activeSelf)
+                if (!slotRoots[i].gameObject.activeSelf)
                     continue;
 
-                float hideStartTime = i * OFFER_HIDE_STAGGER;
-                sequence.Insert(hideStartTime, _offerSlots[i].transform.DOScale(Vector3.zero, OFFER_HIDE_DURATION).SetEase(Ease.InBack));
-                hideEndTime = Mathf.Max(hideEndTime, hideStartTime + OFFER_HIDE_DURATION);
+                float hideStartTime = i * REVEAL_HIDE_STAGGER;
+                sequence.Insert(hideStartTime, slotRoots[i].DOScale(Vector3.zero, REVEAL_HIDE_DURATION).SetEase(Ease.InBack));
+                hideEndTime = Mathf.Max(hideEndTime, hideStartTime + REVEAL_HIDE_DURATION);
             }
 
-            sequence.InsertCallback(hideEndTime, BindPendingOffers);
+            sequence.InsertCallback(hideEndTime, bindCallback);
 
-            for (int i = 0; i < _offerSlots.Length; ++i)
+            for (int i = 0; i < slotRoots.Length; ++i)
             {
-                Tween showTween = _offerSlots[i].transform.DOScale(Vector3.one, OFFER_SHOW_DURATION).From(Vector3.zero, false).SetEase(Ease.OutBack);
-                sequence.Insert(hideEndTime + i * OFFER_SHOW_STAGGER, showTween);
+                Tween showTween = slotRoots[i].DOScale(baseScales[i], REVEAL_SHOW_DURATION).From(Vector3.zero, false).SetEase(Ease.OutBack);
+                sequence.Insert(hideEndTime + i * REVEAL_SHOW_STAGGER, showTween);
             }
 
-            sequence.OnComplete(OnOfferRevealCompleted);
             sequence.SetUpdate(true);
-            _offerRevealTween = sequence;
+            return sequence;
         }
 
         void BindPendingOffers()
@@ -251,13 +380,27 @@ namespace Pinball.UI
             if (null == _pendingOffers)
                 return;
 
-            BindOffers(_pendingOffers);
+            BindOffers(_pendingOffers, null);
             _pendingOffers = null;
+        }
+
+        void BindPendingPacks()
+        {
+            if (null == _pendingPacks)
+                return;
+
+            BindPacks(_pendingPacks);
+            _pendingPacks = null;
         }
 
         void OnOfferRevealCompleted()
         {
             _offerRevealTween = null;
+        }
+
+        void OnPackRevealCompleted()
+        {
+            _packRevealTween = null;
         }
 
         void KillOfferReveal()
@@ -268,20 +411,39 @@ namespace Pinball.UI
 
             _offerRevealTween.Kill();
             _offerRevealTween = null;
-            for (int i = 0; i < _offerSlots.Length; ++i)
-                _offerSlots[i].transform.localScale = Vector3.one;
+            ResetSlotScales(_offerSlotRoots, _offerSlotBaseScales);
         }
 
-        void BindOffers(OfferEntry[] offers)
+        void KillPackReveal()
+        {
+            _pendingPacks = null;
+            if (null == _packRevealTween)
+                return;
+
+            _packRevealTween.Kill();
+            _packRevealTween = null;
+            ResetSlotScales(_packSlotRoots, _packSlotBaseScales);
+        }
+
+        static void ResetSlotScales(Transform[] slotRoots, Vector3[] baseScales)
+        {
+            if (null == slotRoots)
+                return;
+
+            for (int i = 0; i < slotRoots.Length; ++i)
+                slotRoots[i].localScale = baseScales[i];
+        }
+
+        void BindOffers(OfferEntry[] offers, PurchaseEntry purchase)
         {
             int offerCount = null == offers ? 0 : offers.Length;
             ApplyOfferLayout(offerCount);
 
             for (int i = 0; i < offerCount; ++i)
-                BindOffer(i, offers[i]);
+                BindOffer(i, offers[i], purchase);
         }
 
-        void BindOffer(int slotIndex, OfferEntry offer)
+        void BindOffer(int slotIndex, OfferEntry offer, PurchaseEntry purchase)
         {
             ShopItemView slot = GetOfferSlot(slotIndex);
             if (null == slot)
@@ -289,7 +451,9 @@ namespace Pinball.UI
 
             if (null == offer)
             {
-                slot.BindSold();
+                if (!TryPlayPurchase(slot, slotIndex, purchase))
+                    slot.BindSold();
+
                 return;
             }
 
@@ -300,6 +464,18 @@ namespace Pinball.UI
                 Description: LocalizationTable.GetOrKey(offer.DescriptionKey),
                 PriceText: string.Format(PRICE_FORMAT, offer.Price),
                 ShowPrice: true));
+        }
+
+        bool TryPlayPurchase(ShopItemView slot, int slotIndex, PurchaseEntry purchase)
+        {
+            if (null == purchase || purchase.SlotIndex != slotIndex)
+                return false;
+
+            if (!TryBeginPurchaseFly(purchase.IsPassive, purchase.OwnedIndex, purchase.PreviousCount, out Vector3 position, out float width))
+                return false;
+
+            slot.PlayPurchase(position, width);
+            return true;
         }
 
         void BindOwned(Args args)
@@ -373,11 +549,17 @@ namespace Pinball.UI
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)
         {
-            if (uiEvent != UIManager.EEvent.ShopPurchaseDenied)
-                return;
-
-            _messagePopup.PlayTextAt(LocalizationTable.Get(NOT_ENOUGH_MONEY_KEY, NOT_ENOUGH_MONEY_TEXT), GetRequestSourcePosition());
-            PlayMoneyDenied();
+            switch (uiEvent)
+            {
+                case UIManager.EEvent.ShopPurchaseDenied:
+                    _messagePopup.PlayTextAt(LocalizationTable.Get(NOT_ENOUGH_MONEY_KEY, NOT_ENOUGH_MONEY_TEXT), GetRequestSourcePosition());
+                    PlayMoneyDenied();
+                    break;
+                case UIManager.EEvent.ShopPassiveSlotFull:
+                    _messagePopup.PlayTextAt(LocalizationTable.Get(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_TEXT), GetRequestSourcePosition());
+                    PlayPassiveDenied();
+                    break;
+            }
         }
 
         Vector3 GetRequestSourcePosition()
@@ -416,6 +598,31 @@ namespace Pinball.UI
             OnMoneyDeniedCompleted();
         }
 
+        void PlayPassiveDenied()
+        {
+            KillPassiveDenied();
+
+            Tween shake = _passiveSlotRoot.DOShakeAnchorPos(PASSIVE_SHAKE_DURATION, new Vector2(PASSIVE_SHAKE_STRENGTH, 0f), PASSIVE_SHAKE_VIBRATO, PASSIVE_SHAKE_RANDOMNESS);
+            shake.OnComplete(OnPassiveDeniedCompleted);
+            shake.SetUpdate(true);
+            _passiveDeniedTween = shake;
+        }
+
+        void OnPassiveDeniedCompleted()
+        {
+            _passiveDeniedTween = null;
+            _passiveSlotRoot.anchoredPosition = _passiveSlotBasePosition;
+        }
+
+        void KillPassiveDenied()
+        {
+            if (null == _passiveDeniedTween)
+                return;
+
+            _passiveDeniedTween.Kill();
+            OnPassiveDeniedCompleted();
+        }
+
         void OnOfferClicked(int slotIndex)
         {
             _lastRequestSource = _offerSlots[slotIndex].transform;
@@ -446,9 +653,9 @@ namespace Pinball.UI
             UIManager.RaiseEvent(UIManager.EEvent.ShopStartRequested);
         }
 
-        void OnSettingsClicked()
+        void OnMenuClicked()
         {
-            UIManager.Show(new SettingsView.Args());
+            UIManager.Show(new PausePopupView.Args());
         }
     }
 }

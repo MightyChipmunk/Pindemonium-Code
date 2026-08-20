@@ -1,21 +1,35 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Pinball.Ingame
 {
     public class PlayerVouchers
     {
+        public record RestoreParam(
+            string[] OwnedIds,
+            string[] OfferedIds,
+            string OfferId,
+            int OfferRoundIndex,
+            int PurchasedRoundIndex,
+            VoucherCatalogData Catalog);
+
         public const int PRICE = 10;
-        public const int NO_PURCHASED_ROUND = -1;
+        const int NO_ROUND = -1;
 
         List<VoucherData> _owned = null;
-        int _lastPurchasedRoundIndex = NO_PURCHASED_ROUND;
+        List<VoucherData> _offered = null;
+        VoucherData _offer = null;
+        int _offerRoundIndex = NO_ROUND;
+        int _lastPurchasedRoundIndex = NO_ROUND;
 
         public int OwnedCount => null == _owned ? 0 : _owned.Count;
+        public int OfferRoundIndex => _offerRoundIndex;
         public int LastPurchasedRoundIndex => _lastPurchasedRoundIndex;
 
         public PlayerVouchers()
         {
             _owned = new List<VoucherData>();
+            _offered = new List<VoucherData>();
         }
 
         public VoucherData GetOwned(int index)
@@ -26,30 +40,35 @@ namespace Pinball.Ingame
             return _owned[index];
         }
 
-        public bool Owns(VoucherData voucher)
+        public VoucherData GetOffer(int roundIndex, VoucherCatalogData catalog)
         {
-            if (null == voucher)
-                return true;
+            if (_lastPurchasedRoundIndex == roundIndex)
+                return null;
 
-            return _owned.Contains(voucher);
+            if (_offerRoundIndex == roundIndex)
+                return _offer;
+
+            _offerRoundIndex = roundIndex;
+            _offer = RollOffer(catalog);
+            if (null != _offer)
+                _offered.Add(_offer);
+
+            return _offer;
         }
 
-        public bool CanPurchaseInRound(int roundIndex)
+        public string GetOfferId()
         {
-            return _lastPurchasedRoundIndex != roundIndex;
+            return null == _offer ? string.Empty : _offer.GetId();
         }
 
-        public bool TryPurchase(VoucherData voucher, int roundIndex)
+        public void PurchaseOffer()
         {
-            if (Owns(voucher))
-                return false;
+            if (null == _offer)
+                return;
 
-            if (!CanPurchaseInRound(roundIndex))
-                return false;
-
-            _owned.Add(voucher);
-            _lastPurchasedRoundIndex = roundIndex;
-            return true;
+            _owned.Add(_offer);
+            _lastPurchasedRoundIndex = _offerRoundIndex;
+            _offer = null;
         }
 
         public bool Has(VoucherData.EEffect effect)
@@ -80,27 +99,74 @@ namespace Pinball.Ingame
             return sum;
         }
 
-        public void Restore(string[] voucherIds, int lastPurchasedRoundIndex, VoucherCatalogData catalog)
+        public void Restore(RestoreParam param)
         {
             _owned.Clear();
-            _lastPurchasedRoundIndex = lastPurchasedRoundIndex;
+            _offered.Clear();
+            _offer = null;
+            _offerRoundIndex = param.OfferRoundIndex;
+            _lastPurchasedRoundIndex = param.PurchasedRoundIndex;
 
-            if (null == voucherIds || null == catalog)
+            if (null == param.Catalog)
+                return;
+
+            Collect(param.OwnedIds, param.Catalog, _owned);
+            Collect(param.OwnedIds, param.Catalog, _offered);
+            Collect(param.OfferedIds, param.Catalog, _offered);
+            _offer = param.Catalog.FindById(param.OfferId);
+            if (null != _offer && !_offered.Contains(_offer))
+                _offered.Add(_offer);
+        }
+
+        public string[] CollectIds()
+        {
+            return CollectIds(_owned);
+        }
+
+        public string[] CollectOfferedIds()
+        {
+            return CollectIds(_offered);
+        }
+
+        VoucherData RollOffer(VoucherCatalogData catalog)
+        {
+            if (null == catalog)
+                return null;
+
+            List<VoucherData> candidates = new List<VoucherData>();
+            for (int i = 0; i < catalog.Count; ++i)
+            {
+                VoucherData voucher = catalog.GetVoucher(i);
+                if (null == voucher || _offered.Contains(voucher))
+                    continue;
+
+                candidates.Add(voucher);
+            }
+
+            if (candidates.Count <= 0)
+                return null;
+
+            return candidates[Random.Range(0, candidates.Count)];
+        }
+
+        static void Collect(string[] voucherIds, VoucherCatalogData catalog, List<VoucherData> destination)
+        {
+            if (null == voucherIds)
                 return;
 
             for (int i = 0; i < voucherIds.Length; ++i)
             {
                 VoucherData voucher = catalog.FindById(voucherIds[i]);
-                if (null != voucher && !_owned.Contains(voucher))
-                    _owned.Add(voucher);
+                if (null != voucher && !destination.Contains(voucher))
+                    destination.Add(voucher);
             }
         }
 
-        public string[] CollectIds()
+        static string[] CollectIds(List<VoucherData> vouchers)
         {
-            string[] ids = new string[OwnedCount];
+            string[] ids = new string[vouchers.Count];
             for (int i = 0; i < ids.Length; ++i)
-                ids[i] = _owned[i].GetId();
+                ids[i] = vouchers[i].GetId();
 
             return ids;
         }

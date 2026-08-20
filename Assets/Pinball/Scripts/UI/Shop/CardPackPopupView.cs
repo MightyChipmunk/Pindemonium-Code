@@ -8,12 +8,16 @@ namespace Pinball.UI
 {
     public class CardPackPopupView : UIViewBase
     {
-        public record CardArgs(string TitleKey, Sprite Icon, string DescriptionKey, bool IsTaken);
+        public record CardArgs(string TitleKey, Sprite Icon, string DescriptionKey, bool IsPassive, bool IsTaken);
 
-        public record Args(string PackTitleKey, int RemainingPicks, CardArgs[] Cards) : UIViewArgs
+        public record PickEntry(int CardIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
+
+        public record Args(string PackTitleKey, int RemainingPicks, CardArgs[] Cards, bool IsDismissing, PickEntry Pick) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.CardPackPopup;
         }
+
+        const int NO_KEPT_CARD_INDEX = -1;
 
         const string HINT_FORMAT = "CHOOSE {0}";
         const string HINT_KEY = "ui.card_pack.hint";
@@ -26,8 +30,13 @@ namespace Pinball.UI
         const float BACKDROP_DURATION = 0.18f;
         const float CARD_POP_DURATION = 0.26f;
         const float CARD_POP_STAGGER = 0.07f;
-        const float CARD_POP_START_SCALE = 0.55f;
+        const float CARD_DISMISS_DURATION = 0.14f;
+        const float CARD_DISMISS_STAGGER = 0.05f;
+        const float POPUP_EXIT_DURATION = 0.16f;
+        const float POPUP_FULL_ALPHA = 1f;
+        const float POPUP_HIDDEN_ALPHA = 0f;
 
+        [SerializeField] CanvasGroup _rootGroup = null;
         [SerializeField] CanvasGroup _backdropGroup = null;
         [SerializeField] TMP_Text _titleLabel = null;
         [SerializeField] TMP_Text _hintLabel = null;
@@ -37,7 +46,9 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _skipLabel = null;
 
         Tween _appearTween = null;
+        Tween _dismissTween = null;
         bool _isOpened = false;
+        bool _isDismissing = false;
 
         public override void OnGenerate()
         {
@@ -49,6 +60,7 @@ namespace Pinball.UI
         public override void OnTerminate()
         {
             KillAppear();
+            KillDismiss();
             for (int i = 0; i < _cards.Length; ++i)
                 _cards[i].Release();
             _skipButton.onClick.RemoveListener(OnSkipClicked);
@@ -57,7 +69,10 @@ namespace Pinball.UI
         public override void OnReturn()
         {
             KillAppear();
+            KillDismiss();
+            ResetVisuals();
             _isOpened = false;
+            _isDismissing = false;
         }
 
         public override void Bind(UIViewArgs args)
@@ -65,6 +80,12 @@ namespace Pinball.UI
             Args viewArgs = args as Args;
             if (null == viewArgs)
                 return;
+
+            if (viewArgs.IsDismissing)
+            {
+                PlayDismiss(viewArgs.Pick);
+                return;
+            }
 
             _titleLabel.text = LocalizationTable.GetOrKey(viewArgs.PackTitleKey);
             _hintLabel.text = LocalizationTable.Format(HINT_KEY, HINT_FORMAT, viewArgs.RemainingPicks);
@@ -101,7 +122,7 @@ namespace Pinball.UI
             }
 
             card.BindItem(new ShopItemView.BindParam(
-                IsPassive: false,
+                IsPassive: args.IsPassive,
                 Title: LocalizationTable.GetOrKey(args.TitleKey),
                 Icon: args.Icon,
                 Description: LocalizationTable.GetOrKey(args.DescriptionKey),
@@ -131,6 +152,7 @@ namespace Pinball.UI
         void PlayAppear()
         {
             KillAppear();
+            _rootGroup.alpha = POPUP_FULL_ALPHA;
             _backdropGroup.alpha = 0f;
 
             Sequence sequence = DOTween.Sequence();
@@ -142,7 +164,7 @@ namespace Pinball.UI
                     continue;
 
                 Transform card = _cards[i].transform;
-                card.localScale = Vector3.one * CARD_POP_START_SCALE;
+                card.localScale = Vector3.zero;
                 sequence.Insert(BACKDROP_DURATION + i * CARD_POP_STAGGER, card.DOScale(Vector3.one, CARD_POP_DURATION).SetEase(Ease.OutBack));
             }
 
@@ -163,6 +185,79 @@ namespace Pinball.UI
 
             _appearTween.Kill();
             _appearTween = null;
+            ResetVisuals();
+        }
+
+        void PlayDismiss(PickEntry pick)
+        {
+            if (_isDismissing)
+                return;
+
+            _isDismissing = true;
+            KillAppear();
+
+            int keptCardIndex = null == pick ? NO_KEPT_CARD_INDEX : pick.CardIndex;
+            float flyEndTime = TryPlayPickFly(pick) ? ShopItemView.PURCHASE_FLY_DURATION : 0f;
+
+            Sequence sequence = DOTween.Sequence();
+            float dismissEndTime = 0f;
+            for (int i = 0; i < _cards.Length; ++i)
+            {
+                if (i == keptCardIndex || !_cards[i].gameObject.activeSelf)
+                    continue;
+
+                float startTime = i * CARD_DISMISS_STAGGER;
+                sequence.Insert(startTime, _cards[i].transform.DOScale(Vector3.zero, CARD_DISMISS_DURATION).SetEase(Ease.InBack));
+                dismissEndTime = Mathf.Max(dismissEndTime, startTime + CARD_DISMISS_DURATION);
+            }
+
+            sequence.Insert(dismissEndTime, _rootGroup.DOFade(POPUP_HIDDEN_ALPHA, POPUP_EXIT_DURATION).SetEase(Ease.InQuad));
+            if (flyEndTime <= 0f && keptCardIndex >= 0 && keptCardIndex < _cards.Length)
+                sequence.Insert(dismissEndTime, _cards[keptCardIndex].transform.DOScale(Vector3.zero, POPUP_EXIT_DURATION).SetEase(Ease.InBack));
+
+            sequence.AppendInterval(Mathf.Max(0f, flyEndTime - dismissEndTime - POPUP_EXIT_DURATION));
+            sequence.OnComplete(OnDismissCompleted);
+            sequence.SetUpdate(true);
+            _dismissTween = sequence;
+        }
+
+        bool TryPlayPickFly(PickEntry pick)
+        {
+            if (null == pick)
+                return false;
+
+            if (pick.CardIndex < 0 || pick.CardIndex >= _cards.Length)
+                return false;
+
+            ShopView shopView = UIManager.GetActive(UIViewCatalogData.EViewType.Shop) as ShopView;
+            if (null == shopView)
+                return false;
+
+            if (!shopView.TryBeginPurchaseFly(pick.IsPassive, pick.OwnedIndex, pick.PreviousCount, out Vector3 position, out float width))
+                return false;
+
+            _cards[pick.CardIndex].PlayPurchase(position, width);
+            return true;
+        }
+
+        void OnDismissCompleted()
+        {
+            _dismissTween = null;
+            UIManager.Hide(UIViewCatalogData.EViewType.CardPackPopup);
+        }
+
+        void KillDismiss()
+        {
+            if (null == _dismissTween)
+                return;
+
+            _dismissTween.Kill();
+            _dismissTween = null;
+        }
+
+        void ResetVisuals()
+        {
+            _rootGroup.alpha = POPUP_FULL_ALPHA;
             _backdropGroup.alpha = BACKDROP_ALPHA;
             for (int i = 0; i < _cards.Length; ++i)
                 _cards[i].transform.localScale = Vector3.one;

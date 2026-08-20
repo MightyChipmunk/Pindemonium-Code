@@ -8,6 +8,7 @@ namespace Pinball.Ingame
     {
         public const int DEFAULT_PACK_SLOT_COUNT = 2;
 
+        CardPackCatalogData _packCatalog = null;
         ShopCatalogData _itemCatalog = null;
         Func<ShopItemData, bool> _offerFilter = null;
         CardPackData[] _packs = null;
@@ -24,12 +25,21 @@ namespace Pinball.Ingame
 
         public CardPackShop(CardPackCatalogData packCatalog, ShopCatalogData itemCatalog, Func<ShopItemData, bool> offerFilter, int packSlotCount)
         {
+            _packCatalog = packCatalog;
             _itemCatalog = itemCatalog;
             _offerFilter = offerFilter;
             _revealedItems = new List<ShopItemData>();
             _takenFlags = new List<bool>();
             _packs = new CardPackData[Mathf.Max(0, packSlotCount)];
-            RollPacks(packCatalog);
+            RollPacks();
+        }
+
+        public void Reroll()
+        {
+            if (IsOpening)
+                return;
+
+            RollPacks();
         }
 
         public CardPackData GetPack(int slotIndex)
@@ -122,14 +132,14 @@ namespace Pinball.Ingame
             _remainingPicks = 0;
         }
 
-        void RollPacks(CardPackCatalogData packCatalog)
+        void RollPacks()
         {
             List<CardPackData> candidates = new List<CardPackData>();
-            if (null != packCatalog)
+            if (null != _packCatalog)
             {
-                for (int i = 0; i < packCatalog.Count; ++i)
+                for (int i = 0; i < _packCatalog.Count; ++i)
                 {
-                    CardPackData pack = packCatalog.GetPack(i);
+                    CardPackData pack = _packCatalog.GetPack(i);
                     if (null != pack)
                         candidates.Add(pack);
                 }

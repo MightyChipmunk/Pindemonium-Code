@@ -111,6 +111,17 @@ namespace Pinball.Ingame
             return _upgradeCounts[index];
         }
 
+        public int GetOwnedIndex(ShopItemData item)
+        {
+            if (null == item)
+                return -1;
+
+            if (item.Kind == ShopItemData.EItemKind.Passive)
+                return null == _passives ? -1 : _passives.IndexOf(item);
+
+            return null == _upgrades ? -1 : _upgrades.IndexOf(item);
+        }
+
         public void AddUpgrade(ShopItemData item)
         {
             if (null == _upgradeSums)

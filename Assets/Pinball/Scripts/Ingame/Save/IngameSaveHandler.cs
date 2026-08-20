@@ -14,6 +14,9 @@ namespace Pinball.Ingame
             string[] PassiveIds,
             IngamePlayData.UpgradeEntry[] Upgrades,
             string[] VoucherIds,
+            string[] VoucherOfferedIds,
+            string VoucherOfferId,
+            int VoucherOfferRound,
             int VoucherPurchasedRound);
 
         public bool TryLoad(bool isContinueRequested, out IngamePlayData savedData)
@@ -34,6 +37,9 @@ namespace Pinball.Ingame
                 param.PassiveIds,
                 param.Upgrades,
                 param.VoucherIds,
+                param.VoucherOfferedIds,
+                param.VoucherOfferId,
+                param.VoucherOfferRound,
                 param.VoucherPurchasedRound));
         }
 

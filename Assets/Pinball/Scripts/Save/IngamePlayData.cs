@@ -32,10 +32,15 @@ namespace Pinball.Save
         [SerializeField, FormerlySerializedAs("PassiveIds")] string[] _passiveIds = null;
         [SerializeField, FormerlySerializedAs("Upgrades")] UpgradeEntry[] _upgrades = null;
         [SerializeField] string[] _voucherIds = null;
+        [SerializeField] string[] _voucherOfferedIds = null;
+        [SerializeField] string _voucherOfferId = string.Empty;
+        [SerializeField] int _voucherOfferRound = -1;
         [SerializeField] int _voucherPurchasedRound = -1;
 
         public int StageNumber => _stageNumber;
         public bool IsShopPending => _isShopPending;
+        public string VoucherOfferId => _voucherOfferId;
+        public int VoucherOfferRound => _voucherOfferRound;
         public int VoucherPurchasedRound => _voucherPurchasedRound;
         public int Money => _money;
         public int TotalScore => _totalScore;
@@ -43,7 +48,7 @@ namespace Pinball.Save
 
         public IngamePlayData() { }
 
-        public IngamePlayData(int stageNumber, bool isShopPending, int money, int totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, int voucherPurchasedRound)
+        public IngamePlayData(int stageNumber, bool isShopPending, int money, int totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound)
         {
             _stageNumber = stageNumber;
             _isShopPending = isShopPending;
@@ -54,6 +59,9 @@ namespace Pinball.Save
             _passiveIds = passiveIds;
             _upgrades = upgrades;
             _voucherIds = voucherIds;
+            _voucherOfferedIds = voucherOfferedIds;
+            _voucherOfferId = voucherOfferId;
+            _voucherOfferRound = voucherOfferRound;
             _voucherPurchasedRound = voucherPurchasedRound;
         }
 
@@ -75,6 +83,11 @@ namespace Pinball.Save
         public string[] GetVoucherIds()
         {
             return _voucherIds;
+        }
+
+        public string[] GetVoucherOfferedIds()
+        {
+            return _voucherOfferedIds;
         }
     }
 }
