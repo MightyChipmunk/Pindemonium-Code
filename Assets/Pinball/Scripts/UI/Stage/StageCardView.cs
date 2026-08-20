@@ -8,9 +8,16 @@ namespace Pinball.UI
 {
     public class StageCardView : MonoBehaviour
     {
+        public enum EState
+        {
+            Cleared,
+            Current,
+            Upcoming,
+        }
+
         public record BindParam(
             int StageNumber,
-            bool IsCurrent,
+            EState State,
             bool IsFinal,
             int TargetScore,
             float TargetScoreMultiplier,
@@ -32,7 +39,11 @@ namespace Pinball.UI
         const string TAG_UP_NEXT_KEY = "ui.stage_card.tag_up_next";
         const string TAG_FINAL = "FINAL";
         const string TAG_FINAL_KEY = "ui.stage_card.tag_final";
+        const string TAG_CLEARED = "CLEAR";
+        const string TAG_CLEARED_KEY = "ui.stage_card.tag_cleared";
+        const float CURRENT_ALPHA = 1f;
         const float UPCOMING_ALPHA = 0.7f;
+        const float CLEARED_ALPHA = 0.3f;
         const float DEFAULT_TARGET_SCORE_MULTIPLIER = 1f;
         const float CURRENT_RAISE_OFFSET = 40f;
 
@@ -80,12 +91,15 @@ namespace Pinball.UI
 
         public void Bind(BindParam param)
         {
+            bool isCurrent = param.State == EState.Current;
             gameObject.SetActive(true);
             _titleLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, param.StageNumber);
-            _tagLabel.text = GetTagText(param.IsCurrent, param.IsFinal);
+            _tagLabel.text = GetTagText(param.State, param.IsFinal);
             _bandImage.color = param.IsFinal ? _finalBandColor : _bandBaseColor;
-            _content.anchoredPosition = _contentBasePosition + (param.IsCurrent ? Vector2.up * CURRENT_RAISE_OFFSET : Vector2.zero);
-            _canvasGroup.alpha = param.IsCurrent ? 1f : UPCOMING_ALPHA;
+            _content.anchoredPosition = _contentBasePosition + (isCurrent ? Vector2.up * CURRENT_RAISE_OFFSET : Vector2.zero);
+            _canvasGroup.alpha = GetAlpha(param.State);
+            _canvasGroup.interactable = isCurrent;
+            _canvasGroup.blocksRaycasts = isCurrent;
             _targetScoreLabel.text = param.TargetScore.ToString(TARGET_SCORE_FORMAT);
             BindMultiplier(param.TargetScoreMultiplier);
             _rewardLabel.text = string.Format(REWARD_FORMAT, param.RewardMoney);
@@ -125,18 +139,30 @@ namespace Pinball.UI
 
         void BindActions(BindParam param)
         {
+            bool isCurrent = param.State == EState.Current;
             bool hasGimmick = null != param.GimmickLabels && param.GimmickLabels.Length > 0;
-            _startButton.gameObject.SetActive(param.IsCurrent);
-            _rerollButton.gameObject.SetActive(param.IsCurrent && hasGimmick);
+            _startButton.gameObject.SetActive(isCurrent);
+            _rerollButton.gameObject.SetActive(isCurrent && hasGimmick);
             _rerollButton.interactable = param.CanReroll;
             _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, param.RerollPrice);
-            _upNextPlate.SetActive(!param.IsCurrent);
+            _upNextPlate.SetActive(param.State == EState.Upcoming);
         }
 
-        string GetTagText(bool isCurrent, bool isFinal)
+        static float GetAlpha(EState state)
         {
-            if (isCurrent)
+            if (state == EState.Current)
+                return CURRENT_ALPHA;
+
+            return state == EState.Cleared ? CLEARED_ALPHA : UPCOMING_ALPHA;
+        }
+
+        static string GetTagText(EState state, bool isFinal)
+        {
+            if (state == EState.Current)
                 return LocalizationTable.Get(TAG_NOW_KEY, TAG_NOW);
+
+            if (state == EState.Cleared)
+                return LocalizationTable.Get(TAG_CLEARED_KEY, TAG_CLEARED);
 
             return isFinal ? LocalizationTable.Get(TAG_FINAL_KEY, TAG_FINAL) : LocalizationTable.Get(TAG_UP_NEXT_KEY, TAG_UP_NEXT);
         }

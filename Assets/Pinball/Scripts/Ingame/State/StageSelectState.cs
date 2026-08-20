@@ -93,19 +93,21 @@ namespace Pinball.Ingame.State
         {
             int remainingBalls = null == _remainingBallGetter ? 0 : _remainingBallGetter();
             int currentStageIndex = _stageNumberGetter() - 1;
-            StageSelectView.CardArgs[] cards = new StageSelectView.CardArgs[StageSelectView.CARD_COUNT];
+            int roundIndex = StageCatalogData.GetRoundIndex(currentStageIndex);
+            int roundStartStageIndex = StageCatalogData.GetRoundStartStageIndex(roundIndex);
+            StageSelectView.CardArgs[] cards = new StageSelectView.CardArgs[StageCatalogData.STAGES_PER_ROUND];
             for (int slot = 0; slot < cards.Length; ++slot)
-                cards[slot] = BuildCardArgs(slot, currentStageIndex + slot);
+                cards[slot] = BuildCardArgs(roundStartStageIndex + slot, currentStageIndex);
 
             UIManager.Show(new StageSelectView.Args(
                 Money: _moneyGetter(),
                 RemainingBalls: remainingBalls,
-                CurrentStageNumber: _stageNumberGetter(),
-                TotalStageCount: _stageCatalog.Count,
+                RoundNumber: roundIndex + 1,
+                RoundCount: _stageCatalog.RoundCount,
                 Cards: cards));
         }
 
-        StageSelectView.CardArgs BuildCardArgs(int slotIndex, int stageIndex)
+        StageSelectView.CardArgs BuildCardArgs(int stageIndex, int currentStageIndex)
         {
             if (stageIndex >= _stageCatalog.Count)
                 return BuildHiddenCardArgs();
@@ -114,7 +116,8 @@ namespace Pinball.Ingame.State
             if (null == stage)
                 return BuildHiddenCardArgs();
 
-            bool isCurrent = slotIndex == 0;
+            StageCardView.EState state = GetCardState(stageIndex, currentStageIndex);
+            bool isCurrent = state == StageCardView.EState.Current;
             IStageGimmickSource source = isCurrent ? _roller : stage;
             string[] gimmickLabels = new string[source.GimmickCount];
             for (int i = 0; i < gimmickLabels.Length; ++i)
@@ -123,7 +126,7 @@ namespace Pinball.Ingame.State
             return new StageSelectView.CardArgs(
                 IsVisible: true,
                 StageNumber: stageIndex + 1,
-                IsCurrent: isCurrent,
+                State: state,
                 IsFinal: stageIndex == _stageCatalog.Count - 1,
                 TargetScore: _resolver.GetTargetScore(source, stage.TargetScore),
                 TargetScoreMultiplier: _resolver.GetTargetScoreMultiplier(source),
@@ -133,12 +136,23 @@ namespace Pinball.Ingame.State
                 CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
         }
 
+        static StageCardView.EState GetCardState(int stageIndex, int currentStageIndex)
+        {
+            if (stageIndex < currentStageIndex)
+                return StageCardView.EState.Cleared;
+
+            if (stageIndex == currentStageIndex)
+                return StageCardView.EState.Current;
+
+            return StageCardView.EState.Upcoming;
+        }
+
         static StageSelectView.CardArgs BuildHiddenCardArgs()
         {
             return new StageSelectView.CardArgs(
                 IsVisible: false,
                 StageNumber: 0,
-                IsCurrent: false,
+                State: StageCardView.EState.Upcoming,
                 IsFinal: false,
                 TargetScore: 0,
                 TargetScoreMultiplier: StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,

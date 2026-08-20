@@ -9,7 +9,7 @@ namespace Pinball.UI
         public record CardArgs(
             bool IsVisible,
             int StageNumber,
-            bool IsCurrent,
+            StageCardView.EState State,
             bool IsFinal,
             int TargetScore,
             float TargetScoreMultiplier,
@@ -21,22 +21,18 @@ namespace Pinball.UI
         public record Args(
             int Money,
             int RemainingBalls,
-            int CurrentStageNumber,
-            int TotalStageCount,
+            int RoundNumber,
+            int RoundCount,
             CardArgs[] Cards) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageSelect;
         }
 
-        public const int CARD_COUNT = 3;
-
         const string MONEY_FORMAT = "$ {0}";
         const string BALLS_FORMAT = "BALLS {0}";
         const string BALLS_KEY = "ui.stage_select.balls";
-        const string PROGRESS_RANGE_FORMAT = "STAGE {0} - {1} OF {2}";
-        const string PROGRESS_RANGE_KEY = "ui.stage_select.progress_range";
-        const string PROGRESS_SINGLE_FORMAT = "STAGE {0} OF {1}";
-        const string PROGRESS_SINGLE_KEY = "ui.stage_select.progress_single";
+        const string ROUND_FORMAT = "ROUND {0} OF {1}";
+        const string ROUND_KEY = "ui.stage_select.round";
 
         [SerializeField] TMP_Text _progressLabel = null;
         [SerializeField] TMP_Text _moneyLabel = null;
@@ -69,12 +65,7 @@ namespace Pinball.UI
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
             _ballsLabel.text = LocalizationTable.Format(BALLS_KEY, BALLS_FORMAT, args.RemainingBalls);
-
-            int lastPreviewNumber = Mathf.Min(args.CurrentStageNumber + CARD_COUNT - 1, args.TotalStageCount);
-            if (lastPreviewNumber > args.CurrentStageNumber)
-                _progressLabel.text = LocalizationTable.Format(PROGRESS_RANGE_KEY, PROGRESS_RANGE_FORMAT, args.CurrentStageNumber, lastPreviewNumber, args.TotalStageCount);
-            else
-                _progressLabel.text = LocalizationTable.Format(PROGRESS_SINGLE_KEY, PROGRESS_SINGLE_FORMAT, args.CurrentStageNumber, args.TotalStageCount);
+            _progressLabel.text = LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, args.RoundNumber, args.RoundCount);
         }
 
         void BindCards(CardArgs[] cards)
@@ -99,7 +90,7 @@ namespace Pinball.UI
 
             card.Bind(new StageCardView.BindParam(
                 StageNumber: args.StageNumber,
-                IsCurrent: args.IsCurrent,
+                State: args.State,
                 IsFinal: args.IsFinal,
                 TargetScore: args.TargetScore,
                 TargetScoreMultiplier: args.TargetScoreMultiplier,
