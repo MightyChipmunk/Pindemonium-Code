@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Score
 {
     public class ScoreCounter
     {

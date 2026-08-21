@@ -1,7 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Score;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 

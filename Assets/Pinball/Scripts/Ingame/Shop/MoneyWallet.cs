@@ -1,4 +1,4 @@
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     public class MoneyWallet
     {

@@ -1,9 +1,9 @@
 using System;
-using Pinball.Ingame.InputModule;
+using Pinball.Ingame.Input;
 using Pinball.Ingame.Map;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Player
 {
     public class PlayerController : IDisposable
     {

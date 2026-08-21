@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     [CreateAssetMenu(fileName = "CardPackData", menuName = "Pinball/Ingame/CardPackData")]
     public class CardPackData : ScriptableObject

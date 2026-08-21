@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using Pinball.Ingame.Shop;
 
 namespace Pinball.Ingame.Stat
 {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     public class CardPackShop
     {

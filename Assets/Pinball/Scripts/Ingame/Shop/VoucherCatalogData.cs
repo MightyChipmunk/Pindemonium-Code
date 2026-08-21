@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     [CreateAssetMenu(fileName = "VoucherCatalogData", menuName = "Pinball/Ingame/VoucherCatalogData")]
     public class VoucherCatalogData : ScriptableObject

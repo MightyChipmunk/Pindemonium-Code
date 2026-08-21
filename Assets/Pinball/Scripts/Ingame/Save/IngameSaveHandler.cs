@@ -1,6 +1,6 @@
 using Pinball.Save;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Save
 {
     public class IngameSaveHandler
     {

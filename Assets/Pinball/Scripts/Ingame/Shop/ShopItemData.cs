@@ -2,7 +2,7 @@ using Pinball.Ingame.Map;
 using Pinball.Localization;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     [CreateAssetMenu(fileName = "ShopItemData", menuName = "Pinball/Ingame/ShopItemData")]
     public class ShopItemData : ScriptableObject

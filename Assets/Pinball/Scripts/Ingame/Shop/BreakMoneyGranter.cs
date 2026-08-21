@@ -2,7 +2,7 @@ using Pinball.Audio;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     public class BreakMoneyGranter
     {

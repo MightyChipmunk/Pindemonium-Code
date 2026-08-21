@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Alchemy.Editor;
 using Alchemy.Inspector;
+using Pinball.Ingame.Shop;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;

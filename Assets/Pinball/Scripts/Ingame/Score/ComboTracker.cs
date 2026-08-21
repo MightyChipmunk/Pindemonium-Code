@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Score
 {
     public class ComboTracker
     {

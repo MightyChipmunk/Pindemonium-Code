@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
+using Pinball.Ingame.Shop;
 using UnityEngine;
 
 namespace Pinball.Ingame.Cheat

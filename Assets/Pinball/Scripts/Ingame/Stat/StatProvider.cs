@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Shop;
 using UnityEngine;
 
 namespace Pinball.Ingame.Stat
@@ -8,7 +9,7 @@ namespace Pinball.Ingame.Stat
     {
         const int MIN_SCALING_BALL_COUNT = 1;
         const float DEFAULT_SCALE = 1f;
-        const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 초기화되지 않은 상태에서 스탯을 조회했습니다.";
+        const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 珥덇린?붾릺吏 ?딆? ?곹깭?먯꽌 ?ㅽ꺈??議고쉶?덉뒿?덈떎.";
 
         static PinballStatData _statData = null;
         static PlayerLoadout _loadout = null;

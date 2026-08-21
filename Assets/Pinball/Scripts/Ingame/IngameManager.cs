@@ -6,10 +6,15 @@ using Pinball.FX;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using Pinball.Ingame.Cheat;
 #endif
-using Pinball.Ingame.InputModule;
+using Pinball.Ingame.Input;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Player;
 using Pinball.Ingame.Presentation;
 using Pinball.Ingame.Reward;
+using Pinball.Ingame.Run;
+using Pinball.Ingame.Save;
+using Pinball.Ingame.Score;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.State;

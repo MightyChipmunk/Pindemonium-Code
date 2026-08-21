@@ -1,6 +1,6 @@
 using System;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Score
 {
     public class BallStockCounter
     {

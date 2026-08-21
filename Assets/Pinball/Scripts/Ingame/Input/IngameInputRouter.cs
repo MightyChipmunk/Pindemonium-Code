@@ -4,7 +4,7 @@ using Pinball.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Pinball.Ingame.InputModule
+namespace Pinball.Ingame.Input
 {
     public class IngameInputRouter : MonoBehaviour
     {

@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Pinball.Ingame.Shop;
 using Pinball.Save;
 
 namespace Pinball.Ingame.Reward

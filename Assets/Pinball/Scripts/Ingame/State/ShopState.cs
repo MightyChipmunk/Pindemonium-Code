@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Pinball.Audio;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.UI;
 using UnityEngine;

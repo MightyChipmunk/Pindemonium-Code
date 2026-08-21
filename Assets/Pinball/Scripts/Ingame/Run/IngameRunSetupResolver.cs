@@ -2,7 +2,7 @@ using System;
 using Pinball.Save;
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Run
 {
     public static class IngameRunSetupResolver
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Score
 {
     [CreateAssetMenu(fileName = "ComboConfigData", menuName = "Pinball/Ingame/ComboConfigData")]
     public class ComboConfigData : ScriptableObject

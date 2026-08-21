@@ -1,7 +1,10 @@
-using System;
+﻿using System;
 using Pinball.FX;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Player;
 using Pinball.Ingame.Presentation;
+using Pinball.Ingame.Score;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.UI;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.Save;
 
-namespace Pinball.Ingame
+namespace Pinball.Ingame.Shop
 {
     public class PlayerLoadout
     {
