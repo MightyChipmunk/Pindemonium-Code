@@ -236,7 +236,7 @@ namespace Pinball.UI
             if (!shopView.TryBeginPurchaseFly(pick.IsPassive, pick.OwnedIndex, pick.PreviousCount, out Vector3 position, out float width))
                 return false;
 
-            _cards[pick.CardIndex].PlayPurchase(position, width);
+            _cards[pick.CardIndex].PlayPurchase(position, width, showsSoldStamp: false);
             return true;
         }
 

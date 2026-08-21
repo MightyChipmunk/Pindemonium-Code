@@ -88,7 +88,7 @@ namespace Pinball.UI
             _canvasGroup.alpha = SOLD_ALPHA;
         }
 
-        public void PlayPurchase(Vector3 targetWorldPosition, float targetWorldWidth)
+        public void PlayPurchase(Vector3 targetWorldPosition, float targetWorldWidth, bool showsSoldStamp)
         {
             KillPurchase();
 
@@ -99,7 +99,10 @@ namespace Pinball.UI
             Vector3 endScale = GetTargetIconScale(iconRect, targetWorldWidth);
             Vector3 endPosition = targetWorldPosition - GetPivotToCenterOffset(iconRect, endScale);
 
-            ApplySold();
+            if (showsSoldStamp)
+                ApplySold();
+            else
+                DisableInteraction();
 
             Sequence sequence = DOTween.Sequence();
             sequence.Insert(0f, _canvasGroup.DOFade(SOLD_ALPHA, PURCHASE_FADE_DURATION).SetEase(Ease.InQuad));
@@ -155,10 +158,15 @@ namespace Pinball.UI
             iconRect.localScale = _iconBaseScale;
         }
 
-        void ApplySold()
+        void DisableInteraction()
         {
             _button.interactable = false;
             _highlight.SetInteractable(false);
+        }
+
+        void ApplySold()
+        {
+            DisableInteraction();
             _titleLabel.text = string.Empty;
             _kindLabel.text = string.Empty;
             _descriptionLabel.text = string.Empty;

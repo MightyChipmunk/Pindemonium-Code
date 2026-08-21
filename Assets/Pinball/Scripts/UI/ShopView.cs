@@ -496,7 +496,7 @@ namespace Pinball.UI
             if (!TryBeginPurchaseFly(purchase.IsPassive, purchase.OwnedIndex, purchase.PreviousCount, out Vector3 position, out float width))
                 return false;
 
-            slot.PlayPurchase(position, width);
+            slot.PlayPurchase(position, width, showsSoldStamp: true);
             return true;
         }
 
