@@ -18,7 +18,7 @@ namespace Pinball.UI
             bool ShowPrice);
 
         const float SOLD_ALPHA = 0.55f;
-        public const float PURCHASE_FLY_DURATION = 0.62f;
+        public const float PURCHASE_FLY_DURATION = 0.31f;
 
         const float PURCHASE_FADE_DURATION = 0.22f;
         const float FULL_ALPHA = 1f;
