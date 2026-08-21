@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Pinball.Audio;
 using Pinball.Ingame.UI;
 using Pinball.Localization;
 using TMPro;
@@ -11,7 +12,7 @@ namespace Pinball.UI
     {
         public record OfferEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, bool IsPassive);
 
-        public record OwnedEntry(Sprite Icon, int Count, string TitleKey, string DescriptionKey);
+        public record OwnedEntry(Sprite Icon, int Count, string TitleKey, string DescriptionKey, int SellPrice);
 
         public record PackEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, Sprite BandSprite, bool CanBuy);
 
@@ -78,6 +79,11 @@ namespace Pinball.UI
         const float REVEAL_HIDE_STAGGER = 0.05f;
         const float REVEAL_SHOW_DURATION = 0.26f;
         const float REVEAL_SHOW_STAGGER = 0.07f;
+        const string SELL_FORMAT = "SELL ${0}";
+        const string SELL_KEY = "ui.shop.sell";
+        const float SELL_BUTTON_GAP = 16f;
+        const float SLOT_SHIFT_DURATION = 0.28f;
+        const int NO_SLOT_INDEX = -1;
 
         [SerializeField] TMP_Text _moneyLabel = null;
         [SerializeField] ShopItemView[] _offerSlots = null;
@@ -89,6 +95,9 @@ namespace Pinball.UI
         [SerializeField] RectTransform _upgradeSlotRoot = null;
         [SerializeField] ScrollRect _upgradeScroll = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
+        [SerializeField] RectTransform _sellButtonRoot = null;
+        [SerializeField] Button _sellButton = null;
+        [SerializeField] TMP_Text _sellLabel = null;
         [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
         [SerializeField] TMP_Text _rerollLabel = null;
@@ -115,6 +124,10 @@ namespace Pinball.UI
         Vector3[] _offerSlotBaseScales = null;
         Vector3[] _packSlotBaseScales = null;
         Args _animatedArgs = null;
+        Args _boundArgs = null;
+        int _selectedPassiveIndex = NO_SLOT_INDEX;
+        int _sellingPassiveIndex = NO_SLOT_INDEX;
+        int _pendingShiftIndex = NO_SLOT_INDEX;
         Transform _lastRequestSource = null;
         Vector2 _moneyPlaqueBasePosition = Vector2.zero;
         Vector2 _passiveSlotBasePosition = Vector2.zero;
@@ -122,8 +135,8 @@ namespace Pinball.UI
 
         public override void OnGenerate()
         {
-            _passiveGrid.Init(_tooltip);
-            _upgradeGrid.Init(_tooltip);
+            _passiveGrid.Init(_tooltip, OnPassiveSlotClicked);
+            _upgradeGrid.Init(_tooltip, null);
 
             _offerSlotRoots = new Transform[_offerSlots.Length];
             _packSlotRoots = new Transform[_packSlots.Length];
@@ -147,6 +160,8 @@ namespace Pinball.UI
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
             _menuButton.onClick.AddListener(OnMenuClicked);
+            _sellButton.onClick.AddListener(OnSellClicked);
+            HideSellButton();
             _messagePopup.Init();
             _moneyPlaqueBasePosition = _moneyPlaque.anchoredPosition;
             _passiveSlotBasePosition = _passiveSlotRoot.anchoredPosition;
@@ -171,6 +186,7 @@ namespace Pinball.UI
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
             _menuButton.onClick.RemoveListener(OnMenuClicked);
+            _sellButton.onClick.RemoveListener(OnSellClicked);
             _passiveGrid.Release();
             _upgradeGrid.Release();
             _offerSlotRoots = null;
@@ -186,6 +202,11 @@ namespace Pinball.UI
             KillMoneyDenied();
             KillPassiveDenied();
             _animatedArgs = null;
+            _boundArgs = null;
+            _selectedPassiveIndex = NO_SLOT_INDEX;
+            _sellingPassiveIndex = NO_SLOT_INDEX;
+            _pendingShiftIndex = NO_SLOT_INDEX;
+            HideSellButton();
             _lastRequestSource = null;
             _passiveGrid.Clear();
             _upgradeGrid.Clear();
@@ -198,6 +219,7 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
+            _boundArgs = viewArgs;
             bool isReplay = ReferenceEquals(_animatedArgs, viewArgs);
             bool playsReveal = viewArgs.PlaysRerollReveal && !isReplay;
             PurchaseEntry purchase = isReplay ? null : viewArgs.Purchase;
@@ -480,6 +502,8 @@ namespace Pinball.UI
 
         void BindOwned(Args args)
         {
+            ClearPassiveSelection();
+
             int passiveCount = null == args.Passives ? 0 : args.Passives.Length;
             int upgradeCount = null == args.Upgrades ? 0 : args.Upgrades.Length;
             _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, passiveCount, args.PassiveSlotCount);
@@ -488,6 +512,113 @@ namespace Pinball.UI
 
             _passiveGrid.Bind(BuildGridEntries(args.Passives), Mathf.Max(0, args.PassiveSlotCount - passiveCount));
             _upgradeGrid.Bind(BuildGridEntries(args.Upgrades), 0);
+            PlayPendingShift(passiveCount);
+        }
+
+        void PlayPendingShift(int passiveCount)
+        {
+            if (_pendingShiftIndex < 0)
+                return;
+
+            _passiveGrid.PlayShiftIn(_pendingShiftIndex, passiveCount - 1, SLOT_SHIFT_DURATION);
+            _pendingShiftIndex = NO_SLOT_INDEX;
+        }
+
+        void OnPassiveSlotClicked(int slotIndex)
+        {
+            if (_sellingPassiveIndex >= 0)
+                return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.UIButtonClick);
+
+            if (slotIndex == _selectedPassiveIndex)
+            {
+                ClearPassiveSelection();
+                return;
+            }
+
+            SelectPassive(slotIndex);
+        }
+
+        void SelectPassive(int slotIndex)
+        {
+            int sellPrice = GetPassiveSellPrice(slotIndex);
+            if (sellPrice <= 0)
+            {
+                ClearPassiveSelection();
+                return;
+            }
+
+            _selectedPassiveIndex = slotIndex;
+            _passiveGrid.SetSelectedSlot(slotIndex);
+            _sellLabel.text = LocalizationTable.Format(SELL_KEY, SELL_FORMAT, sellPrice);
+            _sellButtonRoot.gameObject.SetActive(true);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_passiveSlotRoot);
+            PlaceSellButton(slotIndex);
+        }
+
+        int GetPassiveSellPrice(int slotIndex)
+        {
+            if (null == _boundArgs || null == _boundArgs.Passives)
+                return 0;
+
+            if (slotIndex < 0 || slotIndex >= _boundArgs.Passives.Length)
+                return 0;
+
+            OwnedEntry entry = _boundArgs.Passives[slotIndex];
+            if (null == entry)
+                return 0;
+
+            return entry.SellPrice;
+        }
+
+        void PlaceSellButton(int slotIndex)
+        {
+            RectTransform slotRect = _passiveGrid.GetSlotRect(slotIndex);
+            if (null == slotRect)
+                return;
+
+            Rect rect = slotRect.rect;
+            _sellButtonRoot.position = slotRect.TransformPoint(new Vector3(rect.xMax, rect.center.y, 0f));
+            _sellButtonRoot.anchoredPosition += new Vector2(SELL_BUTTON_GAP, 0f);
+        }
+
+        void ClearPassiveSelection()
+        {
+            _selectedPassiveIndex = NO_SLOT_INDEX;
+            _passiveGrid.SetSelectedSlot(NO_SLOT_INDEX);
+            HideSellButton();
+        }
+
+        void HideSellButton()
+        {
+            _sellButtonRoot.gameObject.SetActive(false);
+        }
+
+        void OnSellClicked()
+        {
+            if (_sellingPassiveIndex >= 0)
+                return;
+
+            if (_selectedPassiveIndex < 0)
+                return;
+
+            _sellingPassiveIndex = _selectedPassiveIndex;
+            _selectedPassiveIndex = NO_SLOT_INDEX;
+            HideSellButton();
+            _passiveGrid.PlaySlotFadeOut(_sellingPassiveIndex, OnSellFadeCompleted);
+        }
+
+        void OnSellFadeCompleted()
+        {
+            int slotIndex = _sellingPassiveIndex;
+            _sellingPassiveIndex = NO_SLOT_INDEX;
+            if (slotIndex < 0)
+                return;
+
+            _pendingShiftIndex = slotIndex;
+            UIManager.RaiseEvent(UIManager.EEvent.ShopSellRequested, slotIndex);
+            _pendingShiftIndex = NO_SLOT_INDEX;
         }
 
         static ItemIconGridView.Entry[] BuildGridEntries(OwnedEntry[] owned)

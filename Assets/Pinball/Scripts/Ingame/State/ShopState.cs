@@ -17,6 +17,7 @@ namespace Pinball.Ingame.State
             StageCatalogData StageCatalog,
             Func<int> MoneyGetter,
             Func<int, bool> MoneySpender,
+            Action<int> MoneyGranter,
             Func<int> StageNumberGetter,
             Func<ShopItemData, bool> IsItemUnlockedGetter,
             int OfferSlotCount,
@@ -25,6 +26,8 @@ namespace Pinball.Ingame.State
         public record EnterParam(bool OpensImmediately);
 
         const int PASSIVE_OWNED_COUNT = 1;
+        const int NOT_SELLABLE_PRICE = 0;
+        const int MIN_SELL_PRICE = 1;
 
         ShopConfigData _config = null;
         ShopCatalogData _catalog = null;
@@ -33,6 +36,7 @@ namespace Pinball.Ingame.State
         StageCatalogData _stageCatalog = null;
         Func<int> _moneyGetter = null;
         Func<int, bool> _moneySpender = null;
+        Action<int> _moneyGranter = null;
         Func<int> _stageNumberGetter = null;
         PlayerLoadout _loadout = null;
         PlayerVouchers _vouchers = null;
@@ -56,6 +60,7 @@ namespace Pinball.Ingame.State
             _stageCatalog = param.StageCatalog;
             _moneyGetter = param.MoneyGetter;
             _moneySpender = param.MoneySpender;
+            _moneyGranter = param.MoneyGranter;
             _stageNumberGetter = param.StageNumberGetter;
             _loadout = loadout;
             _vouchers = vouchers;
@@ -140,6 +145,9 @@ namespace Pinball.Ingame.State
                 case UIManager.EEvent.ShopVoucherBuyRequested:
                     TryBuyVoucher();
                     break;
+                case UIManager.EEvent.ShopSellRequested:
+                    TrySellPassive(payload);
+                    break;
                 case UIManager.EEvent.CardPackPickRequested:
                     TryPickPackItem(payload);
                     break;
@@ -171,6 +179,32 @@ namespace Pinball.Ingame.State
                 return 0;
 
             return _loadout.GetUpgradeCount(ownedIndex);
+        }
+
+        int GetSellPrice(ShopItemData item)
+        {
+            return Mathf.Max(MIN_SELL_PRICE, Mathf.RoundToInt(item.Price * _config.SellPriceRatio));
+        }
+
+        void TrySellPassive(int passiveIndex)
+        {
+            if (null == _session)
+                return;
+
+            if (_packShop.IsOpening)
+                return;
+
+            ShopItemData passive = _loadout.GetPassive(passiveIndex);
+            if (null == passive)
+                return;
+
+            if (!_loadout.TryRemovePassiveAt(passiveIndex))
+                return;
+
+            _moneyGranter(GetSellPrice(passive));
+            AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
+            OnLoadoutChanged?.Invoke();
+            RefreshShopView(false);
         }
 
         void NotifyPassiveSlotFull()
@@ -409,26 +443,34 @@ namespace Pinball.Ingame.State
         {
             ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[_loadout.PassiveCount];
             for (int i = 0; i < entries.Length; ++i)
-                entries[i] = BuildOwnedEntry(_loadout.GetPassive(i), PASSIVE_OWNED_COUNT);
+                entries[i] = BuildPassiveEntry(_loadout.GetPassive(i));
 
             return entries;
+        }
+
+        ShopView.OwnedEntry BuildPassiveEntry(ShopItemData item)
+        {
+            if (null == item)
+                return null;
+
+            return BuildOwnedEntry(item, PASSIVE_OWNED_COUNT, GetSellPrice(item));
         }
 
         ShopView.OwnedEntry[] BuildUpgradeEntries()
         {
             ShopView.OwnedEntry[] entries = new ShopView.OwnedEntry[_loadout.UpgradeKindCount];
             for (int i = 0; i < entries.Length; ++i)
-                entries[i] = BuildOwnedEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i));
+                entries[i] = BuildOwnedEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i), NOT_SELLABLE_PRICE);
 
             return entries;
         }
 
-        static ShopView.OwnedEntry BuildOwnedEntry(ShopItemData item, int count)
+        static ShopView.OwnedEntry BuildOwnedEntry(ShopItemData item, int count, int sellPrice)
         {
             if (null == item)
                 return null;
 
-            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
+            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey(), sellPrice);
         }
 
         void TryBuyOffer(int slotIndex)

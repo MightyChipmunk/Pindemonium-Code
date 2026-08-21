@@ -10,7 +10,9 @@ namespace Pinball.Ingame
         [SerializeField] int _rerollPriceIncrement = 1;
         [SerializeField] int _interestPerAmount = 5;
         [SerializeField] int _interestMax = 5;
+        [SerializeField, Range(0f, 1f)] float _sellPriceRatio = 0.5f;
 
+        public float SellPriceRatio => _sellPriceRatio;
         public int PassiveSlotCount => _passiveSlotCount;
         public int RerollBasePrice => _rerollBasePrice;
         public int RerollPriceIncrement => _rerollPriceIncrement;

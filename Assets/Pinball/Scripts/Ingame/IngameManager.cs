@@ -277,6 +277,7 @@ namespace Pinball.Ingame
                 StageCatalog: _stageCatalog,
                 MoneyGetter: GetMoney,
                 MoneySpender: _wallet.TrySpend,
+                MoneyGranter: _wallet.Add,
                 StageNumberGetter: GetStageNumber,
                 IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked,
                 OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,

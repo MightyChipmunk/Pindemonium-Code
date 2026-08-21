@@ -37,8 +37,8 @@ namespace Pinball.UI
 
         public override void OnGenerate()
         {
-            _passiveGrid.Init(_tooltip);
-            _upgradeGrid.Init(_tooltip);
+            _passiveGrid.Init(_tooltip, null);
+            _upgradeGrid.Init(_tooltip, null);
             _closeButton.onClick.AddListener(OnCloseClicked);
             _tooltip.Hide();
         }

@@ -86,7 +86,8 @@ namespace Pinball.Ingame.UI
                     ItemIndex: NO_ITEM_INDEX,
                     Icon: entries[i].Icon,
                     CountText: GetCountText(entries[i].Count),
-                    HoverCallback: null));
+                    HoverCallback: null,
+                    ClickCallback: null));
                 _activeSlots.Add(slot);
             }
         }

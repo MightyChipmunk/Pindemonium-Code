@@ -89,6 +89,18 @@ namespace Pinball.Ingame
             return true;
         }
 
+        public bool TryRemovePassiveAt(int index)
+        {
+            if (null == _passives)
+                return false;
+
+            if (index < 0 || index >= _passives.Count)
+                return false;
+
+            _passives.RemoveAt(index);
+            return true;
+        }
+
         public ShopItemData GetUpgrade(int index)
         {
             if (null == _upgrades)
