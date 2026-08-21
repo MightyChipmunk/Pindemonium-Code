@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.Save;
+using Pinball.Util;
 
 namespace Pinball.Ingame.Shop
 {
@@ -284,11 +285,7 @@ namespace Pinball.Ingame.Shop
             }
 
             for (int i = 0; i < passiveCount && candidates.Count > 0; ++i)
-            {
-                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
-                TryAddPassive(candidates[pickIndex]);
-                candidates.RemoveAt(pickIndex);
-            }
+                TryAddPassive(RandomDraw.TakeOne(candidates));
         }
 
         public void Restore(IngamePlayData savedData, ShopCatalogData catalog)

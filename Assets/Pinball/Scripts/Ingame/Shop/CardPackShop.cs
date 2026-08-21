@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Shop
@@ -78,10 +79,8 @@ namespace Pinball.Ingame.Shop
             _takenFlags.Clear();
             for (int i = 0; i < pack.RevealCount && candidates.Count > 0; ++i)
             {
-                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
-                _revealedItems.Add(candidates[pickIndex]);
+                _revealedItems.Add(RandomDraw.TakeOne(candidates));
                 _takenFlags.Add(false);
-                candidates.RemoveAt(pickIndex);
             }
 
             _openedPack = pack;
@@ -145,18 +144,7 @@ namespace Pinball.Ingame.Shop
                 }
             }
 
-            for (int i = 0; i < _packs.Length; ++i)
-            {
-                if (candidates.Count <= 0)
-                {
-                    _packs[i] = null;
-                    continue;
-                }
-
-                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
-                _packs[i] = candidates[pickIndex];
-                candidates.RemoveAt(pickIndex);
-            }
+            RandomDraw.Fill(candidates, _packs);
         }
 
         List<ShopItemData> CollectCandidates(CardPackData pack)

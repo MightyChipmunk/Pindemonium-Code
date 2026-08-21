@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Shop
@@ -76,19 +77,7 @@ namespace Pinball.Ingame.Shop
             if (null == _offers)
                 return;
 
-            List<ShopItemData> candidates = CollectCandidates();
-            for (int i = 0; i < _offers.Length; ++i)
-            {
-                if (candidates.Count <= 0)
-                {
-                    _offers[i] = null;
-                    continue;
-                }
-
-                int pickIndex = UnityEngine.Random.Range(0, candidates.Count);
-                _offers[i] = candidates[pickIndex];
-                candidates.RemoveAt(pickIndex);
-            }
+            RandomDraw.Fill(CollectCandidates(), _offers);
         }
 
         List<ShopItemData> CollectCandidates()
