@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Shop
@@ -15,6 +16,7 @@ namespace Pinball.Ingame.Shop
 
         public const int PRICE = 10;
         const int NO_ROUND = -1;
+        const int MIN_DISCOUNTED_PRICE = 1;
 
         List<VoucherData> _owned = null;
         List<VoucherData> _offered = null;
@@ -99,6 +101,39 @@ namespace Pinball.Ingame.Shop
             return sum;
         }
 
+        public bool TryRollChance(VoucherData.EEffect effect)
+        {
+            if (!Has(effect))
+                return false;
+
+            return Random.value < GetEffectValue(effect, VoucherData.MAIN_VALUE_INDEX);
+        }
+
+        public int GetDiscountedPrice(int price)
+        {
+            if (!Has(VoucherData.EEffect.ShopDiscount))
+                return price;
+
+            float discount = GetEffectValue(VoucherData.EEffect.ShopDiscount, VoucherData.MAIN_VALUE_INDEX);
+            return Mathf.Max(MIN_DISCOUNTED_PRICE, Mathf.RoundToInt(price * (1f - discount)));
+        }
+
+        public int BoostInterestCap(int cap)
+        {
+            if (!Has(VoucherData.EEffect.InterestCapBoost))
+                return cap;
+
+            return Mathf.RoundToInt(cap * GetEffectValue(VoucherData.EEffect.InterestCapBoost, VoucherData.MAIN_VALUE_INDEX));
+        }
+
+        public int BoostInterest(int interest)
+        {
+            if (!Has(VoucherData.EEffect.InterestRateBoost))
+                return interest;
+
+            return Mathf.FloorToInt(interest * GetEffectValue(VoucherData.EEffect.InterestRateBoost, VoucherData.MAIN_VALUE_INDEX));
+        }
+
         public void Restore(RestoreParam param)
         {
             _owned.Clear();
@@ -143,10 +178,7 @@ namespace Pinball.Ingame.Shop
                 candidates.Add(voucher);
             }
 
-            if (candidates.Count <= 0)
-                return null;
-
-            return candidates[Random.Range(0, candidates.Count)];
+            return RandomDraw.TakeOne(candidates);
         }
 
         static void Collect(string[] voucherIds, VoucherCatalogData catalog, List<VoucherData> destination)
