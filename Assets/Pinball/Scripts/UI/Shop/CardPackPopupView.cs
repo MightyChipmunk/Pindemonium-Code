@@ -12,7 +12,9 @@ namespace Pinball.UI
 
         public record PickEntry(int CardIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
-        public record Args(string PackTitleKey, int RemainingPicks, CardArgs[] Cards, bool IsDismissing, PickEntry Pick) : UIViewArgs
+        public delegate bool PickFlyStarter(bool isPassive, int ownedIndex, int previousCount, out Vector3 position, out float width);
+
+        public record Args(string PackTitleKey, int RemainingPicks, CardArgs[] Cards, bool IsDismissing, PickEntry Pick, PickFlyStarter FlyStarter) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.CardPackPopup;
         }
@@ -24,6 +26,7 @@ namespace Pinball.UI
         const string SKIP_FORMAT = "SKIP";
         const string SKIP_KEY = "ui.card_pack.skip";
         const float CARD_ROW_WIDTH = 1360f;
+        const float CARD_ROW_MAX_SCALE = 1f;
         const float CARD_SLOT_WIDTH = 380f;
         const float CARD_SLOT_SPACING = 30f;
         const float BACKDROP_ALPHA = 0.72f;
@@ -83,7 +86,7 @@ namespace Pinball.UI
 
             if (viewArgs.IsDismissing)
             {
-                PlayDismiss(viewArgs.Pick);
+                PlayDismiss(viewArgs.Pick, viewArgs.FlyStarter);
                 return;
             }
 
@@ -139,14 +142,7 @@ namespace Pinball.UI
             if (shownCount <= 0)
                 return;
 
-            _cardRow.spacing = CARD_SLOT_SPACING;
-
-            float requiredWidth = CARD_SLOT_WIDTH * shownCount + CARD_SLOT_SPACING * (shownCount - 1);
-            RectTransform rowRect = _cardRow.transform as RectTransform;
-            rowRect.sizeDelta = new Vector2(requiredWidth, rowRect.sizeDelta.y);
-
-            float rowScale = Mathf.Min(1f, CARD_ROW_WIDTH / requiredWidth);
-            rowRect.localScale = new Vector3(rowScale, rowScale, 1f);
+            SlotRowLayout.Fit(_cardRow, shownCount, CARD_SLOT_WIDTH, CARD_SLOT_SPACING, CARD_ROW_WIDTH, CARD_ROW_MAX_SCALE);
         }
 
         void PlayAppear()
@@ -188,7 +184,7 @@ namespace Pinball.UI
             ResetVisuals();
         }
 
-        void PlayDismiss(PickEntry pick)
+        void PlayDismiss(PickEntry pick, PickFlyStarter flyStarter)
         {
             if (_isDismissing)
                 return;
@@ -197,7 +193,7 @@ namespace Pinball.UI
             KillAppear();
 
             int keptCardIndex = null == pick ? NO_KEPT_CARD_INDEX : pick.CardIndex;
-            float flyEndTime = TryPlayPickFly(pick) ? ShopItemView.PURCHASE_FLY_DURATION : 0f;
+            float flyEndTime = TryPlayPickFly(pick, flyStarter) ? ShopItemView.PURCHASE_FLY_DURATION : 0f;
 
             Sequence sequence = DOTween.Sequence();
             float dismissEndTime = 0f;
@@ -221,19 +217,15 @@ namespace Pinball.UI
             _dismissTween = sequence;
         }
 
-        bool TryPlayPickFly(PickEntry pick)
+        bool TryPlayPickFly(PickEntry pick, PickFlyStarter flyStarter)
         {
-            if (null == pick)
+            if (null == pick || null == flyStarter)
                 return false;
 
             if (pick.CardIndex < 0 || pick.CardIndex >= _cards.Length)
                 return false;
 
-            ShopView shopView = UIManager.GetActive(UIViewCatalogData.EViewType.Shop) as ShopView;
-            if (null == shopView)
-                return false;
-
-            if (!shopView.TryBeginPurchaseFly(pick.IsPassive, pick.OwnedIndex, pick.PreviousCount, out Vector3 position, out float width))
+            if (!flyStarter(pick.IsPassive, pick.OwnedIndex, pick.PreviousCount, out Vector3 position, out float width))
                 return false;
 
             _cards[pick.CardIndex].PlayPurchase(position, width, showsSoldStamp: false);

@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.UI;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.State
@@ -105,15 +106,9 @@ namespace Pinball.Ingame.State
             if (_config.InterestPerAmount <= 0)
                 return 0;
 
-            int cap = _config.InterestMax;
-            if (_vouchers.Has(VoucherData.EEffect.InterestCapBoost))
-                cap = Mathf.RoundToInt(cap * _vouchers.GetEffectValue(VoucherData.EEffect.InterestCapBoost, VoucherData.MAIN_VALUE_INDEX));
-
+            int cap = _vouchers.BoostInterestCap(_config.InterestMax);
             int interest = Mathf.Min(_moneyGetter() / _config.InterestPerAmount, cap);
-            if (_vouchers.Has(VoucherData.EEffect.InterestRateBoost))
-                interest = Mathf.FloorToInt(interest * _vouchers.GetEffectValue(VoucherData.EEffect.InterestRateBoost, VoucherData.MAIN_VALUE_INDEX));
-
-            return interest;
+            return _vouchers.BoostInterest(interest);
         }
 
         public void RefreshOpenedView()
@@ -205,7 +200,7 @@ namespace Pinball.Ingame.State
             _moneyGranter(GetSellPrice(passive));
             AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
             OnLoadoutChanged?.Invoke();
-            RefreshShopView(false);
+            RefreshShopView(false, sell: new ShopView.SellEntry(RemovedIndex: passiveIndex));
         }
 
         void NotifyPassiveSlotFull()
@@ -229,7 +224,7 @@ namespace Pinball.Ingame.State
             ChangeState(EIngameState.StageSelect, new StageSelectState.EnterParam(IsAfterShop: true));
         }
 
-        void RefreshShopView(bool playsRerollReveal, ShopView.PurchaseEntry purchase = null)
+        void RefreshShopView(bool playsRerollReveal, ShopView.PurchaseEntry purchase = null, ShopView.SellEntry sell = null)
         {
             if (null == _session)
                 return;
@@ -240,6 +235,7 @@ namespace Pinball.Ingame.State
                 RerollPrice: _session.CurrentRerollPrice,
                 Offers: BuildOfferEntries(),
                 Purchase: purchase,
+                Sell: sell,
                 PassiveSlotCount: _loadout.PassiveSlotCount,
                 Passives: BuildPassiveEntries(),
                 Upgrades: BuildUpgradeEntries(),
@@ -391,7 +387,17 @@ namespace Pinball.Ingame.State
                 RemainingPicks: _packShop.RemainingPicks,
                 Cards: cards,
                 IsDismissing: isDismissing,
-                Pick: pick));
+                Pick: pick,
+                FlyStarter: GetPickFlyStarter()));
+        }
+
+        static CardPackPopupView.PickFlyStarter GetPickFlyStarter()
+        {
+            ShopView shopView = UIManager.GetActive(UIViewCatalogData.EViewType.Shop) as ShopView;
+            if (null == shopView)
+                return null;
+
+            return shopView.TryBeginPurchaseFly;
         }
 
         void ClosePackOpening()
@@ -427,17 +433,8 @@ namespace Pinball.Ingame.State
                 TitleKey: item.GetNameKey(),
                 Icon: item.GetIcon(),
                 DescriptionKey: item.GetDescriptionKey(),
-                Price: GetOfferPrice(item),
+                Price: _vouchers.GetDiscountedPrice(item.Price),
                 IsPassive: item.Kind == ShopItemData.EItemKind.Passive);
-        }
-
-        int GetOfferPrice(ShopItemData item)
-        {
-            if (!_vouchers.Has(VoucherData.EEffect.ShopDiscount))
-                return item.Price;
-
-            float discount = _vouchers.GetEffectValue(VoucherData.EEffect.ShopDiscount, VoucherData.MAIN_VALUE_INDEX);
-            return Mathf.Max(1, Mathf.RoundToInt(item.Price * (1f - discount)));
         }
 
         ShopView.OwnedEntry[] BuildPassiveEntries()
@@ -490,7 +487,7 @@ namespace Pinball.Ingame.State
             }
 
             bool isTopUpgrade = item.Kind == ShopItemData.EItemKind.Upgrade && _loadout.IsMostUpgraded(item);
-            if (!TrySpendMoney(GetOfferPrice(item)))
+            if (!TrySpendMoney(_vouchers.GetDiscountedPrice(item.Price)))
                 return;
 
             int previousCount = GetOwnedUpgradeCount(item);
@@ -512,11 +509,7 @@ namespace Pinball.Ingame.State
             if (!isTopUpgrade)
                 return;
 
-            if (!_vouchers.Has(VoucherData.EEffect.TopUpgradeDoubleBuy))
-                return;
-
-            float chance = _vouchers.GetEffectValue(VoucherData.EEffect.TopUpgradeDoubleBuy, VoucherData.MAIN_VALUE_INDEX);
-            if (UnityEngine.Random.value >= chance)
+            if (!_vouchers.TryRollChance(VoucherData.EEffect.TopUpgradeDoubleBuy))
                 return;
 
             ApplyItem(item);
@@ -524,11 +517,7 @@ namespace Pinball.Ingame.State
 
         void ApplyBonusUpgradeOnBuy()
         {
-            if (!_vouchers.Has(VoucherData.EEffect.BonusUpgradeOnBuy))
-                return;
-
-            float chance = _vouchers.GetEffectValue(VoucherData.EEffect.BonusUpgradeOnBuy, VoucherData.MAIN_VALUE_INDEX);
-            if (UnityEngine.Random.value >= chance)
+            if (!_vouchers.TryRollChance(VoucherData.EEffect.BonusUpgradeOnBuy))
                 return;
 
             List<ShopItemData> candidates = new List<ShopItemData>();
@@ -544,10 +533,11 @@ namespace Pinball.Ingame.State
                 candidates.Add(item);
             }
 
-            if (candidates.Count <= 0)
+            ShopItemData bonus = RandomDraw.TakeOne(candidates);
+            if (null == bonus)
                 return;
 
-            ApplyItem(candidates[UnityEngine.Random.Range(0, candidates.Count)]);
+            ApplyItem(bonus);
         }
 
         void TryReroll()
