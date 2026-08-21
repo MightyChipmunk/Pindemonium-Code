@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using Pinball.Core;
 using Pinball.FX;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -171,7 +172,12 @@ namespace Pinball.Ingame
             Track(StatProvider.Release);
 
             _powerSurgeCharger = new PowerSurgeCharger(GetIsPlaying);
-            _breakMoneyGranter = new BreakMoneyGranter(_wallet);
+            _breakMoneyGranter = new BreakMoneyGranter(_wallet, PlayMoneyGainSound);
+        }
+
+        static void PlayMoneyGainSound()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
         }
 
         void RestoreVouchers(IngamePlayData savedData)

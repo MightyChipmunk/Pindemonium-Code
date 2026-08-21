@@ -1,4 +1,4 @@
-using Pinball.Audio;
+using System;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 
@@ -7,11 +7,13 @@ namespace Pinball.Ingame.Shop
     public class BreakMoneyGranter
     {
         MoneyWallet _wallet = null;
+        Action _moneyGrantedCallback = null;
         int _stageEarnedMoney = 0;
 
-        public BreakMoneyGranter(MoneyWallet wallet)
+        public BreakMoneyGranter(MoneyWallet wallet, Action moneyGrantedCallback)
         {
             _wallet = wallet;
+            _moneyGrantedCallback = moneyGrantedCallback;
             _stageEarnedMoney = 0;
         }
 
@@ -40,7 +42,7 @@ namespace Pinball.Ingame.Shop
 
             _stageEarnedMoney += amount;
             _wallet.Add(amount);
-            AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
+            _moneyGrantedCallback?.Invoke();
         }
     }
 }
