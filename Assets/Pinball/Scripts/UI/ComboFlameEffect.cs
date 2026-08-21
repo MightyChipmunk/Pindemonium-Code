@@ -22,7 +22,7 @@ namespace Pinball.UI
         [SerializeField] RectTransform _flameRoot = null;
         [SerializeField] Image _flameImage = null;
         [SerializeField] Sprite[] _flameFrames = null;
-        [SerializeField] UIShake _shake = null;
+        [SerializeField] UIIntensityShake _shake = null;
 
         Vector3 _baseScale = Vector3.one;
         int _lastBurstStep = NO_BURST_STEP;
