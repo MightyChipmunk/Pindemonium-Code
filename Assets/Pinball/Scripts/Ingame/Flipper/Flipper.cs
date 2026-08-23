@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Audio;
 using Pinball.Ingame.Stat;
 using Pinball.Util;
 using UnityEngine;
@@ -93,6 +94,8 @@ namespace Pinball.Ingame
 
             if (!isPressed)
                 return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.FlipperSwing);
 
             if (null != _struckBodies)
                 _struckBodies.Clear();
