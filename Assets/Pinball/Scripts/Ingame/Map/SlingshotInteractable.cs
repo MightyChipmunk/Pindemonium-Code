@@ -10,6 +10,7 @@ namespace Pinball.Ingame.Map
         const int KICK_PUNCH_VIBRATO = 6;
 
         [SerializeField] Transform _visual = null;
+        [SerializeField] Transform _directionTransform = null;
 
         Tween _kickTween = null;
 
@@ -26,7 +27,13 @@ namespace Pinball.Ingame.Map
 
         protected override Vector2 GetBounceDirection(Collision2D collision)
         {
-            return transform.up;
+            if (null == _directionTransform)
+            {
+                Debug.LogError($"{nameof(_directionTransform)} is unsigned");
+                return transform.up;
+            }
+
+            return _directionTransform.up;
         }
 
         protected override void OnBallHit(Collision2D collision, float damage)
