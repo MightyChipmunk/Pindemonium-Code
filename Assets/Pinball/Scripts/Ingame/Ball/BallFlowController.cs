@@ -28,6 +28,7 @@ namespace Pinball.Ingame
         MapRoot _map = null;
         Ball _activeBall = null;
         List<Ball> _cloneBalls = null;
+        List<float> _cloneLifeRemains = null;
         float _cloneSpawnElapsed = 0f;
         int _gimmickHitCount = 0;
         int _usedBallCount = 0;
@@ -48,6 +49,7 @@ namespace Pinball.Ingame
             _isPlayingGetter = param.IsPlayingGetter;
             _usedBallCount = 0;
             _cloneBalls = new List<Ball>();
+            _cloneLifeRemains = new List<float>();
             _cloneSpawnElapsed = 0f;
             _isSurgeCharged = false;
             _ballStock = new BallStockCounter(StatProvider.GetInitialBallCount());
@@ -61,6 +63,7 @@ namespace Pinball.Ingame
 
         public void Tick(float deltaTime)
         {
+            TickCloneLife(deltaTime);
             TickCloneSpawn(deltaTime);
         }
 
@@ -212,6 +215,7 @@ namespace Pinball.Ingame
                 _spawner.Despawn(_cloneBalls[i]);
 
             _cloneBalls.Clear();
+            _cloneLifeRemains.Clear();
         }
 
         bool TryDespawnCloneBall(Ball ball)
@@ -219,11 +223,34 @@ namespace Pinball.Ingame
             if (null == _cloneBalls)
                 return false;
 
-            if (!_cloneBalls.Remove(ball))
+            int index = _cloneBalls.IndexOf(ball);
+            if (index < 0)
                 return false;
 
-            _spawner.Despawn(ball);
+            DespawnCloneBallAt(index);
             return true;
+        }
+
+        void DespawnCloneBallAt(int index)
+        {
+            _spawner.Despawn(_cloneBalls[index]);
+            _cloneBalls.RemoveAt(index);
+            _cloneLifeRemains.RemoveAt(index);
+        }
+
+        void TickCloneLife(float deltaTime)
+        {
+            if (null == _cloneBalls)
+                return;
+
+            for (int i = _cloneBalls.Count - 1; i >= 0; --i)
+            {
+                _cloneLifeRemains[i] -= deltaTime;
+                if (_cloneLifeRemains[i] > 0f)
+                    continue;
+
+                DespawnCloneBallAt(i);
+            }
         }
 
         void TickCloneSpawn(float deltaTime)
@@ -243,16 +270,17 @@ namespace Pinball.Ingame
                 return;
 
             _cloneSpawnElapsed = 0f;
-            SpawnCloneBall();
+            SpawnCloneBall(spawnInterval);
         }
 
-        void SpawnCloneBall()
+        void SpawnCloneBall(float lifeTime)
         {
             Ball clone = _spawner.Spawn();
             if (null == clone)
                 return;
 
             _cloneBalls.Add(clone);
+            _cloneLifeRemains.Add(lifeTime);
             clone.SetMass(StatProvider.GetBallMass());
             clone.MoveTo(GetCloneSpawnPosition());
             clone.SetKinematic(false);
