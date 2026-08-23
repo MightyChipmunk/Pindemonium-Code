@@ -37,6 +37,7 @@ namespace Pinball.Ingame.Shop
             TimedAttackPowerSurge = 16,
             HitFlatDamageAdd = 17,
             BallCloneSpawn = 18,
+            UpgradeOnPassiveSell = 19,
         }
 
         [SerializeField] string _nameKey = string.Empty;

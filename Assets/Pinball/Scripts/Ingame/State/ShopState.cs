@@ -199,9 +199,29 @@ namespace Pinball.Ingame.State
                 return;
 
             _moneyGranter(GetSellPrice(passive));
+            ShopView.UpgradeGrantEntry grant = GrantSellUpgrades();
             AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
             OnLoadoutChanged?.Invoke();
-            RefreshShopView(false, sell: new ShopView.SellEntry(RemovedIndex: passiveIndex));
+            RefreshShopView(false, sell: new ShopView.SellEntry(RemovedIndex: passiveIndex, Grant: grant));
+        }
+
+        ShopView.UpgradeGrantEntry GrantSellUpgrades()
+        {
+            int grantCount = Mathf.RoundToInt(_loadout.GetEffectSum(ShopItemData.EEffectType.UpgradeOnPassiveSell));
+            ShopView.UpgradeGrantEntry firstGrant = null;
+            for (int i = 0; i < grantCount; ++i)
+            {
+                ShopItemData upgrade = DrawRandomUpgrade();
+                if (null == upgrade)
+                    break;
+
+                int previousCount = GetOwnedUpgradeCount(upgrade);
+                ApplyItem(upgrade);
+                if (null == firstGrant)
+                    firstGrant = new ShopView.UpgradeGrantEntry(OwnedIndex: _loadout.GetOwnedIndex(upgrade), PreviousCount: previousCount);
+            }
+
+            return firstGrant;
         }
 
         void NotifyPassiveSlotFull()
@@ -521,6 +541,15 @@ namespace Pinball.Ingame.State
             if (!_vouchers.TryRollChance(VoucherData.EEffect.BonusUpgradeOnBuy))
                 return;
 
+            ShopItemData bonus = DrawRandomUpgrade();
+            if (null == bonus)
+                return;
+
+            ApplyItem(bonus);
+        }
+
+        ShopItemData DrawRandomUpgrade()
+        {
             List<ShopItemData> candidates = new List<ShopItemData>();
             for (int i = 0; i < _catalog.Count; ++i)
             {
@@ -534,11 +563,7 @@ namespace Pinball.Ingame.State
                 candidates.Add(item);
             }
 
-            ShopItemData bonus = RandomDraw.TakeOne(candidates);
-            if (null == bonus)
-                return;
-
-            ApplyItem(bonus);
+            return RandomDraw.TakeOne(candidates);
         }
 
         void TryReroll()

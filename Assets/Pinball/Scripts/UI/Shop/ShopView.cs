@@ -19,7 +19,9 @@ namespace Pinball.UI
 
         public record PurchaseEntry(int SlotIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
-        public record SellEntry(int RemovedIndex);
+        public record UpgradeGrantEntry(int OwnedIndex, int PreviousCount);
+
+        public record SellEntry(int RemovedIndex, UpgradeGrantEntry Grant);
 
         public record Args(
             int Money,
@@ -219,26 +221,39 @@ namespace Pinball.UI
             position = Vector3.zero;
             width = 0f;
 
+            RectTransform iconRect = PrepareOwnedSlot(isPassive, ownedIndex);
+            if (null == iconRect)
+                return false;
+
+            position = iconRect.TransformPoint(iconRect.rect.center);
+            width = iconRect.rect.width * iconRect.lossyScale.x;
+            PlayOwnedSlotChange(isPassive, ownedIndex, previousCount, ShopItemView.PURCHASE_FLY_DURATION);
+            return true;
+        }
+
+        RectTransform PrepareOwnedSlot(bool isPassive, int ownedIndex)
+        {
             RectTransform slotRoot = isPassive ? _passiveSlotRoot : _upgradeSlotRoot;
             LayoutRebuilder.ForceRebuildLayoutImmediate(slotRoot);
 
             ItemIconGridView grid = isPassive ? _passiveGrid : _upgradeGrid;
             RectTransform iconRect = grid.GetSlotIconRect(ownedIndex);
             if (null == iconRect)
-                return false;
+                return null;
 
             if (!isPassive)
                 ScrollUpgradeSlotIntoView(iconRect);
 
-            position = iconRect.TransformPoint(iconRect.rect.center);
-            width = iconRect.rect.width * iconRect.lossyScale.x;
+            return iconRect;
+        }
 
+        void PlayOwnedSlotChange(bool isPassive, int ownedIndex, int previousCount, float delay)
+        {
+            ItemIconGridView grid = isPassive ? _passiveGrid : _upgradeGrid;
             if (previousCount > 0)
-                grid.PlaySlotCountChange(ownedIndex, GetCountText(previousCount), ShopItemView.PURCHASE_FLY_DURATION);
+                grid.PlaySlotCountChange(ownedIndex, GetCountText(previousCount), delay);
             else
-                grid.PlaySlotAppear(ownedIndex, ShopItemView.PURCHASE_FLY_DURATION);
-
-            return true;
+                grid.PlaySlotAppear(ownedIndex, delay);
         }
 
         void ScrollUpgradeSlotIntoView(RectTransform iconRect)
@@ -394,6 +409,18 @@ namespace Pinball.UI
                 return;
 
             _passiveGrid.PlayIconShift(sell.RemovedIndex, passiveCount - 1, SLOT_SHIFT_DURATION);
+            PlaySellGrant(sell.Grant);
+        }
+
+        void PlaySellGrant(UpgradeGrantEntry grant)
+        {
+            if (null == grant)
+                return;
+
+            if (null == PrepareOwnedSlot(false, grant.OwnedIndex))
+                return;
+
+            PlayOwnedSlotChange(false, grant.OwnedIndex, grant.PreviousCount, SLOT_SHIFT_DURATION);
         }
 
         void OnPassiveSlotClicked(int slotIndex)
