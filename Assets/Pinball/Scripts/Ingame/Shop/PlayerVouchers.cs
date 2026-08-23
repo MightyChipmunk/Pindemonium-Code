@@ -134,6 +134,14 @@ namespace Pinball.Ingame.Shop
             return Mathf.FloorToInt(interest * GetEffectValue(VoucherData.EEffect.InterestRateBoost, VoucherData.MAIN_VALUE_INDEX));
         }
 
+        public int BoostSellPrice(int sellPrice)
+        {
+            if (!Has(VoucherData.EEffect.PassiveSellPriceBoost))
+                return sellPrice;
+
+            return Mathf.RoundToInt(sellPrice * GetEffectValue(VoucherData.EEffect.PassiveSellPriceBoost, VoucherData.MAIN_VALUE_INDEX));
+        }
+
         public void Restore(RestoreParam param)
         {
             _owned.Clear();

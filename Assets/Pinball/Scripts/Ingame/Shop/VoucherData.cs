@@ -17,6 +17,7 @@ namespace Pinball.Ingame.Shop
             ShopFirstRerollFree = 7,
             StageFirstRerollFree = 8,
             BonusUpgradeOnBuy = 9,
+            PassiveSellPriceBoost = 10,
         }
 
         public const int MAIN_VALUE_INDEX = 0;

@@ -179,7 +179,8 @@ namespace Pinball.Ingame.State
 
         int GetSellPrice(ShopItemData item)
         {
-            return Mathf.Max(MIN_SELL_PRICE, Mathf.RoundToInt(item.Price * _config.SellPriceRatio));
+            int sellPrice = Mathf.Max(MIN_SELL_PRICE, Mathf.RoundToInt(item.Price * _config.SellPriceRatio));
+            return _vouchers.BoostSellPrice(sellPrice);
         }
 
         void TrySellPassive(int passiveIndex)
