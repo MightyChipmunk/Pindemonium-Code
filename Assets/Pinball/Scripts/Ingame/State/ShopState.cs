@@ -22,6 +22,8 @@ namespace Pinball.Ingame.State
             Action<int> MoneyGranter,
             Func<int> StageNumberGetter,
             Func<ShopItemData, bool> IsItemUnlockedGetter,
+            Func<bool> IsRoundRewardPendingGetter,
+            Action RoundRewardConsumer,
             int OfferSlotCount,
             bool IsInterestDisabled);
 
@@ -43,6 +45,8 @@ namespace Pinball.Ingame.State
         PlayerLoadout _loadout = null;
         PlayerVouchers _vouchers = null;
         Func<ShopItemData, bool> _isItemUnlockedGetter = null;
+        Func<bool> _isRoundRewardPendingGetter = null;
+        Action _roundRewardConsumer = null;
         ShopSession _session = null;
         CardPackShop _packShop = null;
         int _offerSlotCount = ShopSession.DEFAULT_OFFER_SLOT_COUNT;
@@ -67,6 +71,8 @@ namespace Pinball.Ingame.State
             _loadout = loadout;
             _vouchers = vouchers;
             _isItemUnlockedGetter = param.IsItemUnlockedGetter;
+            _isRoundRewardPendingGetter = param.IsRoundRewardPendingGetter;
+            _roundRewardConsumer = param.RoundRewardConsumer;
             _offerSlotCount = param.OfferSlotCount;
             _isInterestDisabled = param.IsInterestDisabled;
         }
@@ -126,6 +132,9 @@ namespace Pinball.Ingame.State
                 case UIManager.EEvent.StageClearFinished:
                     Open();
                     break;
+                case UIManager.EEvent.RoundClearFinished:
+                    GrantRoundReward();
+                    break;
                 case UIManager.EEvent.ShopStartRequested:
                     RequestNextStage();
                     break;
@@ -158,6 +167,42 @@ namespace Pinball.Ingame.State
             _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, _vouchers.Has(VoucherData.EEffect.ShopFirstRerollFree));
             _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
             RefreshShopView(false);
+            TryShowRoundClear();
+        }
+
+        bool IsRoundRewardPending()
+        {
+            return null != _isRoundRewardPendingGetter && _isRoundRewardPendingGetter();
+        }
+
+        void TryShowRoundClear()
+        {
+            if (!IsRoundRewardPending())
+                return;
+
+            AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
+            UIManager.Show(new RoundClearView.Args(RoundNumber: GetClearedRoundNumber()));
+        }
+
+        int GetClearedRoundNumber()
+        {
+            int upcomingStageIndex = _stageNumberGetter() - 1;
+            return StageCatalogData.GetRoundIndex(upcomingStageIndex - 1) + 1;
+        }
+
+        void GrantRoundReward()
+        {
+            if (null == _packShop || _packShop.IsOpening)
+                return;
+
+            if (!IsRoundRewardPending())
+                return;
+
+            _roundRewardConsumer?.Invoke();
+            if (!_packShop.TryOpenRandomPack())
+                return;
+
+            ShowPackOpeningView(false, null);
         }
 
         int GetRoundIndex()

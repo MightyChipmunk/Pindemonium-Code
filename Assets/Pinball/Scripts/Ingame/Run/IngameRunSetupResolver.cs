@@ -24,6 +24,7 @@ namespace Pinball.Ingame.Run
             int Score,
             int[] GimmickIndices,
             bool IsShopPending,
+            bool IsRoundRewardPending,
             int PassiveSlotCount,
             int StageClearMoney);
 
@@ -48,6 +49,7 @@ namespace Pinball.Ingame.Run
                 Score: isNewRun ? 0 : saved.TotalScore,
                 GimmickIndices: isNewRun ? null : saved.GetGimmickIndices(),
                 IsShopPending: !isNewRun && saved.IsShopPending,
+                IsRoundRewardPending: !isNewRun && saved.IsRoundRewardPending,
                 PassiveSlotCount: Mathf.Max(MIN_PASSIVE_SLOT_COUNT, param.BasePassiveSlotCount + setup.PassiveSlotAdd),
                 StageClearMoney: Mathf.Max(0, param.BaseStageClearMoney + setup.StageClearMoneyAdd));
         }

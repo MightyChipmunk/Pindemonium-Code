@@ -29,6 +29,14 @@ namespace Pinball.Ingame.Stage
             return roundIndex * STAGES_PER_ROUND;
         }
 
+        public static bool IsRoundLastStage(int stageIndex)
+        {
+            if (stageIndex < 0)
+                return false;
+
+            return (stageIndex + 1) % STAGES_PER_ROUND == 0;
+        }
+
         public StageData GetStage(int stageIndex)
         {
             if (Count <= 0)

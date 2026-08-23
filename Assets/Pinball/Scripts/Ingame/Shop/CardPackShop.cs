@@ -67,7 +67,34 @@ namespace Pinball.Ingame.Shop
             if (IsOpening)
                 return false;
 
-            CardPackData pack = GetPack(slotIndex);
+            if (!TryStartOpening(GetPack(slotIndex)))
+                return false;
+
+            _packs[slotIndex] = null;
+            return true;
+        }
+
+        public bool TryOpenRandomPack()
+        {
+            if (IsOpening)
+                return false;
+
+            List<CardPackData> candidates = new List<CardPackData>();
+            if (null != _packCatalog)
+            {
+                for (int i = 0; i < _packCatalog.Count; ++i)
+                {
+                    CardPackData pack = _packCatalog.GetPack(i);
+                    if (HasCandidates(pack))
+                        candidates.Add(pack);
+                }
+            }
+
+            return TryStartOpening(RandomDraw.TakeOne(candidates));
+        }
+
+        bool TryStartOpening(CardPackData pack)
+        {
             if (null == pack)
                 return false;
 
@@ -85,7 +112,6 @@ namespace Pinball.Ingame.Shop
 
             _openedPack = pack;
             _remainingPicks = Mathf.Min(pack.PickCount, _revealedItems.Count);
-            _packs[slotIndex] = null;
             return true;
         }
 

@@ -82,6 +82,7 @@ namespace Pinball.Ingame
         FlipperData _selectedFlipper = null;
         FlipperData.RunSetup _runSetup = null;
         int _stageClearMoney = STAGE_CLEAR_BASE_MONEY;
+        bool _isRoundRewardPending = false;
         bool _isExitingToLobby = false;
 
         void Awake()
@@ -94,6 +95,7 @@ namespace Pinball.Ingame
             _selectedFlipper = start.Flipper;
             _runSetup = start.Setup;
             _stageClearMoney = start.StageClearMoney;
+            _isRoundRewardPending = start.IsRoundRewardPending;
 
             InitRunModel(start);
             InitStageFlow(start);
@@ -291,6 +293,8 @@ namespace Pinball.Ingame
                 MoneyGranter: _wallet.Add,
                 StageNumberGetter: GetStageNumber,
                 IsItemUnlockedGetter: _unlockProgress.IsItemUnlocked,
+                IsRoundRewardPendingGetter: GetIsRoundRewardPending,
+                RoundRewardConsumer: ConsumeRoundReward,
                 OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
                 IsInterestDisabled: _runSetup.IsInterestDisabled), _loadout, _vouchers);
             _shopState.OnLoadoutChanged += OnShopLoadoutChanged;
@@ -379,8 +383,20 @@ namespace Pinball.Ingame
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * StatProvider.GetBallResupplyMoney());
             _wallet.Add(remainingBalls + _stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
+            _isRoundRewardPending = StageCatalogData.IsRoundLastStage(_stageTracker.StageNumber - 1);
             _stageTracker.AdvanceToNextStage();
             _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            SaveProgress(true);
+        }
+
+        bool GetIsRoundRewardPending()
+        {
+            return _isRoundRewardPending;
+        }
+
+        void ConsumeRoundReward()
+        {
+            _isRoundRewardPending = false;
             SaveProgress(true);
         }
 
@@ -514,6 +530,7 @@ namespace Pinball.Ingame
             _saveHandler.Save(new IngameSaveHandler.SaveParam(
                 StageNumber: _stageTracker.StageNumber,
                 IsShopPending: isShopPending,
+                IsRoundRewardPending: _isRoundRewardPending,
                 Money: _wallet.Current,
                 TotalScore: _scoreCounter.Current,
                 GimmickIndices: _gimmickRoller.GetCatalogIndices(),

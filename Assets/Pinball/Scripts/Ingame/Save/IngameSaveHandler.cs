@@ -7,6 +7,7 @@ namespace Pinball.Ingame.Save
         public record SaveParam(
             int StageNumber,
             bool IsShopPending,
+            bool IsRoundRewardPending,
             int Money,
             int TotalScore,
             int[] GimmickIndices,
@@ -30,6 +31,7 @@ namespace Pinball.Ingame.Save
             SaveManager.SaveIngame(new IngamePlayData(
                 param.StageNumber,
                 param.IsShopPending,
+                param.IsRoundRewardPending,
                 param.Money,
                 param.TotalScore,
                 param.GimmickIndices,
