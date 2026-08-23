@@ -74,7 +74,7 @@ namespace Pinball.Ingame.UI
         {
             Vector3 worldPosition = new Vector3(worldPoint.x, worldPoint.y + _worldHeightOffset, 0f);
             Vector3 screenPosition = CameraController.WorldToScreenPoint(worldPosition);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(_rectTransform, screenPosition, null, out Vector2 localPoint);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_rectTransform, screenPosition, CameraController.GetMainCamera(), out Vector2 localPoint);
             return localPoint;
         }
 
