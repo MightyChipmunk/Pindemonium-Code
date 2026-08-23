@@ -52,6 +52,7 @@ namespace Pinball.Ingame.UI
         {
             _score = score;
             _scoreView.SetValue(score);
+            _stageInfoView.SetScore(score);
         }
 
         public void SetBallCount(int count)
@@ -73,9 +74,9 @@ namespace Pinball.Ingame.UI
             _stageInfoView.SetInfo(stageNumber, targetScore, remainingSeconds);
         }
 
-        public void SetCombo(int comboCount, float multiplier, int pendingBonus)
+        public void SetCombo(int comboCount, float multiplier, int pendingBonus, float stepProgress)
         {
-            _comboView.SetCombo(comboCount, multiplier, pendingBonus);
+            _comboView.SetCombo(comboCount, multiplier, pendingBonus, stepProgress);
         }
 
         public void ShowComboBonus(int comboCount, float multiplier, int bonusScore)

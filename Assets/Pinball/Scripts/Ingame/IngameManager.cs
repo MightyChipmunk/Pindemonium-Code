@@ -438,7 +438,16 @@ namespace Pinball.Ingame
         void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
         {
             _director.PlayComboUp();
-            _uiRoot.SetCombo(comboCount, multiplier, pendingBonus);
+            _uiRoot.SetCombo(comboCount, multiplier, pendingBonus, GetComboStepProgress(comboCount));
+        }
+
+        float GetComboStepProgress(int comboCount)
+        {
+            int countPerStep = _comboConfig.ComboCountPerStep;
+            if (countPerStep <= 0)
+                return 0f;
+
+            return (comboCount % countPerStep) / (float)countPerStep;
         }
 
         void OnSurgeChargedChanged(bool isCharged)
