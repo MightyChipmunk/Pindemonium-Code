@@ -141,6 +141,14 @@ namespace Pinball.Ingame.Map
                 return;
 
             AudioManager.Play(GetHitClipType());
+            PlayGimmickHitPresentation();
+        }
+
+        protected void PlayGimmickHitPresentation()
+        {
+            if (_isDeactivated)
+                return;
+
             _gimmickHitPresenter?.Invoke();
         }
 

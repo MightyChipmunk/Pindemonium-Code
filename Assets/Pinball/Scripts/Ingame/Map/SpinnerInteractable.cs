@@ -1,5 +1,6 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -10,6 +11,8 @@ namespace Pinball.Ingame.Map
         const float REST_ANGLE = 0f;
         const float MIN_SPIN_SPEED = 240f;
         const int MIN_REVOLUTION_DIVISOR = 1;
+        const float TICK_MIN_PITCH = 0.85f;
+        const float TICK_MAX_PITCH = 1.5f;
 
         [SerializeField] Transform _visual = null;
         [SerializeField] int _scoreRewardPerRevolution = 0;
@@ -65,7 +68,8 @@ namespace Pinball.Ingame.Map
 
             _remainingRevolutions += GetRevolutions(body.linearVelocity.magnitude);
             _hasPendingBallHit = true;
-            PlayGimmickHit();
+            PlayGimmickHitPresentation();
+            PlaySpinTick();
 
             if (_isSpinning)
                 return;
@@ -78,10 +82,22 @@ namespace Pinball.Ingame.Map
             return Mathf.Lerp(_minRevolutions, _maxRevolutions, Mathf.InverseLerp(_minEntrySpeed, _maxEntrySpeed, entrySpeed));
         }
 
+        float GetSpinRatio()
+        {
+            return Mathf.Clamp01(_remainingRevolutions / Mathf.Max(_maxRevolutions, MIN_REVOLUTION_DIVISOR));
+        }
+
         float GetSpinSpeed()
         {
-            float remainingRatio = Mathf.Clamp01(_remainingRevolutions / Mathf.Max(_maxRevolutions, MIN_REVOLUTION_DIVISOR));
-            return Mathf.Lerp(MIN_SPIN_SPEED, _maxSpinSpeed, remainingRatio);
+            return Mathf.Lerp(MIN_SPIN_SPEED, _maxSpinSpeed, GetSpinRatio());
+        }
+
+        void PlaySpinTick()
+        {
+            if (IsDeactivated)
+                return;
+
+            AudioManager.PlaySequenced(AudioStorage.EAudioClipType.GimmickHitSpinner, Mathf.Lerp(TICK_MIN_PITCH, TICK_MAX_PITCH, GetSpinRatio()));
         }
 
         async UniTaskVoid SpinAsync(CancellationToken cancellationToken)
@@ -100,6 +116,7 @@ namespace Pinball.Ingame.Map
                 {
                     _currentAngle -= FULL_ROTATION;
                     GainScore(_scoreRewardPerRevolution, transform.position, ConsumeScoreSource());
+                    PlaySpinTick();
                 }
 
                 ApplyVisualAngle(_currentAngle);
