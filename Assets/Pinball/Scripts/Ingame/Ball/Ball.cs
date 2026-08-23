@@ -7,12 +7,17 @@ namespace Pinball.Ingame
     public class Ball : MonoBehaviour, IPoolObject
     {
         const float OPAQUE_ALPHA = 1f;
+        const float MIN_HIT_SPEED = 2.5f;
+        const float MAX_HIT_SPEED = 12f;
+        const float MIN_HIT_VOLUME_RATIO = 0.4f;
+        const float MAX_HIT_VOLUME_RATIO = 1f;
 
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
         [SerializeField] SpriteRenderer _renderer = null;
         [SerializeField] BallTrail _trail = null;
         [SerializeField] BallAuraController _auraController = null;
+        [SerializeField] LayerMask _hitSoundLayerMask = 0;
 
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
@@ -88,7 +93,16 @@ namespace Pinball.Ingame
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            AudioManager.Play(AudioStorage.EAudioClipType.BallHitNormal);
+            if (!_hitSoundLayerMask.HasLayer(collision.gameObject.layer))
+                return;
+
+            float hitSpeedSqr = collision.relativeVelocity.sqrMagnitude;
+            if (hitSpeedSqr < MIN_HIT_SPEED * MIN_HIT_SPEED)
+                return;
+
+            float speedRatio = Mathf.InverseLerp(MIN_HIT_SPEED, MAX_HIT_SPEED, Mathf.Sqrt(hitSpeedSqr));
+            AudioManager.PlayScaled(AudioStorage.EAudioClipType.BallHitNormal,
+                Mathf.Lerp(MIN_HIT_VOLUME_RATIO, MAX_HIT_VOLUME_RATIO, speedRatio));
         }
 
         void RefreshTrailColor()
