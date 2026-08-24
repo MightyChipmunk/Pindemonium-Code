@@ -15,10 +15,15 @@ namespace Pinball.Ingame.Presentation
         const float GIMMICK_HIT_SHAKE_DELAY = 0f;
         const float SPRING_LAUNCH_HARD_POWER_RATIO = 0.85f;
         const float SPRING_LAUNCH_NORMAL_POWER_RATIO = 0.65f;
+        const int COMBO_PITCH_STEP_COUNT = 10;
+        const float COMBO_PITCH_MAX = 2f;
+        const float COMBO_PITCH_IDLE_RESET_SECONDS = 8f;
 
         PresentationConfigData _config = null;
         HitStopPlayer _hitStopPlayer = null;
         Action<CameraController.ECameraShakeType, float> _cameraShaker = null;
+        AudioPitchController _comboPitchController = null;
+        float _comboVolume = 0f;
 
         public IngameDirector(PresentationConfigData config, FXPoolData fxPoolData, Action<CameraController.ECameraShakeType, float> cameraShaker)
         {
@@ -26,10 +31,29 @@ namespace Pinball.Ingame.Presentation
             _cameraShaker = cameraShaker;
             StaticPool<PoolableFX.EFXType, PoolableFX>.Init(fxPoolData);
             _hitStopPlayer = new HitStopPlayer();
+            _comboVolume = AudioStorage.GetVolume(AudioStorage.EAudioClipType.ComboUp);
+            _comboPitchController = new AudioPitchController(AudioManager.Play, CreateComboPitchConfig());
+        }
+
+        static AudioPitchControllerConfig CreateComboPitchConfig()
+        {
+            return new AudioPitchControllerConfig.Builder(AudioStorage.GetClip(AudioStorage.EAudioClipType.ComboUp))
+                .SetMaxPlayCount(COMBO_PITCH_STEP_COUNT)
+                .SetMaxPitch(COMBO_PITCH_MAX)
+                .SetPitchResetDuration(COMBO_PITCH_IDLE_RESET_SECONDS)
+                .SetIsResetPitch(true)
+                .SetEaseType(EaseType.Linear)
+                .Build();
         }
 
         public void Dispose()
         {
+            if (null != _comboPitchController)
+            {
+                _comboPitchController.Dispose();
+                _comboPitchController = null;
+            }
+
             if (null != _hitStopPlayer)
             {
                 _hitStopPlayer.Dispose();
@@ -123,7 +147,12 @@ namespace Pinball.Ingame.Presentation
 
         public void PlayComboUp()
         {
-            AudioManager.Play(AudioStorage.EAudioClipType.ComboUp);
+            _comboPitchController?.Play(_comboVolume);
+        }
+
+        public void ResetComboPitch()
+        {
+            _comboPitchController?.ResetPitch();
         }
 
         public void PlaySurgeCharged()
