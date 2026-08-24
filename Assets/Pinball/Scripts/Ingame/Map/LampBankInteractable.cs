@@ -13,13 +13,21 @@ namespace Pinball.Ingame.Map
         const float SIREN_STEP_INTERVAL = 0.08f;
         const float SIREN_CYCLE_INTERVAL = 0.12f;
         const int NO_LIT_LAMP = 0;
+        const int MIN_REQUIRED_COUNT = 1;
+        const int ROW_REFERENCE_INDEX = 0;
+        const float ROW_CENTER_RATIO = 0.5f;
+        const float FULL_LAMP_SCALE_RATIO = 1f;
 
         [SerializeField] Lamp[] _lamps = null;
+        [SerializeField] int _baseRequiredCount = 3;
+        [SerializeField] float _baseLampSpacing = 0.38f;
         [SerializeField] int _clearScoreReward = 0;
         [SerializeField] PoolableFX.EFXType _lightUpFX = PoolableFX.EFXType.LampLightUp;
         [SerializeField] PoolableFX.EFXType _clearFX = PoolableFX.EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
+        Vector3[] _lampBasePositionArr = null;
+        Vector3[] _lampBaseScaleArr = null;
         int _hitCount = 0;
         int _requiredCount = 0;
         int _litLampCount = NO_LIT_LAMP;
@@ -37,9 +45,60 @@ namespace Pinball.Ingame.Map
             if (null == _lamps)
                 return;
 
-            _requiredCount = StatProvider.GetLampRequiredCount(_lamps.Length);
+            _requiredCount = Mathf.Clamp(StatProvider.GetLampRequiredCount(_baseRequiredCount), MIN_REQUIRED_COUNT, _lamps.Length);
+            CaptureLampBaseTransforms();
+            LayoutLamps();
+
             for (int i = 0; i < _lamps.Length; ++i)
                 _lamps[i].Init();
+        }
+
+        void CaptureLampBaseTransforms()
+        {
+            _lampBasePositionArr = new Vector3[_lamps.Length];
+            _lampBaseScaleArr = new Vector3[_lamps.Length];
+
+            for (int i = 0; i < _lamps.Length; ++i)
+            {
+                _lampBasePositionArr[i] = _lamps[i].transform.localPosition;
+                _lampBaseScaleArr[i] = _lamps[i].transform.localScale;
+            }
+        }
+
+        void LayoutLamps()
+        {
+            float rowWidth = _baseLampSpacing * _baseRequiredCount;
+            float spacing = rowWidth / _requiredCount;
+            float scaleRatio = Mathf.Min(FULL_LAMP_SCALE_RATIO, spacing / _baseLampSpacing);
+            Vector3 rowPosition = _lampBasePositionArr[ROW_REFERENCE_INDEX];
+            Vector3 lampScale = _lampBaseScaleArr[ROW_REFERENCE_INDEX] * scaleRatio;
+
+            for (int i = 0; i < _lamps.Length; ++i)
+            {
+                _lamps[i].gameObject.SetActive(i < _requiredCount);
+                if (i >= _requiredCount)
+                    continue;
+
+                rowPosition.x = spacing * (i + ROW_CENTER_RATIO) - rowWidth * ROW_CENTER_RATIO;
+                _lamps[i].transform.localPosition = rowPosition;
+                _lamps[i].transform.localScale = lampScale;
+            }
+        }
+
+        void RestoreLampBaseTransforms()
+        {
+            if (null == _lampBasePositionArr)
+                return;
+
+            for (int i = 0; i < _lamps.Length; ++i)
+            {
+                _lamps[i].transform.localPosition = _lampBasePositionArr[i];
+                _lamps[i].transform.localScale = _lampBaseScaleArr[i];
+                _lamps[i].gameObject.SetActive(true);
+            }
+
+            _lampBasePositionArr = null;
+            _lampBaseScaleArr = null;
         }
 
         protected override void OnRelease()
@@ -59,6 +118,8 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _lamps.Length; ++i)
                 _lamps[i].Release();
+
+            RestoreLampBaseTransforms();
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -84,7 +145,7 @@ namespace Pinball.Ingame.Map
 
         void LightUpProgressLamps()
         {
-            int targetLampCount = Mathf.Clamp(Mathf.RoundToInt((float)_hitCount * _lamps.Length / _requiredCount), NO_LIT_LAMP, _lamps.Length);
+            int targetLampCount = Mathf.Clamp(_hitCount, NO_LIT_LAMP, _requiredCount);
             for (int i = _litLampCount; i < targetLampCount; ++i)
             {
                 _lamps[i].PlayLightUp();
@@ -109,7 +170,7 @@ namespace Pinball.Ingame.Map
         {
             for (int cycle = 0; cycle < SIREN_CYCLE_COUNT; ++cycle)
             {
-                for (int i = 0; i < _lamps.Length; ++i)
+                for (int i = 0; i < _requiredCount; ++i)
                 {
                     SetAllLit(false);
                     _lamps[i].SetLit(true);
@@ -127,7 +188,7 @@ namespace Pinball.Ingame.Map
 
         void SetAllLit(bool isLit)
         {
-            for (int i = 0; i < _lamps.Length; ++i)
+            for (int i = 0; i < _requiredCount; ++i)
                 _lamps[i].SetLit(isLit);
         }
 
