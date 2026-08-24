@@ -106,7 +106,7 @@ namespace Pinball.Ingame.Map
 
         void RefreshOrderHighlight()
         {
-            bool hasOrder = StatProvider.HasDropTargetOrder() && _droppedCount < _order.Length;
+            bool hasOrder = _isOrderKept && StatProvider.HasDropTargetOrder() && _droppedCount < _order.Length;
             for (int i = 0; i < _targets.Length; ++i)
                 _targets[i].SetHighlighted(hasOrder && i == _order[_droppedCount]);
         }
@@ -136,7 +136,7 @@ namespace Pinball.Ingame.Map
 
         void PlayDropSound(int targetIndex)
         {
-            if (null == _orderPitchController || !StatProvider.HasDropTargetOrder() || targetIndex != _order[_droppedCount])
+            if (null == _orderPitchController || !_isOrderKept || !StatProvider.HasDropTargetOrder() || targetIndex != _order[_droppedCount])
             {
                 PlayGimmickHit();
                 return;
