@@ -18,7 +18,8 @@ namespace Pinball.UI
             int Money,
             int UsedBallCount,
             ItemEntry[] Passives,
-            ItemEntry[] Upgrades) : UIViewArgs
+            ItemEntry[] Upgrades,
+            GimmickScoreView.Args GimmickScores) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.ResultStats;
         }
@@ -38,7 +39,10 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _ballLabel = null;
         [SerializeField] ItemIconGridView[] _passiveGrids = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
+        [SerializeField] Button _gimmickScoreButton = null;
         [SerializeField] Button _closeButton = null;
+
+        Args _args = null;
 
         public override void OnGenerate()
         {
@@ -46,12 +50,14 @@ namespace Pinball.UI
                 _passiveGrids[i].Init(null);
 
             _upgradeGrid.Init(null);
+            _gimmickScoreButton.onClick.AddListener(OnGimmickScoreClicked);
             _closeButton.onClick.AddListener(OnCloseClicked);
             UITooltip.Hide();
         }
 
         public override void OnTerminate()
         {
+            _gimmickScoreButton.onClick.RemoveListener(OnGimmickScoreClicked);
             _closeButton.onClick.RemoveListener(OnCloseClicked);
             for (int i = 0; i < _passiveGrids.Length; ++i)
                 _passiveGrids[i].Release();
@@ -65,6 +71,7 @@ namespace Pinball.UI
                 _passiveGrids[i].Clear();
 
             _upgradeGrid.Clear();
+            _args = null;
             UITooltip.Hide();
         }
 
@@ -74,6 +81,7 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
+            _args = viewArgs;
             _stageLabel.text = viewArgs.StageNumber.ToString(CultureInfo.InvariantCulture);
             _scoreLabel.text = viewArgs.Score.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);
             _moneyLabel.text = viewArgs.Money.ToString(CultureInfo.InvariantCulture);
@@ -146,8 +154,17 @@ namespace Pinball.UI
             return string.Format(COUNT_FORMAT, count);
         }
 
+        void OnGimmickScoreClicked()
+        {
+            if (null == _args || null == _args.GimmickScores)
+                return;
+
+            UIManager.Show(_args.GimmickScores);
+        }
+
         void OnCloseClicked()
         {
+            UIManager.Hide(UIViewCatalogData.EViewType.GimmickScore);
             UIManager.Hide(UIViewCatalogData.EViewType.ResultStats);
         }
     }

@@ -62,28 +62,61 @@ namespace Pinball.Ingame.Stage
             return LocalizationTable.Format(TIME_LIMIT_KEY, TIME_LIMIT_FORMAT, totalSeconds / SECONDS_PER_MINUTE, totalSeconds % SECONDS_PER_MINUTE);
         }
 
+        public static LocalizedTextRef GetGimmickNameRef(MapInteractable.EGimmickType gimmickType)
+        {
+            GetGimmickNameEntry(gimmickType, out string key, out string fallback);
+            if (string.IsNullOrEmpty(key))
+                return new LocalizedTextRef(fallback);
+
+            return new LocalizedTextRef(key);
+        }
+
         static string GetGimmickName(MapInteractable.EGimmickType gimmickType)
+        {
+            GetGimmickNameEntry(gimmickType, out string key, out string fallback);
+            return LocalizationTable.Get(key, fallback);
+        }
+
+        static void GetGimmickNameEntry(MapInteractable.EGimmickType gimmickType, out string key, out string fallback)
         {
             switch (gimmickType)
             {
                 case MapInteractable.EGimmickType.Bumper:
-                    return LocalizationTable.Get(BUMPER_NAME_KEY, BUMPER_NAME);
+                    key = BUMPER_NAME_KEY;
+                    fallback = BUMPER_NAME;
+                    return;
                 case MapInteractable.EGimmickType.Slingshot:
-                    return LocalizationTable.Get(SLINGSHOT_NAME_KEY, SLINGSHOT_NAME);
+                    key = SLINGSHOT_NAME_KEY;
+                    fallback = SLINGSHOT_NAME;
+                    return;
                 case MapInteractable.EGimmickType.Spinner:
-                    return LocalizationTable.Get(SPINNER_NAME_KEY, SPINNER_NAME);
+                    key = SPINNER_NAME_KEY;
+                    fallback = SPINNER_NAME;
+                    return;
                 case MapInteractable.EGimmickType.DropTarget:
-                    return LocalizationTable.Get(DROP_TARGET_NAME_KEY, DROP_TARGET_NAME);
+                    key = DROP_TARGET_NAME_KEY;
+                    fallback = DROP_TARGET_NAME;
+                    return;
                 case MapInteractable.EGimmickType.StandupTarget:
-                    return LocalizationTable.Get(STANDUP_NAME_KEY, STANDUP_NAME);
+                    key = STANDUP_NAME_KEY;
+                    fallback = STANDUP_NAME;
+                    return;
                 case MapInteractable.EGimmickType.LampBank:
-                    return LocalizationTable.Get(LAMP_BANK_NAME_KEY, LAMP_BANK_NAME);
+                    key = LAMP_BANK_NAME_KEY;
+                    fallback = LAMP_BANK_NAME;
+                    return;
                 case MapInteractable.EGimmickType.Lane:
-                    return LocalizationTable.Get(LANE_NAME_KEY, LANE_NAME);
+                    key = LANE_NAME_KEY;
+                    fallback = LANE_NAME;
+                    return;
                 case MapInteractable.EGimmickType.Saucer:
-                    return LocalizationTable.Get(SAUCER_NAME_KEY, SAUCER_NAME);
+                    key = SAUCER_NAME_KEY;
+                    fallback = SAUCER_NAME;
+                    return;
                 default:
-                    return gimmickType.ToString().ToUpperInvariant();
+                    key = string.Empty;
+                    fallback = gimmickType.ToString().ToUpperInvariant();
+                    return;
             }
         }
     }

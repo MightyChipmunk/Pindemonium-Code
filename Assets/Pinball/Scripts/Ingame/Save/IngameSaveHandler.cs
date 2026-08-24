@@ -19,7 +19,8 @@ namespace Pinball.Ingame.Save
             string VoucherOfferId,
             int VoucherOfferRound,
             int VoucherPurchasedRound,
-            int SlingshotHitCount);
+            int SlingshotHitCount,
+            int[] GimmickScores);
 
         public bool TryLoad(bool isContinueRequested, out IngamePlayData savedData)
         {
@@ -44,7 +45,8 @@ namespace Pinball.Ingame.Save
                 param.VoucherOfferId,
                 param.VoucherOfferRound,
                 param.VoucherPurchasedRound,
-                param.SlingshotHitCount));
+                param.SlingshotHitCount,
+                param.GimmickScores));
         }
 
         public void UpdateBestStage(string flipperId, int stageNumber)

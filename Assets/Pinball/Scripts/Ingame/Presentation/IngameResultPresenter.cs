@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Pinball.Ingame.Map;
 using Pinball.Ingame.Shop;
+using Pinball.Ingame.Stage;
 using Pinball.Ingame.UI;
 using Pinball.UI;
 
@@ -8,7 +10,7 @@ namespace Pinball.Ingame.Presentation
 {
     public class IngameResultPresenter
     {
-        public record RunSummary(int StageNumber, int Score, int Money, int UsedBallCount);
+        public record RunSummary(int StageNumber, int Score, int Money, int UsedBallCount, int[] GimmickScores);
 
         const int PASSIVE_OWNED_COUNT = 1;
 
@@ -67,7 +69,47 @@ namespace Pinball.Ingame.Presentation
                 Money: summary.Money,
                 UsedBallCount: summary.UsedBallCount,
                 Passives: passives,
-                Upgrades: upgrades);
+                Upgrades: upgrades,
+                GimmickScores: BuildGimmickScores(summary.GimmickScores));
+        }
+
+        static GimmickScoreView.Args BuildGimmickScores(int[] scores)
+        {
+            Array gimmickTypes = Enum.GetValues(typeof(MapInteractable.EGimmickType));
+            GimmickScoreView.Entry[] entries = new GimmickScoreView.Entry[gimmickTypes.Length];
+            for (int i = 0; i < entries.Length; ++i)
+            {
+                MapInteractable.EGimmickType gimmickType = (MapInteractable.EGimmickType)gimmickTypes.GetValue(i);
+                entries[i] = new GimmickScoreView.Entry(StageGimmickLabelFormatter.GetGimmickNameRef(gimmickType), GetGimmickScore(scores, gimmickType));
+            }
+
+            SortByScoreDescending(entries);
+            return new GimmickScoreView.Args(entries);
+        }
+
+        static int GetGimmickScore(int[] scores, MapInteractable.EGimmickType gimmickType)
+        {
+            int index = (int)gimmickType;
+            if (null == scores || index < 0 || index >= scores.Length)
+                return 0;
+
+            return scores[index];
+        }
+
+        static void SortByScoreDescending(GimmickScoreView.Entry[] entries)
+        {
+            for (int i = 1; i < entries.Length; ++i)
+            {
+                GimmickScoreView.Entry current = entries[i];
+                int slot = i - 1;
+                while (slot >= 0 && entries[slot].Score < current.Score)
+                {
+                    entries[slot + 1] = entries[slot];
+                    --slot;
+                }
+
+                entries[slot + 1] = current;
+            }
         }
 
         static OwnedItemsView.Entry BuildOwnedEntry(ShopItemData item, int count)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
@@ -69,6 +69,7 @@ namespace Pinball.Ingame
         BallFlowController _ballFlow = null;
         ScoreCounter _scoreCounter = null;
         SlingshotScoreGrowth _slingshotGrowth = null;
+        GimmickScoreTracker _gimmickScoreTracker = null;
         DamageCalculator _damageCalculator = null;
         StageProgressTracker _stageTracker = null;
         StageGimmickResolver _gimmickResolver = null;
@@ -220,7 +221,8 @@ namespace Pinball.Ingame
             _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage());
 
             _slingshotGrowth = new SlingshotScoreGrowth(start.SlingshotHitCount);
-            _scoreCounter = new ScoreCounter(start.Score, _comboConfig, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier, _slingshotGrowth);
+            _gimmickScoreTracker = new GimmickScoreTracker(start.GimmickScores);
+            _scoreCounter = new ScoreCounter(start.Score, _comboConfig, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier, _gimmickScoreTracker.Add, _slingshotGrowth);
             _scoreCounter.OnComboChanged += OnComboChanged;
             _scoreCounter.OnComboEnded += OnComboEnded;
         }
@@ -517,7 +519,8 @@ namespace Pinball.Ingame
                 StageNumber: _stageTracker.StageNumber,
                 Score: _scoreCounter.Current,
                 Money: _wallet.Current,
-                UsedBallCount: _ballFlow.UsedBallCount);
+                UsedBallCount: _ballFlow.UsedBallCount,
+                GimmickScores: _gimmickScoreTracker.CollectScores());
         }
 
         bool GetIsControlBlocked()
@@ -585,7 +588,8 @@ namespace Pinball.Ingame
                 VoucherOfferId: _vouchers.GetOfferId(),
                 VoucherOfferRound: _vouchers.OfferRoundIndex,
                 VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex,
-                SlingshotHitCount: _slingshotGrowth.HitCount));
+                SlingshotHitCount: _slingshotGrowth.HitCount,
+                GimmickScores: _gimmickScoreTracker.CollectScores()));
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)

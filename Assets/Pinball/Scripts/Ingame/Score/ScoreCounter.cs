@@ -14,6 +14,7 @@ namespace Pinball.Ingame.Score
         SlingshotScoreGrowth _slingshotGrowth = null;
         Action<int, Vector2> _scorePopupPlayer = null;
         Func<MapInteractable.EGimmickType, float> _stageGimmickScoreMultiplierGetter = null;
+        Action<MapInteractable.EGimmickType, int> _gimmickScoreReporter = null;
         int _current = 0;
         float _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
 
@@ -23,12 +24,13 @@ namespace Pinball.Ingame.Score
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, float, int> OnComboEnded;
 
-        public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, SlingshotScoreGrowth slingshotGrowth)
+        public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, Action<MapInteractable.EGimmickType, int> gimmickScoreReporter, SlingshotScoreGrowth slingshotGrowth)
         {
             _current = initialScore;
             _slingshotGrowth = slingshotGrowth;
             _scorePopupPlayer = scorePopupPlayer;
             _stageGimmickScoreMultiplierGetter = stageGimmickScoreMultiplierGetter;
+            _gimmickScoreReporter = gimmickScoreReporter;
             _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             _comboTracker = new ComboTracker(comboConfig, StatProvider.GetComboMultiplierBonus, StatProvider.GetComboTimeoutBonus);
             _comboTracker.OnComboChanged += HandleComboChanged;
@@ -56,6 +58,7 @@ namespace Pinball.Ingame.Score
                 _comboTracker.AddBounce(finalScore);
 
             Add(finalScore);
+            _gimmickScoreReporter?.Invoke(gimmickType, finalScore);
             _scorePopupPlayer?.Invoke(finalScore, worldPoint);
         }
 
