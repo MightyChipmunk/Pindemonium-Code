@@ -33,6 +33,7 @@ namespace Pinball.Ingame.State
         bool _isBallInPlay = false;
         bool _isPaused = false;
         bool _isPlayStopped = true;
+        bool _isGameClearPending = false;
 
         public override EIngameState Key => EIngameState.Play;
         public bool IsControlBlocked => _isPaused || _isPlayStopped;
@@ -59,7 +60,9 @@ namespace Pinball.Ingame.State
             _ballFlow.OnBallReady += OnBallReady;
             _ballFlow.OnAllBallsLost += OnAllBallsLost;
             _playerController.OnLaunched += OnBallLaunched;
+            UIManager.OnEvent += HandleUIEvent;
 
+            _isGameClearPending = false;
             _isPlayStopped = false;
             _isBallInPlay = false;
             _isPaused = false;
@@ -90,6 +93,8 @@ namespace Pinball.Ingame.State
             if (null != _playerController)
                 _playerController.OnLaunched -= OnBallLaunched;
 
+            UIManager.OnEvent -= HandleUIEvent;
+            _isGameClearPending = false;
             _currentMap = null;
         }
 
@@ -194,6 +199,20 @@ namespace Pinball.Ingame.State
         void OnAllStagesCleared()
         {
             StopPlay();
+            _isGameClearPending = true;
+            _director.PlayStageClear();
+            UIManager.Show(new StageClearView.Args(_stageTracker.StageNumber));
+        }
+
+        void HandleUIEvent(UIManager.EEvent uiEvent, int payload)
+        {
+            if (uiEvent != UIManager.EEvent.StageClearFinished)
+                return;
+
+            if (!_isGameClearPending)
+                return;
+
+            _isGameClearPending = false;
             ChangeState(EIngameState.Result, new ResultState.EnterParam(GameResultView.EResult.Clear));
         }
 
