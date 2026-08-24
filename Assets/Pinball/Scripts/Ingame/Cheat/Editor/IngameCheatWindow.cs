@@ -244,7 +244,7 @@ namespace Pinball.Ingame.Cheat.Editor
             _statusLabel.text = string.Format(READY_STATUS_FORMAT,
                 handler.GetMoney(),
                 handler.GetPassiveCount(),
-                handler.GetPassiveSlotCount(),
+                handler.GetTotalPassiveSlotCount(),
                 handler.GetUpgradeKindCount());
         }
 

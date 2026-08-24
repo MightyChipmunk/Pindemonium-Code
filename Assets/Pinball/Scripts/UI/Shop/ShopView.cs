@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using Pinball.Audio;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.UI;
 using Pinball.Localization;
+using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,19 +12,19 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record OfferEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, bool IsPassive);
+        public record OfferEntry(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, int Price, bool IsPassive);
 
-        public record OwnedEntry(Sprite Icon, int Count, string TitleKey, string DescriptionKey, int SellPrice);
+        public record OwnedEntry(Sprite Icon, int Count, LocalizedTextRef Title, LocalizedTextRef Description, int SellPrice, ShopItemData.EPassiveCategory Category);
 
-        public record PackEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price, Sprite BandSprite, bool CanBuy);
+        public record PackEntry(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, int Price, Sprite BandSprite, bool CanBuy);
 
-        public record VoucherEntry(string TitleKey, Sprite Icon, string DescriptionKey, int Price);
+        public record VoucherEntry(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, int Price);
 
         public record PurchaseEntry(int SlotIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
         public record UpgradeGrantEntry(int OwnedIndex, int PreviousCount);
 
-        public record SellEntry(int RemovedIndex, UpgradeGrantEntry Grant);
+        public record SellEntry(ShopItemData.EPassiveCategory Category, int RemovedSlotIndex, UpgradeGrantEntry Grant);
 
         public record Args(
             int Money,
@@ -29,7 +32,9 @@ namespace Pinball.UI
             OfferEntry[] Offers,
             PurchaseEntry Purchase,
             SellEntry Sell,
-            int PassiveSlotCount,
+            int BallPassiveSlotCount,
+            int MapPassiveSlotCount,
+            int CommonPassiveSlotCount,
             OwnedEntry[] Passives,
             OwnedEntry[] Upgrades,
             PackEntry[] Packs,
@@ -47,10 +52,6 @@ namespace Pinball.UI
         const string REROLL_FORMAT = "REROLL ${0}";
         const string REROLL_KEY = "ui.shop.reroll";
         const string PRICE_FORMAT = "${0}";
-        const string PASSIVE_HEADER_FORMAT = "PASSIVE  {0}/{1}";
-        const string PASSIVE_HEADER_KEY = "ui.shop.passive_header";
-        const string UPGRADE_HEADER_FORMAT = "UPGRADE  {0}";
-        const string UPGRADE_HEADER_KEY = "ui.shop.upgrade_header";
         const string OWNED_COUNT_FORMAT = "x{0}";
         const string ROUND_FORMAT = "ROUND {0} / {1}";
         const string ROUND_KEY = "ui.shop.round";
@@ -66,8 +67,14 @@ namespace Pinball.UI
         const int STACKED_COUNT_MIN = 2;
         const string NOT_ENOUGH_MONEY_TEXT = "NOT ENOUGH MONEY";
         const string NOT_ENOUGH_MONEY_KEY = "ui.shop.not_enough_money";
-        const string PASSIVE_SLOT_FULL_TEXT = "PASSIVE SLOTS FULL";
+        const string PASSIVE_SLOT_FULL_FORMAT = "{0} PASSIVE SLOTS FULL";
         const string PASSIVE_SLOT_FULL_KEY = "ui.shop.passive_slots_full";
+        const string PASSIVE_CATEGORY_BALL_TEXT = "BALL";
+        const string PASSIVE_CATEGORY_BALL_KEY = "ui.passive.category_ball";
+        const string PASSIVE_CATEGORY_MAP_TEXT = "MAP";
+        const string PASSIVE_CATEGORY_MAP_KEY = "ui.passive.category_map";
+        const string PASSIVE_CATEGORY_COMMON_TEXT = "COMMON";
+        const string PASSIVE_CATEGORY_COMMON_KEY = "ui.passive.category_common";
         const float PASSIVE_SHAKE_STRENGTH = 18f;
         const float MONEY_SHAKE_STRENGTH = 24f;
         const float VIEWPORT_CENTER_RATIO = 0.5f;
@@ -76,17 +83,25 @@ namespace Pinball.UI
         const float SELL_BUTTON_GAP = 16f;
         const float SLOT_SHIFT_DURATION = 0.28f;
         const int NO_SLOT_INDEX = -1;
+        const int PASSIVE_CATEGORY_COUNT = 3;
+        const float PASSIVE_SLOT_WIDTH = 82f;
+        const float PASSIVE_SLOT_SPACING = 7f;
+        const float PASSIVE_GROUP_MAX_WIDTH = 260f;
+        const float PASSIVE_GROUP_MAX_SCALE = 1f;
+        const int UPGRADE_LIST_ROW_CAPACITY = 8;
 
         [SerializeField] TMP_Text _moneyLabel = null;
         [SerializeField] ShopItemView[] _offerSlots = null;
         [SerializeField] HorizontalLayoutGroup _offerRow = null;
-        [SerializeField] TMP_Text _passiveHeaderLabel = null;
-        [SerializeField] TMP_Text _upgradeHeaderLabel = null;
-        [SerializeField] ItemIconGridView _passiveGrid = null;
+        [SerializeField] ItemIconGridView[] _passiveGrids = null;
         [SerializeField] RectTransform _passiveSlotRoot = null;
         [SerializeField] RectTransform _upgradeSlotRoot = null;
         [SerializeField] ScrollRect _upgradeScroll = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
+        [SerializeField] Button _upgradeListButton = null;
+        [SerializeField] RectTransform _upgradeListPanel = null;
+        [SerializeField] RectTransform _upgradeListContent = null;
+        [SerializeField] UpgradeListRowView _upgradeListRowOrigin = null;
         [SerializeField] RectTransform _sellButtonRoot = null;
         [SerializeField] Button _sellButton = null;
         [SerializeField] TMP_Text _sellLabel = null;
@@ -110,14 +125,32 @@ namespace Pinball.UI
         ShakeFeedback _passiveDenied = null;
         Args _animatedArgs = null;
         Args _boundArgs = null;
-        int _selectedPassiveIndex = NO_SLOT_INDEX;
-        int _sellingPassiveIndex = NO_SLOT_INDEX;
+        List<int>[] _passiveOwnedIndices = null;
+        ObjectPool<UpgradeListRowView> _upgradeListRowPool = null;
+        List<UpgradeListRowView> _upgradeListRows = null;
+        int _selectedPassiveCategory = NO_SLOT_INDEX;
+        int _selectedPassiveSlot = NO_SLOT_INDEX;
+        int _sellingPassiveCategory = NO_SLOT_INDEX;
+        int _sellingPassiveSlot = NO_SLOT_INDEX;
         Transform _lastRequestSource = null;
 
         public override void OnGenerate()
         {
-            _passiveGrid.Init(OnPassiveSlotClicked);
+            _passiveOwnedIndices = new List<int>[PASSIVE_CATEGORY_COUNT];
+            for (int i = 0; i < PASSIVE_CATEGORY_COUNT; ++i)
+                _passiveOwnedIndices[i] = new List<int>();
+
+            for (int i = 0; i < _passiveGrids.Length; ++i)
+            {
+                int category = i;
+                _passiveGrids[i].Init(slotIndex => OnPassiveSlotClicked(category, slotIndex));
+            }
+
             _upgradeGrid.Init(null);
+            _upgradeListRows = new List<UpgradeListRowView>();
+            _upgradeListRowPool = new ObjectPool<UpgradeListRowView>(_upgradeListRowOrigin, CreateUpgradeListRow, UPGRADE_LIST_ROW_CAPACITY);
+            _upgradeListButton.onClick.AddListener(OnUpgradeListToggleClicked);
+            HideUpgradeListPanel();
 
             Transform[] offerSlotRoots = new Transform[_offerSlots.Length];
             for (int i = 0; i < _offerSlots.Length; ++i)
@@ -170,8 +203,14 @@ namespace Pinball.UI
             _startButton.onClick.RemoveListener(OnStartClicked);
             _menuButton.onClick.RemoveListener(OnMenuClicked);
             _sellButton.onClick.RemoveListener(OnSellClicked);
-            _passiveGrid.Release();
+            _upgradeListButton.onClick.RemoveListener(OnUpgradeListToggleClicked);
+            _upgradeListRowPool.Clear();
+            _upgradeListRowPool = null;
+            _upgradeListRows = null;
+            for (int i = 0; i < _passiveGrids.Length; ++i)
+                _passiveGrids[i].Release();
             _upgradeGrid.Release();
+            _passiveOwnedIndices = null;
         }
 
         public override void OnReturn()
@@ -182,11 +221,15 @@ namespace Pinball.UI
             _passiveDenied.Kill();
             _animatedArgs = null;
             _boundArgs = null;
-            _selectedPassiveIndex = NO_SLOT_INDEX;
-            _sellingPassiveIndex = NO_SLOT_INDEX;
+            _selectedPassiveCategory = NO_SLOT_INDEX;
+            _selectedPassiveSlot = NO_SLOT_INDEX;
+            _sellingPassiveCategory = NO_SLOT_INDEX;
+            _sellingPassiveSlot = NO_SLOT_INDEX;
             HideSellButton();
+            HideUpgradeListPanel();
             _lastRequestSource = null;
-            _passiveGrid.Clear();
+            for (int i = 0; i < _passiveGrids.Length; ++i)
+                _passiveGrids[i].Clear();
             _upgradeGrid.Clear();
             UITooltip.Hide();
         }
@@ -235,8 +278,11 @@ namespace Pinball.UI
             RectTransform slotRoot = isPassive ? _passiveSlotRoot : _upgradeSlotRoot;
             LayoutRebuilder.ForceRebuildLayoutImmediate(slotRoot);
 
-            ItemIconGridView grid = isPassive ? _passiveGrid : _upgradeGrid;
-            RectTransform iconRect = grid.GetSlotIconRect(ownedIndex);
+            ItemIconGridView grid = GetOwnedGrid(isPassive, ownedIndex, out int slotIndex);
+            if (null == grid)
+                return null;
+
+            RectTransform iconRect = grid.GetSlotIconRect(slotIndex);
             if (null == iconRect)
                 return null;
 
@@ -248,11 +294,28 @@ namespace Pinball.UI
 
         void PlayOwnedSlotChange(bool isPassive, int ownedIndex, int previousCount, float delay)
         {
-            ItemIconGridView grid = isPassive ? _passiveGrid : _upgradeGrid;
+            ItemIconGridView grid = GetOwnedGrid(isPassive, ownedIndex, out int slotIndex);
+            if (null == grid)
+                return;
+
             if (previousCount > 0)
-                grid.PlaySlotCountChange(ownedIndex, GetCountText(previousCount), delay);
+                grid.PlaySlotCountChange(slotIndex, GetCountText(previousCount), delay);
             else
-                grid.PlaySlotAppear(ownedIndex, delay);
+                grid.PlaySlotAppear(slotIndex, delay);
+        }
+
+        ItemIconGridView GetOwnedGrid(bool isPassive, int ownedIndex, out int slotIndex)
+        {
+            if (!isPassive)
+            {
+                slotIndex = ownedIndex;
+                return _upgradeGrid;
+            }
+
+            if (!TryGetPassiveGridPosition(ownedIndex, out int category, out slotIndex))
+                return null;
+
+            return _passiveGrids[category];
         }
 
         void ScrollUpgradeSlotIntoView(RectTransform iconRect)
@@ -283,9 +346,9 @@ namespace Pinball.UI
             }
 
             _voucherSlot.Bind(new ShopCardSlotView.BindParam(
-                Title: LocalizationTable.GetOrKey(voucher.TitleKey),
+                Title: voucher.Title.Resolve(),
                 Icon: voucher.Icon,
-                Description: LocalizationTable.GetOrKey(voucher.DescriptionKey),
+                Description: voucher.Description.Resolve(),
                 PriceText: string.Format(PRICE_FORMAT, voucher.Price),
                 BandSprite: _voucherBandSprite,
                 CanBuy: true));
@@ -310,9 +373,9 @@ namespace Pinball.UI
                 }
 
                 _packSlots[i].Bind(new ShopCardSlotView.BindParam(
-                    Title: LocalizationTable.GetOrKey(pack.TitleKey),
+                    Title: pack.Title.Resolve(),
                     Icon: pack.Icon,
-                    Description: LocalizationTable.GetOrKey(pack.DescriptionKey),
+                    Description: pack.Description.Resolve(),
                     PriceText: string.Format(PRICE_FORMAT, pack.Price),
                     BandSprite: pack.BandSprite,
                     CanBuy: pack.CanBuy));
@@ -368,9 +431,9 @@ namespace Pinball.UI
 
             slot.BindItem(new ShopItemView.BindParam(
                 IsPassive: offer.IsPassive,
-                Title: LocalizationTable.GetOrKey(offer.TitleKey),
+                Title: offer.Title.Resolve(),
                 Icon: offer.Icon,
-                Description: LocalizationTable.GetOrKey(offer.DescriptionKey),
+                Description: offer.Description.Resolve(),
                 PriceText: string.Format(PRICE_FORMAT, offer.Price),
                 ShowPrice: true));
         }
@@ -390,24 +453,132 @@ namespace Pinball.UI
         void BindOwned(Args args, SellEntry sell)
         {
             ClearPassiveSelection();
-
-            int passiveCount = null == args.Passives ? 0 : args.Passives.Length;
-            int upgradeCount = null == args.Upgrades ? 0 : args.Upgrades.Length;
-            _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, passiveCount, args.PassiveSlotCount);
-            _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, upgradeCount);
             UITooltip.Hide();
 
-            _passiveGrid.Bind(BuildGridEntries(args.Passives), Mathf.Max(0, args.PassiveSlotCount - passiveCount));
+            BindPassiveGrids(args);
             _upgradeGrid.Bind(BuildGridEntries(args.Upgrades), 0);
-            PlaySellShift(sell, passiveCount);
+            BindUpgradeListRows(args.Upgrades);
+            PlaySellShift(sell);
         }
 
-        void PlaySellShift(SellEntry sell, int passiveCount)
+        void BindPassiveGrids(Args args)
+        {
+            for (int i = 0; i < _passiveOwnedIndices.Length; ++i)
+                _passiveOwnedIndices[i].Clear();
+
+            int passiveCount = null == args.Passives ? 0 : args.Passives.Length;
+            for (int i = 0; i < passiveCount; ++i)
+            {
+                OwnedEntry entry = args.Passives[i];
+                if (null == entry)
+                    continue;
+
+                _passiveOwnedIndices[(int)entry.Category].Add(i);
+            }
+
+            for (int category = 0; category < _passiveGrids.Length; ++category)
+                BindPassiveGrid(category, args);
+        }
+
+        void BindPassiveGrid(int category, Args args)
+        {
+            List<int> ownedIndices = _passiveOwnedIndices[category];
+            ItemIconGridView.Entry[] entries = new ItemIconGridView.Entry[ownedIndices.Count];
+            for (int i = 0; i < ownedIndices.Count; ++i)
+            {
+                OwnedEntry item = args.Passives[ownedIndices[i]];
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.Title, item.Description);
+            }
+
+            int slotCount = GetPassiveSlotCount(args, category);
+            _passiveGrids[category].Bind(entries, Mathf.Max(0, slotCount - entries.Length));
+            SlotRowLayout.FitWidth(
+                _passiveGrids[category].GetContentRect(),
+                Mathf.Max(slotCount, entries.Length),
+                PASSIVE_SLOT_WIDTH,
+                PASSIVE_SLOT_SPACING,
+                PASSIVE_GROUP_MAX_WIDTH,
+                PASSIVE_GROUP_MAX_SCALE);
+        }
+
+        static int GetPassiveSlotCount(Args args, int category)
+        {
+            switch ((ShopItemData.EPassiveCategory)category)
+            {
+                case ShopItemData.EPassiveCategory.Ball:
+                    return args.BallPassiveSlotCount;
+                case ShopItemData.EPassiveCategory.Map:
+                    return args.MapPassiveSlotCount;
+                default:
+                    return args.CommonPassiveSlotCount;
+            }
+        }
+
+        void BindUpgradeListRows(OwnedEntry[] upgrades)
+        {
+            ReturnUpgradeListRows();
+
+            int upgradeCount = null == upgrades ? 0 : upgrades.Length;
+            for (int i = 0; i < upgradeCount; ++i)
+            {
+                OwnedEntry entry = upgrades[i];
+                if (null == entry)
+                    continue;
+
+                UpgradeListRowView row = _upgradeListRowPool.Get();
+                row.transform.SetParent(_upgradeListContent, false);
+                row.transform.SetAsLastSibling();
+                row.Bind(new UpgradeListRowView.BindParam(
+                    Icon: entry.Icon,
+                    Name: entry.Title.Resolve(),
+                    CountText: string.Format(OWNED_COUNT_FORMAT, entry.Count)));
+                _upgradeListRows.Add(row);
+            }
+
+            _upgradeListButton.gameObject.SetActive(upgradeCount > 0);
+            if (upgradeCount <= 0)
+                HideUpgradeListPanel();
+        }
+
+        void ReturnUpgradeListRows()
+        {
+            for (int i = 0; i < _upgradeListRows.Count; ++i)
+                _upgradeListRowPool.Return(_upgradeListRows[i]);
+
+            _upgradeListRows.Clear();
+        }
+
+        UpgradeListRowView CreateUpgradeListRow(UpgradeListRowView origin)
+        {
+            return Instantiate(origin, _upgradeListContent);
+        }
+
+        void OnUpgradeListToggleClicked()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.UIButtonClick);
+            if (_upgradeListPanel.gameObject.activeSelf)
+            {
+                HideUpgradeListPanel();
+                return;
+            }
+
+            _upgradeListPanel.gameObject.SetActive(true);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_upgradeListPanel);
+        }
+
+        void HideUpgradeListPanel()
+        {
+            _upgradeListPanel.gameObject.SetActive(false);
+        }
+
+        void PlaySellShift(SellEntry sell)
         {
             if (null == sell)
                 return;
 
-            _passiveGrid.PlayIconShift(sell.RemovedIndex, passiveCount - 1, SLOT_SHIFT_DURATION);
+            int category = (int)sell.Category;
+            int categoryCount = _passiveOwnedIndices[category].Count;
+            _passiveGrids[category].PlayIconShift(sell.RemovedSlotIndex, categoryCount - 1, SLOT_SHIFT_DURATION);
             PlaySellGrant(sell.Grant);
         }
 
@@ -422,57 +593,91 @@ namespace Pinball.UI
             PlayOwnedSlotChange(false, grant.OwnedIndex, grant.PreviousCount, SLOT_SHIFT_DURATION);
         }
 
-        void OnPassiveSlotClicked(int slotIndex)
+        void OnPassiveSlotClicked(int category, int slotIndex)
         {
-            if (_sellingPassiveIndex >= 0)
+            if (_sellingPassiveSlot >= 0)
                 return;
 
             AudioManager.Play(AudioStorage.EAudioClipType.UIButtonClick);
 
-            if (slotIndex == _selectedPassiveIndex)
+            if (category == _selectedPassiveCategory && slotIndex == _selectedPassiveSlot)
             {
                 ClearPassiveSelection();
                 return;
             }
 
-            SelectPassive(slotIndex);
+            SelectPassive(category, slotIndex);
         }
 
-        void SelectPassive(int slotIndex)
+        void SelectPassive(int category, int slotIndex)
         {
-            int sellPrice = GetPassiveSellPrice(slotIndex);
+            int sellPrice = GetPassiveSellPrice(category, slotIndex);
             if (sellPrice <= 0)
             {
                 ClearPassiveSelection();
                 return;
             }
 
-            _selectedPassiveIndex = slotIndex;
-            _passiveGrid.SetSelectedSlot(slotIndex);
+            _selectedPassiveCategory = category;
+            _selectedPassiveSlot = slotIndex;
+            for (int i = 0; i < _passiveGrids.Length; ++i)
+                _passiveGrids[i].SetSelectedSlot(i == category ? slotIndex : NO_SLOT_INDEX);
+
             _sellLabel.text = LocalizationTable.Format(SELL_KEY, SELL_FORMAT, sellPrice);
             _sellButtonRoot.gameObject.SetActive(true);
             LayoutRebuilder.ForceRebuildLayoutImmediate(_passiveSlotRoot);
-            PlaceSellButton(slotIndex);
+            PlaceSellButton(category, slotIndex);
         }
 
-        int GetPassiveSellPrice(int slotIndex)
+        int GetPassiveOwnedIndex(int category, int slotIndex)
         {
-            if (null == _boundArgs || null == _boundArgs.Passives)
+            if (null == _passiveOwnedIndices)
+                return NO_SLOT_INDEX;
+
+            if (category < 0 || category >= _passiveOwnedIndices.Length)
+                return NO_SLOT_INDEX;
+
+            List<int> ownedIndices = _passiveOwnedIndices[category];
+            if (slotIndex < 0 || slotIndex >= ownedIndices.Count)
+                return NO_SLOT_INDEX;
+
+            return ownedIndices[slotIndex];
+        }
+
+        bool TryGetPassiveGridPosition(int ownedIndex, out int category, out int slotIndex)
+        {
+            for (int i = 0; i < _passiveOwnedIndices.Length; ++i)
+            {
+                int foundIndex = _passiveOwnedIndices[i].IndexOf(ownedIndex);
+                if (foundIndex < 0)
+                    continue;
+
+                category = i;
+                slotIndex = foundIndex;
+                return true;
+            }
+
+            category = NO_SLOT_INDEX;
+            slotIndex = NO_SLOT_INDEX;
+            return false;
+        }
+
+        int GetPassiveSellPrice(int category, int slotIndex)
+        {
+            int ownedIndex = GetPassiveOwnedIndex(category, slotIndex);
+            if (ownedIndex < 0 || null == _boundArgs || null == _boundArgs.Passives)
                 return 0;
 
-            if (slotIndex < 0 || slotIndex >= _boundArgs.Passives.Length)
-                return 0;
-
-            OwnedEntry entry = _boundArgs.Passives[slotIndex];
+            OwnedEntry entry = _boundArgs.Passives[ownedIndex];
             if (null == entry)
                 return 0;
 
             return entry.SellPrice;
         }
 
-        void PlaceSellButton(int slotIndex)
+        void PlaceSellButton(int category, int slotIndex)
         {
-            RectTransform slotRect = _passiveGrid.GetSlotRect(slotIndex);
+            RectTransform slotRect = _passiveGrids[category].GetSlotRect(slotIndex);
             if (null == slotRect)
                 return;
 
@@ -483,8 +688,11 @@ namespace Pinball.UI
 
         void ClearPassiveSelection()
         {
-            _selectedPassiveIndex = NO_SLOT_INDEX;
-            _passiveGrid.SetSelectedSlot(NO_SLOT_INDEX);
+            _selectedPassiveCategory = NO_SLOT_INDEX;
+            _selectedPassiveSlot = NO_SLOT_INDEX;
+            for (int i = 0; i < _passiveGrids.Length; ++i)
+                _passiveGrids[i].SetSelectedSlot(NO_SLOT_INDEX);
+
             HideSellButton();
         }
 
@@ -495,26 +703,29 @@ namespace Pinball.UI
 
         void OnSellClicked()
         {
-            if (_sellingPassiveIndex >= 0)
+            if (_sellingPassiveSlot >= 0)
                 return;
 
-            if (_selectedPassiveIndex < 0)
+            if (_selectedPassiveSlot < 0)
                 return;
 
-            _sellingPassiveIndex = _selectedPassiveIndex;
-            _selectedPassiveIndex = NO_SLOT_INDEX;
+            _sellingPassiveCategory = _selectedPassiveCategory;
+            _sellingPassiveSlot = _selectedPassiveSlot;
+            _selectedPassiveCategory = NO_SLOT_INDEX;
+            _selectedPassiveSlot = NO_SLOT_INDEX;
             HideSellButton();
-            _passiveGrid.PlaySlotFadeOut(_sellingPassiveIndex, OnSellFadeCompleted);
+            _passiveGrids[_sellingPassiveCategory].PlaySlotFadeOut(_sellingPassiveSlot, OnSellFadeCompleted);
         }
 
         void OnSellFadeCompleted()
         {
-            int slotIndex = _sellingPassiveIndex;
-            _sellingPassiveIndex = NO_SLOT_INDEX;
-            if (slotIndex < 0)
+            int ownedIndex = GetPassiveOwnedIndex(_sellingPassiveCategory, _sellingPassiveSlot);
+            _sellingPassiveCategory = NO_SLOT_INDEX;
+            _sellingPassiveSlot = NO_SLOT_INDEX;
+            if (ownedIndex < 0)
                 return;
 
-            UIManager.RaiseEvent(UIManager.EEvent.ShopSellRequested, slotIndex);
+            UIManager.RaiseEvent(UIManager.EEvent.ShopSellRequested, ownedIndex);
         }
 
         static ItemIconGridView.Entry[] BuildGridEntries(OwnedEntry[] owned)
@@ -529,7 +740,7 @@ namespace Pinball.UI
                 if (null == item)
                     continue;
 
-                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.TitleKey, item.DescriptionKey);
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.Title, item.Description);
             }
 
             return entries;
@@ -576,9 +787,22 @@ namespace Pinball.UI
                     _moneyDenied.Play();
                     break;
                 case UIManager.EEvent.ShopPassiveSlotFull:
-                    _messagePopup.PlayTextAt(LocalizationTable.Get(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_TEXT), GetRequestSourcePosition());
+                    _messagePopup.PlayTextAt(LocalizationTable.Format(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_FORMAT, GetPassiveCategoryName(payload)), GetRequestSourcePosition());
                     _passiveDenied.Play();
                     break;
+            }
+        }
+
+        static string GetPassiveCategoryName(int categoryIndex)
+        {
+            switch ((ShopItemData.EPassiveCategory)categoryIndex)
+            {
+                case ShopItemData.EPassiveCategory.Ball:
+                    return LocalizationTable.Get(PASSIVE_CATEGORY_BALL_KEY, PASSIVE_CATEGORY_BALL_TEXT);
+                case ShopItemData.EPassiveCategory.Map:
+                    return LocalizationTable.Get(PASSIVE_CATEGORY_MAP_KEY, PASSIVE_CATEGORY_MAP_TEXT);
+                default:
+                    return LocalizationTable.Get(PASSIVE_CATEGORY_COMMON_KEY, PASSIVE_CATEGORY_COMMON_TEXT);
             }
         }
 

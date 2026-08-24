@@ -240,6 +240,8 @@ namespace Pinball.Ingame.State
             if (null == passive)
                 return;
 
+            ShopItemData.EPassiveCategory category = passive.PassiveCategory;
+            int removedSlotIndex = CountCategoryPassivesBefore(passiveIndex, category);
             if (!_loadout.TryRemovePassiveAt(passiveIndex))
                 return;
 
@@ -247,7 +249,20 @@ namespace Pinball.Ingame.State
             ShopView.UpgradeGrantEntry grant = GrantSellUpgrades();
             AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
             OnLoadoutChanged?.Invoke();
-            RefreshShopView(false, sell: new ShopView.SellEntry(RemovedIndex: passiveIndex, Grant: grant));
+            RefreshShopView(false, sell: new ShopView.SellEntry(Category: category, RemovedSlotIndex: removedSlotIndex, Grant: grant));
+        }
+
+        int CountCategoryPassivesBefore(int passiveIndex, ShopItemData.EPassiveCategory category)
+        {
+            int count = 0;
+            for (int i = 0; i < passiveIndex; ++i)
+            {
+                ShopItemData passive = _loadout.GetPassive(i);
+                if (null != passive && passive.PassiveCategory == category)
+                    ++count;
+            }
+
+            return count;
         }
 
         ShopView.UpgradeGrantEntry GrantSellUpgrades()
@@ -269,10 +284,10 @@ namespace Pinball.Ingame.State
             return firstGrant;
         }
 
-        void NotifyPassiveSlotFull()
+        void NotifyPassiveSlotFull(ShopItemData.EPassiveCategory category)
         {
             AudioManager.Play(AudioStorage.EAudioClipType.ShopDenied);
-            UIManager.RaiseEvent(UIManager.EEvent.ShopPassiveSlotFull);
+            UIManager.RaiseEvent(UIManager.EEvent.ShopPassiveSlotFull, (int)category);
         }
 
         bool TrySpendMoney(int price)
@@ -302,7 +317,9 @@ namespace Pinball.Ingame.State
                 Offers: BuildOfferEntries(),
                 Purchase: purchase,
                 Sell: sell,
-                PassiveSlotCount: _loadout.PassiveSlotCount,
+                BallPassiveSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Ball),
+                MapPassiveSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Map),
+                CommonPassiveSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Common),
                 Passives: BuildPassiveEntries(),
                 Upgrades: BuildUpgradeEntries(),
                 Packs: BuildPackEntries(),
@@ -329,9 +346,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.PackEntry(
-                TitleKey: pack.GetNameKey(),
+                Title: pack.GetNameKey(),
                 Icon: pack.GetIcon(),
-                DescriptionKey: pack.GetDescriptionKey(),
+                Description: pack.GetDescriptionKey(),
                 Price: pack.Price,
                 BandSprite: pack.BandSprite,
                 CanBuy: _packShop.HasCandidates(pack));
@@ -344,9 +361,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.VoucherEntry(
-                TitleKey: voucher.GetNameKey(),
+                Title: voucher.GetNameRef(),
                 Icon: voucher.GetIcon(),
-                DescriptionKey: voucher.GetDescriptionKey(),
+                Description: voucher.GetDescriptionRef(),
                 Price: PlayerVouchers.PRICE);
         }
 
@@ -395,7 +412,7 @@ namespace Pinball.Ingame.State
             if (voucher.Effect != VoucherData.EEffect.PassiveSlotAdd)
                 return;
 
-            _loadout.AddPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
+            _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
         }
 
         void TryPickPackItem(int cardIndex)
@@ -409,7 +426,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveSlotFull();
+                NotifyPassiveSlotFull(item.PassiveCategory);
                 return;
             }
 
@@ -441,9 +458,9 @@ namespace Pinball.Ingame.State
             {
                 ShopItemData item = _packShop.GetRevealedItem(i);
                 cards[i] = new CardPackPopupView.CardArgs(
-                    TitleKey: item.GetNameKey(),
+                    Title: item.GetNameRef(),
                     Icon: item.GetIcon(),
-                    DescriptionKey: item.GetDescriptionKey(),
+                    Description: item.GetDescriptionRef(),
                     IsPassive: item.Kind == ShopItemData.EItemKind.Passive,
                     IsTaken: _packShop.IsTaken(i));
             }
@@ -496,9 +513,9 @@ namespace Pinball.Ingame.State
                 return null;
 
             return new ShopView.OfferEntry(
-                TitleKey: item.GetNameKey(),
+                Title: item.GetNameRef(),
                 Icon: item.GetIcon(),
-                DescriptionKey: item.GetDescriptionKey(),
+                Description: item.GetDescriptionRef(),
                 Price: _vouchers.GetDiscountedPrice(item.Price),
                 IsPassive: item.Kind == ShopItemData.EItemKind.Passive);
         }
@@ -534,7 +551,7 @@ namespace Pinball.Ingame.State
             if (null == item)
                 return null;
 
-            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey(), sellPrice);
+            return new ShopView.OwnedEntry(item.GetIcon(), count, item.GetNameRef(), item.GetDescriptionRef(), sellPrice, item.PassiveCategory);
         }
 
         void TryBuyOffer(int slotIndex)
@@ -548,7 +565,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveSlotFull();
+                NotifyPassiveSlotFull(item.PassiveCategory);
                 return;
             }
 

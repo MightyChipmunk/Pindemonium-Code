@@ -9,26 +9,66 @@ namespace Pinball.Ingame.Shop
     public class PlayerLoadout
     {
         const int FIRST_UPGRADE_COUNT = 1;
+        const int PASSIVE_CATEGORY_COUNT = 3;
 
         List<ShopItemData> _passives = null;
         List<ShopItemData> _upgrades = null;
         List<int> _upgradeCounts = null;
         Dictionary<ShopItemData.EEffectType, float> _upgradeSums = null;
         Dictionary<MapInteractable.EGimmickType, float> _gimmickScoreSums = null;
-        int _passiveSlotCount = 0;
+        int[] _passiveSlotCounts = null;
 
-        public int PassiveSlotCount => _passiveSlotCount;
         public int PassiveCount => null == _passives ? 0 : _passives.Count;
         public int UpgradeKindCount => null == _upgrades ? 0 : _upgrades.Count;
 
-        public PlayerLoadout(int passiveSlotCount)
+        public PlayerLoadout(int ballPassiveSlotCount, int mapPassiveSlotCount, int commonPassiveSlotCount)
         {
-            _passiveSlotCount = passiveSlotCount;
+            _passiveSlotCounts = new int[PASSIVE_CATEGORY_COUNT];
+            _passiveSlotCounts[(int)ShopItemData.EPassiveCategory.Ball] = ballPassiveSlotCount;
+            _passiveSlotCounts[(int)ShopItemData.EPassiveCategory.Map] = mapPassiveSlotCount;
+            _passiveSlotCounts[(int)ShopItemData.EPassiveCategory.Common] = commonPassiveSlotCount;
             _passives = new List<ShopItemData>();
             _upgrades = new List<ShopItemData>();
             _upgradeCounts = new List<int>();
             _upgradeSums = new Dictionary<ShopItemData.EEffectType, float>();
             _gimmickScoreSums = new Dictionary<MapInteractable.EGimmickType, float>();
+        }
+
+        public int GetPassiveSlotCount(ShopItemData.EPassiveCategory category)
+        {
+            if (null == _passiveSlotCounts)
+                return 0;
+
+            int index = (int)category;
+            if (index < 0 || index >= _passiveSlotCounts.Length)
+                return 0;
+
+            return _passiveSlotCounts[index];
+        }
+
+        public int GetPassiveCount(ShopItemData.EPassiveCategory category)
+        {
+            if (null == _passives)
+                return 0;
+
+            int count = 0;
+            for (int i = 0; i < _passives.Count; ++i)
+                if (_passives[i].PassiveCategory == category)
+                    ++count;
+
+            return count;
+        }
+
+        public int GetTotalPassiveSlotCount()
+        {
+            if (null == _passiveSlotCounts)
+                return 0;
+
+            int total = 0;
+            for (int i = 0; i < _passiveSlotCounts.Length; ++i)
+                total += _passiveSlotCounts[i];
+
+            return total;
         }
 
         public ShopItemData GetPassive(int index)
@@ -42,12 +82,12 @@ namespace Pinball.Ingame.Shop
             return _passives[index];
         }
 
-        public void AddPassiveSlot(int count)
+        public void AddCommonPassiveSlot(int count)
         {
             if (count <= 0)
                 return;
 
-            _passiveSlotCount += count;
+            _passiveSlotCounts[(int)ShopItemData.EPassiveCategory.Common] += count;
         }
 
         public bool IsMostUpgraded(ShopItemData item)
@@ -75,7 +115,7 @@ namespace Pinball.Ingame.Shop
             if (null == item)
                 return false;
 
-            if (_passives.Count >= _passiveSlotCount)
+            if (GetPassiveCount(item.PassiveCategory) >= GetPassiveSlotCount(item.PassiveCategory))
                 return false;
 
             return !_passives.Contains(item);

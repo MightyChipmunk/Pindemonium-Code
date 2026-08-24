@@ -1,3 +1,4 @@
+using Pinball.Localization;
 using UnityEngine;
 
 namespace Pinball.Ingame.Shop
@@ -28,6 +29,8 @@ namespace Pinball.Ingame.Shop
         [SerializeField] EEffect _effect = EEffect.BallResupplyMoney;
         [SerializeField] float[] _effectValueArr = null;
 
+        object[] _textArgArr = null;
+
         public EEffect Effect => _effect;
 
         public float GetEffectValue(int index)
@@ -46,19 +49,39 @@ namespace Pinball.Ingame.Shop
             return name;
         }
 
-        public string GetNameKey()
+        public LocalizedTextRef GetNameRef()
         {
-            return _nameKey;
+            return new LocalizedTextRef(_nameKey, GetTextArgArr());
         }
 
-        public string GetDescriptionKey()
+        public LocalizedTextRef GetDescriptionRef()
         {
-            return _descriptionKey;
+            return new LocalizedTextRef(_descriptionKey, GetTextArgArr());
         }
 
         public Sprite GetIcon()
         {
             return _icon;
         }
+
+        object[] GetTextArgArr()
+        {
+            if (null != _textArgArr)
+                return _textArgArr;
+
+            int valueCount = null == _effectValueArr ? 0 : _effectValueArr.Length;
+            _textArgArr = new object[valueCount];
+            for (int i = 0; i < valueCount; ++i)
+                _textArgArr[i] = _effectValueArr[i];
+
+            return _textArgArr;
+        }
+
+#if UNITY_EDITOR
+        void OnValidate()
+        {
+            _textArgArr = null;
+        }
+#endif // UNITY_EDITOR
     }
 }

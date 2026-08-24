@@ -31,7 +31,7 @@ namespace Pinball.Ingame
     {
         const int DEFAULT_MAP_INDEX = 0;
         const int STAGE_CLEAR_BASE_MONEY = 3;
-        const int DEFAULT_PASSIVE_SLOT_COUNT = 4;
+        const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -145,20 +145,22 @@ namespace Pinball.Ingame
             bool isContinueRequested = SceneFlow.ConsumeContinueRequested();
             int requestedFlipperIndex = SceneFlow.ConsumeRequestedFlipperIndex();
             _saveHandler.TryLoad(isContinueRequested, out IngamePlayData savedData);
-            int baseSlotCount = null == _shopConfig ? DEFAULT_PASSIVE_SLOT_COUNT : _shopConfig.PassiveSlotCount;
+            bool hasConfig = null != _shopConfig;
             return IngameRunSetupResolver.Resolve(new IngameRunSetupResolver.ResolveParam(
                 SavedData: savedData,
                 RequestedFlipperIndex: requestedFlipperIndex,
                 FlipperCatalog: _flipperCatalog,
                 IsFlipperUnlockedGetter: _unlockProgress.IsFlipperUnlocked,
-                BasePassiveSlotCount: baseSlotCount,
+                BaseBallPassiveSlotCount: hasConfig ? _shopConfig.BallPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
+                BaseMapPassiveSlotCount: hasConfig ? _shopConfig.MapPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
+                BaseCommonPassiveSlotCount: hasConfig ? _shopConfig.CommonPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
                 BaseStageClearMoney: STAGE_CLEAR_BASE_MONEY));
         }
 
         void InitRunModel(IngameRunSetupResolver.RunStart start)
         {
             _wallet = new MoneyWallet(start.Money);
-            _loadout = new PlayerLoadout(start.PassiveSlotCount);
+            _loadout = new PlayerLoadout(start.BallPassiveSlotCount, start.MapPassiveSlotCount, start.CommonPassiveSlotCount);
             _vouchers = new PlayerVouchers();
             if (start.IsNewRun)
             {
@@ -198,7 +200,7 @@ namespace Pinball.Ingame
             {
                 VoucherData voucher = _vouchers.GetOwned(i);
                 if (voucher.Effect == VoucherData.EEffect.PassiveSlotAdd)
-                    _loadout.AddPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
+                    _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
             }
         }
 

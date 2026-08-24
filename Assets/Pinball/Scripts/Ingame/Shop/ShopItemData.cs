@@ -1,3 +1,4 @@
+using Alchemy.Inspector;
 using Pinball.Ingame.Map;
 using Pinball.Localization;
 using UnityEngine;
@@ -14,6 +15,13 @@ namespace Pinball.Ingame.Shop
         {
             Passive = 0,
             Upgrade = 1,
+        }
+
+        public enum EPassiveCategory
+        {
+            Ball = 0,
+            Map = 1,
+            Common = 2,
         }
 
         public enum EEffectType
@@ -47,12 +55,18 @@ namespace Pinball.Ingame.Shop
         [SerializeField] Sprite _icon = null;
         [SerializeField] int _price = 1;
         [SerializeField] EItemKind _kind = EItemKind.Upgrade;
+        [SerializeField] EPassiveCategory _passiveCategory = EPassiveCategory.Common;
         [SerializeField] EEffectType _effectType = EEffectType.BallAttackPowerAdd;
         [SerializeField] float[] _effectValueArr = null;
-        [SerializeField] MapInteractable.EGimmickType _gimmickType = MapInteractable.EGimmickType.Bumper;
+        [SerializeField, ShowIf(nameof(ShowsGimmickType))] MapInteractable.EGimmickType _gimmickType = MapInteractable.EGimmickType.Bumper;
+
+        object[] _textArgArr = null;
+
+        bool ShowsGimmickType() => _passiveCategory == EPassiveCategory.Map || _effectType == EEffectType.GimmickScoreRatioAdd;
 
         public int Price => _price;
         public EItemKind Kind => _kind;
+        public EPassiveCategory PassiveCategory => _passiveCategory;
         public EEffectType EffectType => _effectType;
         public MapInteractable.EGimmickType GimmickType => _gimmickType;
 
@@ -72,29 +86,49 @@ namespace Pinball.Ingame.Shop
             return name;
         }
 
-        public string GetNameKey()
+        public LocalizedTextRef GetNameRef()
         {
-            return _nameKey;
+            return new LocalizedTextRef(_nameKey, GetTextArgArr());
         }
 
-        public string GetDescriptionKey()
+        public LocalizedTextRef GetDescriptionRef()
         {
-            return _descriptionKey;
+            return new LocalizedTextRef(_descriptionKey, GetTextArgArr());
         }
 
         public string GetDisplayName()
         {
-            return LocalizationTable.GetOrKey(_nameKey);
+            return GetNameRef().Resolve();
         }
 
         public string GetDescription()
         {
-            return LocalizationTable.GetOrKey(_descriptionKey);
+            return GetDescriptionRef().Resolve();
         }
 
         public Sprite GetIcon()
         {
             return _icon;
         }
+
+        object[] GetTextArgArr()
+        {
+            if (null != _textArgArr)
+                return _textArgArr;
+
+            int valueCount = null == _effectValueArr ? 0 : _effectValueArr.Length;
+            _textArgArr = new object[valueCount];
+            for (int i = 0; i < valueCount; ++i)
+                _textArgArr[i] = _effectValueArr[i];
+
+            return _textArgArr;
+        }
+
+#if UNITY_EDITOR
+        void OnValidate()
+        {
+            _textArgArr = null;
+        }
+#endif // UNITY_EDITOR
     }
 }

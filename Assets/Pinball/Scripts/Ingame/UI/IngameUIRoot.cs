@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
@@ -61,9 +60,9 @@ namespace Pinball.Ingame.UI
             _ballCountView.SetValue(count);
         }
 
-        public void SetOwnedItems(List<OwnedItemsView.Entry> passives, List<OwnedItemsView.Entry> upgrades)
+        public void SetOwnedItems(OwnedItemsView.Args args)
         {
-            _ownedItemsView.SetItems(passives, upgrades);
+            _ownedItemsView.SetItems(args);
         }
 
         public void SetStageInfo(int stageNumber, int targetScore, int remainingSeconds)

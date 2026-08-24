@@ -11,7 +11,9 @@ namespace Pinball.Ingame.Run
             int RequestedFlipperIndex,
             FlipperCatalogData FlipperCatalog,
             Func<FlipperData, bool> IsFlipperUnlockedGetter,
-            int BasePassiveSlotCount,
+            int BaseBallPassiveSlotCount,
+            int BaseMapPassiveSlotCount,
+            int BaseCommonPassiveSlotCount,
             int BaseStageClearMoney);
 
         public record RunStart(
@@ -25,11 +27,13 @@ namespace Pinball.Ingame.Run
             int[] GimmickIndices,
             bool IsShopPending,
             bool IsRoundRewardPending,
-            int PassiveSlotCount,
+            int BallPassiveSlotCount,
+            int MapPassiveSlotCount,
+            int CommonPassiveSlotCount,
             int StageClearMoney);
 
         const int FIRST_STAGE_NUMBER = 1;
-        const int MIN_PASSIVE_SLOT_COUNT = 1;
+        const int MIN_COMMON_PASSIVE_SLOT_COUNT = 0;
 
         public static RunStart Resolve(ResolveParam param)
         {
@@ -50,7 +54,9 @@ namespace Pinball.Ingame.Run
                 GimmickIndices: isNewRun ? null : saved.GetGimmickIndices(),
                 IsShopPending: !isNewRun && saved.IsShopPending,
                 IsRoundRewardPending: !isNewRun && saved.IsRoundRewardPending,
-                PassiveSlotCount: Mathf.Max(MIN_PASSIVE_SLOT_COUNT, param.BasePassiveSlotCount + setup.PassiveSlotAdd),
+                BallPassiveSlotCount: param.BaseBallPassiveSlotCount,
+                MapPassiveSlotCount: param.BaseMapPassiveSlotCount,
+                CommonPassiveSlotCount: Mathf.Max(MIN_COMMON_PASSIVE_SLOT_COUNT, param.BaseCommonPassiveSlotCount + setup.PassiveSlotAdd),
                 StageClearMoney: Mathf.Max(0, param.BaseStageClearMoney + setup.StageClearMoneyAdd));
         }
 

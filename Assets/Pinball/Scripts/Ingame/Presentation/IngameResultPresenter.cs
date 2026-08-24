@@ -13,11 +13,11 @@ namespace Pinball.Ingame.Presentation
         const int PASSIVE_OWNED_COUNT = 1;
 
         PlayerLoadout _loadout = null;
-        Action<List<OwnedItemsView.Entry>, List<OwnedItemsView.Entry>> _ownedItemsPresenter = null;
+        Action<OwnedItemsView.Args> _ownedItemsPresenter = null;
         List<OwnedItemsView.Entry> _passiveEntries = null;
         List<OwnedItemsView.Entry> _upgradeEntries = null;
 
-        public IngameResultPresenter(PlayerLoadout loadout, Action<List<OwnedItemsView.Entry>, List<OwnedItemsView.Entry>> ownedItemsPresenter)
+        public IngameResultPresenter(PlayerLoadout loadout, Action<OwnedItemsView.Args> ownedItemsPresenter)
         {
             _loadout = loadout;
             _ownedItemsPresenter = ownedItemsPresenter;
@@ -38,7 +38,12 @@ namespace Pinball.Ingame.Presentation
             for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
                 _upgradeEntries.Add(BuildOwnedEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i)));
 
-            _ownedItemsPresenter?.Invoke(_passiveEntries, _upgradeEntries);
+            _ownedItemsPresenter?.Invoke(new OwnedItemsView.Args(
+                Passives: _passiveEntries,
+                Upgrades: _upgradeEntries,
+                BallSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Ball),
+                MapSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Map),
+                CommonSlotCount: _loadout.GetPassiveSlotCount(ShopItemData.EPassiveCategory.Common)));
         }
 
         public void ShowGameResult(GameResultView.EResult result, RunSummary summary)
@@ -70,7 +75,7 @@ namespace Pinball.Ingame.Presentation
             if (null == item)
                 return null;
 
-            return new OwnedItemsView.Entry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
+            return new OwnedItemsView.Entry(item.GetIcon(), count, item.GetNameRef(), item.GetDescriptionRef(), item.PassiveCategory);
         }
 
         static ResultStatsView.ItemEntry BuildResultItemEntry(ShopItemData item, int count)
@@ -78,7 +83,7 @@ namespace Pinball.Ingame.Presentation
             if (null == item)
                 return null;
 
-            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
+            return new ResultStatsView.ItemEntry(item.GetIcon(), count, item.GetNameRef(), item.GetDescriptionRef(), item.PassiveCategory);
         }
     }
 }

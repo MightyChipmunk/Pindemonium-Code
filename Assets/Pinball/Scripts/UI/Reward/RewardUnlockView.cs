@@ -13,7 +13,7 @@ namespace Pinball.UI
             Upgrade = 2,
         }
 
-        public record Entry(ERewardKind Kind, Sprite Icon, string NameKey, string DescriptionKey);
+        public record Entry(ERewardKind Kind, Sprite Icon, LocalizedTextRef Name, LocalizedTextRef Description);
 
         public record Args(Entry[] Entries) : UIViewArgs
         {
@@ -69,10 +69,10 @@ namespace Pinball.UI
         {
             _tiles[tileIndex].Bind(new RewardTileView.BindParam(
                 Icon: entry.Icon,
-                DisplayName: LocalizationTable.GetOrKey(entry.NameKey),
+                DisplayName: entry.Name.Resolve(),
                 KindText: GetKindText(entry.Kind),
-                TooltipTitleKey: entry.NameKey,
-                TooltipBodyKey: entry.DescriptionKey));
+                TooltipTitle: entry.Name,
+                TooltipBody: entry.Description));
         }
 
         void HideTile(int tileIndex)

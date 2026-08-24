@@ -8,7 +8,7 @@ namespace Pinball.UI
 {
     public class CardPackPopupView : UIViewBase
     {
-        public record CardArgs(string TitleKey, Sprite Icon, string DescriptionKey, bool IsPassive, bool IsTaken);
+        public record CardArgs(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, bool IsPassive, bool IsTaken);
 
         public record PickEntry(int CardIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
@@ -126,9 +126,9 @@ namespace Pinball.UI
 
             card.BindItem(new ShopItemView.BindParam(
                 IsPassive: args.IsPassive,
-                Title: LocalizationTable.GetOrKey(args.TitleKey),
+                Title: args.Title.Resolve(),
                 Icon: args.Icon,
-                Description: LocalizationTable.GetOrKey(args.DescriptionKey),
+                Description: args.Description.Resolve(),
                 PriceText: string.Empty,
                 ShowPrice: false));
         }

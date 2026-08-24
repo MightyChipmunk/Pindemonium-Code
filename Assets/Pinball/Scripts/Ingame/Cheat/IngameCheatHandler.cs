@@ -84,12 +84,12 @@ namespace Pinball.Ingame.Cheat
             return _loadout.PassiveCount;
         }
 
-        public int GetPassiveSlotCount()
+        public int GetTotalPassiveSlotCount()
         {
             if (null == _loadout)
                 return 0;
 
-            return _loadout.PassiveSlotCount;
+            return _loadout.GetTotalPassiveSlotCount();
         }
 
         public int GetUpgradeKindCount()
