@@ -8,7 +8,7 @@ namespace Pinball.Ingame.UI
 {
     public class OwnedItemsView : MonoBehaviour
     {
-        public record Entry(Sprite Icon, int Count);
+        public record Entry(Sprite Icon, int Count, string TitleKey, string DescriptionKey);
 
         const string COUNT_FORMAT = "x{0}";
         const int STACKED_COUNT_MIN = 2;
@@ -79,6 +79,9 @@ namespace Pinball.Ingame.UI
 
             for (int i = 0; i < entries.Count; ++i)
             {
+                if (null == entries[i])
+                    continue;
+
                 ItemIconSlotView slot = _slotPool.Get();
                 slot.transform.SetParent(content, false);
                 slot.transform.SetAsLastSibling();
@@ -86,7 +89,8 @@ namespace Pinball.Ingame.UI
                     ItemIndex: NO_ITEM_INDEX,
                     Icon: entries[i].Icon,
                     CountText: GetCountText(entries[i].Count),
-                    HoverCallback: null,
+                    TooltipTitleKey: entries[i].TitleKey,
+                    TooltipBodyKey: entries[i].DescriptionKey,
                     ClickCallback: null));
                 _activeSlots.Add(slot);
             }
@@ -102,6 +106,8 @@ namespace Pinball.Ingame.UI
 
         void ReturnActiveSlots()
         {
+            UITooltip.Hide();
+
             for (int i = 0; i < _activeSlots.Count; ++i)
                 _slotPool.Return(_activeSlots[i]);
 

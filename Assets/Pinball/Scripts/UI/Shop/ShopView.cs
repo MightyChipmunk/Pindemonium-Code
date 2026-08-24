@@ -90,7 +90,6 @@ namespace Pinball.UI
         [SerializeField] RectTransform _sellButtonRoot = null;
         [SerializeField] Button _sellButton = null;
         [SerializeField] TMP_Text _sellLabel = null;
-        [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _rerollButton = null;
         [SerializeField] TMP_Text _rerollLabel = null;
         [SerializeField] Button _startButton = null;
@@ -117,8 +116,8 @@ namespace Pinball.UI
 
         public override void OnGenerate()
         {
-            _passiveGrid.Init(_tooltip, OnPassiveSlotClicked);
-            _upgradeGrid.Init(_tooltip, null);
+            _passiveGrid.Init(OnPassiveSlotClicked);
+            _upgradeGrid.Init(null);
 
             Transform[] offerSlotRoots = new Transform[_offerSlots.Length];
             for (int i = 0; i < _offerSlots.Length; ++i)
@@ -147,7 +146,7 @@ namespace Pinball.UI
             HideSellButton();
             _messagePopup.Init();
             UIManager.OnEvent += HandleUIEvent;
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void OnTerminate()
@@ -189,7 +188,7 @@ namespace Pinball.UI
             _lastRequestSource = null;
             _passiveGrid.Clear();
             _upgradeGrid.Clear();
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void Bind(UIViewArgs args)
@@ -396,7 +395,7 @@ namespace Pinball.UI
             int upgradeCount = null == args.Upgrades ? 0 : args.Upgrades.Length;
             _passiveHeaderLabel.text = LocalizationTable.Format(PASSIVE_HEADER_KEY, PASSIVE_HEADER_FORMAT, passiveCount, args.PassiveSlotCount);
             _upgradeHeaderLabel.text = LocalizationTable.Format(UPGRADE_HEADER_KEY, UPGRADE_HEADER_FORMAT, upgradeCount);
-            _tooltip.Hide();
+            UITooltip.Hide();
 
             _passiveGrid.Bind(BuildGridEntries(args.Passives), Mathf.Max(0, args.PassiveSlotCount - passiveCount));
             _upgradeGrid.Bind(BuildGridEntries(args.Upgrades), 0);
@@ -530,7 +529,7 @@ namespace Pinball.UI
                 if (null == item)
                     continue;
 
-                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), LocalizationTable.GetOrKey(item.TitleKey), LocalizationTable.GetOrKey(item.DescriptionKey));
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.TitleKey, item.DescriptionKey);
             }
 
             return entries;

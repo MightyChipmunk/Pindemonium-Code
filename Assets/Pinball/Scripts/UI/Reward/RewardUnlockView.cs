@@ -28,27 +28,22 @@ namespace Pinball.UI
         const string UPGRADE_KIND_KEY = "ui.reward.kind_upgrade";
 
         [SerializeField] RewardTileView[] _tiles = null;
-        [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _okButton = null;
-
-        Entry[] _boundEntries = null;
 
         public override void OnGenerate()
         {
-            _boundEntries = new Entry[_tiles.Length];
             _okButton.onClick.AddListener(OnOkClicked);
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void OnTerminate()
         {
             _okButton.onClick.RemoveListener(OnOkClicked);
-            _boundEntries = null;
         }
 
         public override void OnReturn()
         {
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void Bind(UIViewArgs args)
@@ -57,7 +52,7 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            _tooltip.Hide();
+            UITooltip.Hide();
 
             int entryCount = null == viewArgs.Entries ? 0 : viewArgs.Entries.Length;
             for (int i = 0; i < _tiles.Length; ++i)
@@ -72,18 +67,16 @@ namespace Pinball.UI
 
         void BindTile(int tileIndex, Entry entry)
         {
-            _boundEntries[tileIndex] = entry;
             _tiles[tileIndex].Bind(new RewardTileView.BindParam(
-                TileIndex: tileIndex,
                 Icon: entry.Icon,
                 DisplayName: LocalizationTable.GetOrKey(entry.NameKey),
                 KindText: GetKindText(entry.Kind),
-                HoverCallback: OnTooltipHovered));
+                TooltipTitleKey: entry.NameKey,
+                TooltipBodyKey: entry.DescriptionKey));
         }
 
         void HideTile(int tileIndex)
         {
-            _boundEntries[tileIndex] = null;
             _tiles[tileIndex].Hide();
         }
 
@@ -98,29 +91,6 @@ namespace Pinball.UI
                 default:
                     return LocalizationTable.Get(UPGRADE_KIND_KEY, UPGRADE_KIND_TEXT);
             }
-        }
-
-        void OnTooltipHovered(int tileIndex, Vector3 anchorPosition, bool isEntered)
-        {
-            Entry entry = GetBoundEntry(tileIndex);
-            if (!isEntered || null == entry || string.IsNullOrEmpty(entry.DescriptionKey))
-            {
-                _tooltip.Hide();
-                return;
-            }
-
-            _tooltip.Show(LocalizationTable.GetOrKey(entry.NameKey), LocalizationTable.GetOrKey(entry.DescriptionKey), anchorPosition);
-        }
-
-        Entry GetBoundEntry(int tileIndex)
-        {
-            if (null == _boundEntries)
-                return null;
-
-            if (tileIndex < 0 || tileIndex >= _boundEntries.Length)
-                return null;
-
-            return _boundEntries[tileIndex];
         }
 
         void OnOkClicked()

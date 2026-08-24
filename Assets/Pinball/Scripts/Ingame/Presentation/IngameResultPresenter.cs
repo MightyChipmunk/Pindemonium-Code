@@ -32,11 +32,11 @@ namespace Pinball.Ingame.Presentation
 
             _passiveEntries.Clear();
             for (int i = 0; i < _loadout.PassiveCount; ++i)
-                _passiveEntries.Add(new OwnedItemsView.Entry(_loadout.GetPassive(i).GetIcon(), PASSIVE_OWNED_COUNT));
+                _passiveEntries.Add(BuildOwnedEntry(_loadout.GetPassive(i), PASSIVE_OWNED_COUNT));
 
             _upgradeEntries.Clear();
             for (int i = 0; i < _loadout.UpgradeKindCount; ++i)
-                _upgradeEntries.Add(new OwnedItemsView.Entry(_loadout.GetUpgrade(i).GetIcon(), _loadout.GetUpgradeCount(i)));
+                _upgradeEntries.Add(BuildOwnedEntry(_loadout.GetUpgrade(i), _loadout.GetUpgradeCount(i)));
 
             _ownedItemsPresenter?.Invoke(_passiveEntries, _upgradeEntries);
         }
@@ -63,6 +63,14 @@ namespace Pinball.Ingame.Presentation
                 UsedBallCount: summary.UsedBallCount,
                 Passives: passives,
                 Upgrades: upgrades);
+        }
+
+        static OwnedItemsView.Entry BuildOwnedEntry(ShopItemData item, int count)
+        {
+            if (null == item)
+                return null;
+
+            return new OwnedItemsView.Entry(item.GetIcon(), count, item.GetNameKey(), item.GetDescriptionKey());
         }
 
         static ResultStatsView.ItemEntry BuildResultItemEntry(ShopItemData item, int count)

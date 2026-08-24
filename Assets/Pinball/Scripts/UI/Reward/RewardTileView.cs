@@ -1,4 +1,3 @@
-using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,11 +7,11 @@ namespace Pinball.UI
     public class RewardTileView : MonoBehaviour
     {
         public record BindParam(
-            int TileIndex,
             Sprite Icon,
             string DisplayName,
             string KindText,
-            Action<int, Vector3, bool> HoverCallback);
+            string TooltipTitleKey,
+            string TooltipBodyKey);
 
         [SerializeField] Image _iconImage = null;
         [SerializeField] TMP_Text _nameLabel = null;
@@ -26,13 +25,12 @@ namespace Pinball.UI
             _iconImage.enabled = null != param.Icon;
             _nameLabel.text = param.DisplayName;
             _kindLabel.text = param.KindText;
-            _tooltipTrigger.SetPayload(param.TileIndex);
-            _tooltipTrigger.SetCallback(param.HoverCallback);
+            _tooltipTrigger.SetContent(param.TooltipTitleKey, param.TooltipBodyKey);
         }
 
         public void Hide()
         {
-            _tooltipTrigger.SetCallback(null);
+            _tooltipTrigger.ClearContent();
             gameObject.SetActive(false);
         }
     }

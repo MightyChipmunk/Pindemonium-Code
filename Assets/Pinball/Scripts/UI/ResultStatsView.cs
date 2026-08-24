@@ -1,5 +1,4 @@
 using System.Globalization;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,15 +31,14 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _ballLabel = null;
         [SerializeField] ItemIconGridView _passiveGrid = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
-        [SerializeField] ItemTooltipView _tooltip = null;
         [SerializeField] Button _closeButton = null;
 
         public override void OnGenerate()
         {
-            _passiveGrid.Init(_tooltip, null);
-            _upgradeGrid.Init(_tooltip, null);
+            _passiveGrid.Init(null);
+            _upgradeGrid.Init(null);
             _closeButton.onClick.AddListener(OnCloseClicked);
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void OnTerminate()
@@ -54,7 +52,7 @@ namespace Pinball.UI
         {
             _passiveGrid.Clear();
             _upgradeGrid.Clear();
-            _tooltip.Hide();
+            UITooltip.Hide();
         }
 
         public override void Bind(UIViewArgs args)
@@ -67,7 +65,7 @@ namespace Pinball.UI
             _scoreLabel.text = viewArgs.Score.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);
             _moneyLabel.text = viewArgs.Money.ToString(CultureInfo.InvariantCulture);
             _ballLabel.text = viewArgs.UsedBallCount.ToString(CultureInfo.InvariantCulture);
-            _tooltip.Hide();
+            UITooltip.Hide();
             BindGrid(_passiveGrid, viewArgs.Passives);
             BindGrid(_upgradeGrid, viewArgs.Upgrades);
         }
@@ -91,7 +89,7 @@ namespace Pinball.UI
                 if (null == item)
                     continue;
 
-                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), LocalizationTable.GetOrKey(item.TitleKey), LocalizationTable.GetOrKey(item.DescriptionKey));
+                entries[i] = new ItemIconGridView.Entry(item.Icon, GetCountText(item.Count), item.TitleKey, item.DescriptionKey);
             }
 
             return entries;
