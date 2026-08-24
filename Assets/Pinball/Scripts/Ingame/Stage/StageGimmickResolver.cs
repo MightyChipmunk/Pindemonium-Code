@@ -19,22 +19,17 @@ namespace Pinball.Ingame.Stage
 
         public bool IsBumperUnbreakable()
         {
-            return null != FindGimmick(_source, StageGimmickData.EType.BumperUnbreakable);
+            return null != FindGimmick(StageGimmickData.EType.BumperUnbreakable);
         }
 
         public int GetTargetScore(int baseTargetScore)
         {
-            return GetTargetScore(_source, baseTargetScore);
+            return Mathf.RoundToInt(baseTargetScore * GetTargetScoreMultiplier());
         }
 
-        public int GetTargetScore(IStageGimmickSource source, int baseTargetScore)
+        public float GetTargetScoreMultiplier()
         {
-            return Mathf.RoundToInt(baseTargetScore * GetTargetScoreMultiplier(source));
-        }
-
-        public float GetTargetScoreMultiplier(IStageGimmickSource source)
-        {
-            StageGimmickData gimmick = FindGimmick(source, StageGimmickData.EType.TargetScoreMultiplier);
+            StageGimmickData gimmick = FindGimmick(StageGimmickData.EType.TargetScoreMultiplier);
             if (null == gimmick)
                 return DEFAULT_TARGET_SCORE_MULTIPLIER;
 
@@ -43,7 +38,7 @@ namespace Pinball.Ingame.Stage
 
         public float GetTimeLimit()
         {
-            StageGimmickData gimmick = FindGimmick(_source, StageGimmickData.EType.TimeLimit);
+            StageGimmickData gimmick = FindGimmick(StageGimmickData.EType.TimeLimit);
             if (null == gimmick)
                 return NO_TIME_LIMIT;
 
@@ -52,12 +47,12 @@ namespace Pinball.Ingame.Stage
 
         public bool IsGimmickAbsent(MapInteractable.EGimmickType gimmickType)
         {
-            return null != FindGimmick(_source, StageGimmickData.EType.GimmickAbsent, gimmickType);
+            return null != FindGimmick(StageGimmickData.EType.GimmickAbsent, gimmickType);
         }
 
         public float GetGimmickScoreMultiplier(MapInteractable.EGimmickType gimmickType)
         {
-            StageGimmickData gimmick = FindGimmick(_source, StageGimmickData.EType.GimmickScoreMultiplier, gimmickType);
+            StageGimmickData gimmick = FindGimmick(StageGimmickData.EType.GimmickScoreMultiplier, gimmickType);
             if (null == gimmick)
                 return DEFAULT_SCORE_MULTIPLIER;
 
@@ -66,21 +61,21 @@ namespace Pinball.Ingame.Stage
 
         public int GetGimmickScoreGainLimit(MapInteractable.EGimmickType gimmickType)
         {
-            StageGimmickData gimmick = FindGimmick(_source, StageGimmickData.EType.GimmickScoreGainLimit, gimmickType);
+            StageGimmickData gimmick = FindGimmick(StageGimmickData.EType.GimmickScoreGainLimit, gimmickType);
             if (null == gimmick)
                 return MapInteractable.NO_SCORE_GAIN_LIMIT;
 
             return Mathf.Max(MapInteractable.NO_SCORE_GAIN_LIMIT, Mathf.RoundToInt(gimmick.Value));
         }
 
-        StageGimmickData FindGimmick(IStageGimmickSource source, StageGimmickData.EType type)
+        StageGimmickData FindGimmick(StageGimmickData.EType type)
         {
-            if (null == source)
+            if (null == _source)
                 return null;
 
-            for (int i = 0; i < source.GimmickCount; ++i)
+            for (int i = 0; i < _source.GimmickCount; ++i)
             {
-                StageGimmickData gimmick = source.GetGimmick(i);
+                StageGimmickData gimmick = _source.GetGimmick(i);
                 if (null == gimmick)
                     continue;
 
@@ -91,14 +86,14 @@ namespace Pinball.Ingame.Stage
             return null;
         }
 
-        StageGimmickData FindGimmick(IStageGimmickSource source, StageGimmickData.EType type, MapInteractable.EGimmickType targetGimmickType)
+        StageGimmickData FindGimmick(StageGimmickData.EType type, MapInteractable.EGimmickType targetGimmickType)
         {
-            if (null == source)
+            if (null == _source)
                 return null;
 
-            for (int i = 0; i < source.GimmickCount; ++i)
+            for (int i = 0; i < _source.GimmickCount; ++i)
             {
-                StageGimmickData gimmick = source.GetGimmick(i);
+                StageGimmickData gimmick = _source.GetGimmick(i);
                 if (null == gimmick)
                     continue;
 

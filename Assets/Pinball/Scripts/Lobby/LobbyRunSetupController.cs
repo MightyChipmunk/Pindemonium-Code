@@ -103,24 +103,14 @@ namespace Pinball.Lobby
         StageGimmickData[] BuildGimmicks(IngamePlayData saved)
         {
             int[] gimmickIndices = saved.GetGimmickIndices();
-            if (null != gimmickIndices && gimmickIndices.Length > 0)
-            {
-                StageGimmickData[] rolledGimmicks = new StageGimmickData[gimmickIndices.Length];
-                for (int i = 0; i < rolledGimmicks.Length; ++i)
-                    rolledGimmicks[i] = null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]);
-
-                return rolledGimmicks;
-            }
-
-            StageData stage = null == _stageCatalog ? null : _stageCatalog.GetStage(saved.StageNumber - 1);
-            if (null == stage)
+            if (null == gimmickIndices || gimmickIndices.Length <= 0)
                 return null;
 
-            StageGimmickData[] stageGimmicks = new StageGimmickData[stage.GimmickCount];
-            for (int i = 0; i < stageGimmicks.Length; ++i)
-                stageGimmicks[i] = stage.GetGimmick(i);
+            StageGimmickData[] rolledGimmicks = new StageGimmickData[gimmickIndices.Length];
+            for (int i = 0; i < rolledGimmicks.Length; ++i)
+                rolledGimmicks[i] = null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]);
 
-            return stageGimmicks;
+            return rolledGimmicks;
         }
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)

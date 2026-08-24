@@ -57,8 +57,17 @@ namespace Pinball.Ingame.Stage
             if (null == stage)
                 return;
 
-            for (int i = 0; i < stage.GimmickCount; ++i)
-                AddGimmick(stage.GetGimmick(i));
+            List<StageGimmickData> candidates = CollectStageCandidates(stage);
+            int rollCount = Mathf.Min(stage.GimmickRollCount, candidates.Count);
+            for (int i = 0; i < rollCount; ++i)
+            {
+                int pickIndex = PickCandidateIndex(candidates, INVALID_INDEX);
+                if (pickIndex == INVALID_INDEX)
+                    return;
+
+                _gimmicks.Add(candidates[pickIndex]);
+                candidates.RemoveAt(pickIndex);
+            }
         }
 
         public void RestoreOrSetBase(int[] catalogIndices, StageData baseStage)
@@ -168,6 +177,24 @@ namespace Pinball.Ingame.Stage
             }
 
             return true;
+        }
+
+        List<StageGimmickData> CollectStageCandidates(StageData stage)
+        {
+            List<StageGimmickData> candidates = new List<StageGimmickData>();
+            for (int i = 0; i < stage.GimmickPoolCount; ++i)
+            {
+                StageGimmickData gimmick = stage.GetPoolGimmick(i);
+                if (null == gimmick)
+                    continue;
+
+                if (candidates.Contains(gimmick))
+                    continue;
+
+                candidates.Add(gimmick);
+            }
+
+            return candidates;
         }
 
         List<StageGimmickData> CollectCandidates()

@@ -118,22 +118,27 @@ namespace Pinball.Ingame.State
 
             StageCardView.EState state = GetCardState(stageIndex, currentStageIndex);
             bool isCurrent = state == StageCardView.EState.Current;
-            IStageGimmickSource source = isCurrent ? _roller : stage;
-            StageGimmickData[] gimmicks = new StageGimmickData[source.GimmickCount];
-            for (int i = 0; i < gimmicks.Length; ++i)
-                gimmicks[i] = source.GetGimmick(i);
 
             return new StageSelectView.CardArgs(
                 IsVisible: true,
                 StageNumber: stageIndex + 1,
                 State: state,
                 IsFinal: stageIndex == _stageCatalog.Count - 1,
-                TargetScore: _resolver.GetTargetScore(source, stage.TargetScore),
-                TargetScoreMultiplier: _resolver.GetTargetScoreMultiplier(source),
+                TargetScore: isCurrent ? _resolver.GetTargetScore(stage.TargetScore) : stage.TargetScore,
+                TargetScoreMultiplier: isCurrent ? _resolver.GetTargetScoreMultiplier() : StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
                 RewardMoney: _stageClearBaseMoney,
-                Gimmicks: gimmicks,
+                Gimmicks: isCurrent ? BuildCurrentGimmicks() : null,
                 RerollPrice: _roller.CurrentRerollPrice,
                 CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
+        }
+
+        StageGimmickData[] BuildCurrentGimmicks()
+        {
+            StageGimmickData[] gimmicks = new StageGimmickData[_roller.GimmickCount];
+            for (int i = 0; i < gimmicks.Length; ++i)
+                gimmicks[i] = _roller.GetGimmick(i);
+
+            return gimmicks;
         }
 
         static StageCardView.EState GetCardState(int stageIndex, int currentStageIndex)
