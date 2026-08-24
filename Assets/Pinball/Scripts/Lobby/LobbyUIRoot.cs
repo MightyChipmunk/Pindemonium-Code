@@ -12,6 +12,8 @@ namespace Pinball.Lobby
         const string STAGE_CHIP_KEY = "ui.lobby.stage_chip";
         const string BEST_STAGE_FORMAT = "BEST STAGE {0}";
         const string BEST_STAGE_KEY = "ui.lobby.best_stage";
+        const float CONTINUE_FULL_ALPHA = 1f;
+        const float CONTINUE_DIMMED_ALPHA = 0.45f;
 
         static readonly Vector2 CONTINUE_LABEL_POSITION_WITH_CHIP = new Vector2(-80f, 0f);
         static readonly Vector2 CONTINUE_LABEL_SIZE_WITH_CHIP = new Vector2(-264f, -16f);
@@ -19,6 +21,7 @@ namespace Pinball.Lobby
         static readonly Vector2 CONTINUE_LABEL_SIZE_CENTERED = new Vector2(-24f, -16f);
 
         [SerializeField] Button _continueButton = null;
+        [SerializeField] CanvasGroup _continueGroup = null;
         [SerializeField] Button _newGameButton = null;
         [SerializeField] Button _settingsButton = null;
         [SerializeField] GameObject _continueStageChip = null;
@@ -44,6 +47,7 @@ namespace Pinball.Lobby
         public void SetContinueInteractable(bool isInteractable)
         {
             _continueButton.interactable = isInteractable;
+            _continueGroup.alpha = isInteractable ? CONTINUE_FULL_ALPHA : CONTINUE_DIMMED_ALPHA;
         }
 
         public void SetContinueStage(int stageNumber)
