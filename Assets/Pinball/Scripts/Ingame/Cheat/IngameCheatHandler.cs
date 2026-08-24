@@ -22,6 +22,8 @@ namespace Pinball.Ingame.Cheat
             Action<int> MoneyAdder,
             Func<bool> IsStageClearableGetter,
             Action StageClearer,
+            Action RoundClearer,
+            Action GameClearer,
             Action OnCheatApplied);
 
         const int MIN_APPLY_COUNT = 1;
@@ -31,6 +33,8 @@ namespace Pinball.Ingame.Cheat
         Action<int> _moneyAdder = null;
         Func<bool> _isStageClearableGetter = null;
         Action _stageClearer = null;
+        Action _roundClearer = null;
+        Action _gameClearer = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
@@ -40,6 +44,8 @@ namespace Pinball.Ingame.Cheat
             _moneyAdder = param.MoneyAdder;
             _isStageClearableGetter = param.IsStageClearableGetter;
             _stageClearer = param.StageClearer;
+            _roundClearer = param.RoundClearer;
+            _gameClearer = param.GameClearer;
             _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
@@ -48,6 +54,8 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
+            _gameClearer = null;
+            _roundClearer = null;
             _stageClearer = null;
             _isStageClearableGetter = null;
             _moneyAdder = null;
@@ -56,7 +64,8 @@ namespace Pinball.Ingame.Cheat
 
         public bool IsReady()
         {
-            return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter && null != _stageClearer && null != _loadout;
+            return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter
+                && null != _stageClearer && null != _roundClearer && null != _gameClearer && null != _loadout;
         }
 
         public int GetMoney()
@@ -128,6 +137,30 @@ namespace Pinball.Ingame.Cheat
                 return EApplyResult.NotInStage;
 
             _stageClearer();
+            return EApplyResult.Success;
+        }
+
+        public EApplyResult ClearRound()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            if (!IsStageClearable())
+                return EApplyResult.NotInStage;
+
+            _roundClearer();
+            return EApplyResult.Success;
+        }
+
+        public EApplyResult ClearGame()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            if (!IsStageClearable())
+                return EApplyResult.NotInStage;
+
+            _gameClearer();
             return EApplyResult.Success;
         }
 

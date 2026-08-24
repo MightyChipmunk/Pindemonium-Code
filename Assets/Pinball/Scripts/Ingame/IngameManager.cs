@@ -345,6 +345,8 @@ namespace Pinball.Ingame
                 MoneyAdder: _wallet.Add,
                 IsStageClearableGetter: GetIsStageClearable,
                 StageClearer: ClearCurrentStage,
+                RoundClearer: ClearCurrentRound,
+                GameClearer: ClearAllStages,
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
         }
@@ -358,6 +360,31 @@ namespace Pinball.Ingame
         {
             int remainingScore = _stageTracker.TargetScore - _stageTracker.StageScore;
             _scoreCounter.AddCheatScore(Mathf.Max(remainingScore, MIN_CHEAT_CLEAR_SCORE));
+        }
+
+        void ClearCurrentRound()
+        {
+            int roundIndex = StageCatalogData.GetRoundIndex(_stageTracker.StageNumber - 1);
+            SkipStagesByCheat(StageCatalogData.GetRoundStartStageIndex(roundIndex) + StageCatalogData.STAGES_PER_ROUND);
+            ClearCurrentStage();
+        }
+
+        void ClearAllStages()
+        {
+            if (null == _stageCatalog)
+                return;
+
+            SkipStagesByCheat(_stageCatalog.Count);
+            ClearCurrentStage();
+        }
+
+        void SkipStagesByCheat(int lastStageNumber)
+        {
+            while (_stageTracker.StageNumber < lastStageNumber)
+            {
+                _stageTracker.SetCheatCleared();
+                SettleStageClear();
+            }
         }
 
         void OnCheatApplied()

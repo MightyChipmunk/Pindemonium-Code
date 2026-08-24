@@ -49,6 +49,8 @@ namespace Pinball.Ingame.Cheat.Editor
         const string NOT_OWNED_WARNING_FORMAT = "[IngameCheat] 보유하지 않은 아이템입니다: {0}";
         const string MONEY_LOG_FORMAT = "[IngameCheat] 돈 +{0}";
         const string STAGE_CLEAR_LOG = "[IngameCheat] 현재 스테이지 클리어";
+        const string ROUND_CLEAR_LOG = "[IngameCheat] 현재 라운드 클리어";
+        const string GAME_CLEAR_LOG = "[IngameCheat] 게임 클리어";
         const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
         const string SLOT_FULL_WARNING_FORMAT = "[IngameCheat] 패시브 슬롯이 가득 찼거나 이미 보유한 아이템입니다: {0}";
         const string INVALID_INPUT_WARNING = "[IngameCheat] 입력값이 올바르지 않습니다.";
@@ -168,6 +170,46 @@ namespace Pinball.Ingame.Cheat.Editor
             }
 
             Debug.Log(STAGE_CLEAR_LOG);
+        }
+
+        [Button, BoxGroup(STAGE_GROUP), LabelText("현재 라운드 클리어")]
+        void ClearRound()
+        {
+            IngameCheatHandler handler = GetHandler();
+            if (null == handler)
+            {
+                Debug.LogWarning(NOT_PLAYING_WARNING);
+                return;
+            }
+
+            IngameCheatHandler.EApplyResult result = handler.ClearRound();
+            if (result != IngameCheatHandler.EApplyResult.Success)
+            {
+                LogFailure(result, string.Empty);
+                return;
+            }
+
+            Debug.Log(ROUND_CLEAR_LOG);
+        }
+
+        [Button, BoxGroup(STAGE_GROUP), LabelText("게임 클리어")]
+        void ClearGame()
+        {
+            IngameCheatHandler handler = GetHandler();
+            if (null == handler)
+            {
+                Debug.LogWarning(NOT_PLAYING_WARNING);
+                return;
+            }
+
+            IngameCheatHandler.EApplyResult result = handler.ClearGame();
+            if (result != IngameCheatHandler.EApplyResult.Success)
+            {
+                LogFailure(result, string.Empty);
+                return;
+            }
+
+            Debug.Log(GAME_CLEAR_LOG);
         }
 
         [Button, BoxGroup(ITEM_GROUP), LabelText("목록 새로고침")]

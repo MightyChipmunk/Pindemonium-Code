@@ -112,6 +112,13 @@ namespace Pinball.Ingame.Stage
             ResetStageState();
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void SetCheatCleared()
+        {
+            _isCleared = true;
+        }
+#endif
+
         void ResetStageState()
         {
             _isCleared = false;
