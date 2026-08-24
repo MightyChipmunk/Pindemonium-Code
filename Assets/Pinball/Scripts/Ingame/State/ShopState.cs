@@ -165,7 +165,7 @@ namespace Pinball.Ingame.State
         void Open()
         {
             _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, _vouchers.Has(VoucherData.EEffect.ShopFirstRerollFree));
-            _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
+            _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferPackItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
             RefreshShopView(false);
             TryShowRoundClear();
         }
@@ -462,6 +462,7 @@ namespace Pinball.Ingame.State
                     Icon: item.GetIcon(),
                     Description: item.GetDescriptionRef(),
                     IsPassive: item.Kind == ShopItemData.EItemKind.Passive,
+                    PassiveCategory: item.PassiveCategory,
                     IsTaken: _packShop.IsTaken(i));
             }
 
@@ -517,7 +518,8 @@ namespace Pinball.Ingame.State
                 Icon: item.GetIcon(),
                 Description: item.GetDescriptionRef(),
                 Price: _vouchers.GetDiscountedPrice(item.Price),
-                IsPassive: item.Kind == ShopItemData.EItemKind.Passive);
+                IsPassive: item.Kind == ShopItemData.EItemKind.Passive,
+                PassiveCategory: item.PassiveCategory);
         }
 
         ShopView.OwnedEntry[] BuildPassiveEntries()
@@ -643,6 +645,17 @@ namespace Pinball.Ingame.State
             _packShop.Reroll();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopReroll);
             RefreshShopView(true);
+        }
+
+        bool CanOfferPackItem(ShopItemData item)
+        {
+            if (!CanOfferItem(item))
+                return false;
+
+            if (item.Kind != ShopItemData.EItemKind.Passive)
+                return true;
+
+            return null == _session || !_session.IsOffered(item);
         }
 
         bool CanOfferItem(ShopItemData item)

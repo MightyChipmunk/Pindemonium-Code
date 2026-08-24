@@ -1,5 +1,5 @@
 using DG.Tweening;
-using Pinball.Localization;
+using Pinball.Ingame.Shop;
 using TMPro;
 using UnityEngine;
 
@@ -9,6 +9,7 @@ namespace Pinball.UI
     {
         public record BindParam(
             bool IsPassive,
+            ShopItemData.EPassiveCategory PassiveCategory,
             string Title,
             Sprite Icon,
             string Description,
@@ -18,12 +19,9 @@ namespace Pinball.UI
         public const float PURCHASE_FLY_DURATION = 0.31f;
 
         const float PURCHASE_FADE_DURATION = 0.22f;
-        const string KIND_PASSIVE_TEXT = "PASSIVE";
-        const string KIND_PASSIVE_KEY = "ui.shop.kind_passive";
-        const string KIND_UPGRADE_TEXT = "UPGRADE";
-        const string KIND_UPGRADE_KEY = "ui.shop.kind_upgrade";
 
         [SerializeField] GameObject _passiveLabel = null;
+        [SerializeField] TMP_Text _passiveCategoryLabel = null;
         [SerializeField] GameObject _upgradeLabel = null;
         [SerializeField] Sprite _passiveBandSprite = null;
         [SerializeField] Sprite _upgradeBandSprite = null;
@@ -47,6 +45,9 @@ namespace Pinball.UI
             _titleLabel.text = param.Title;
             _passiveLabel.SetActive(param.IsPassive);
             _upgradeLabel.SetActive(!param.IsPassive);
+            if (param.IsPassive)
+                _passiveCategoryLabel.text = PassiveCategoryLabel.Get(param.PassiveCategory);
+
             SetIcon(param.Icon);
             _descriptionLabel.text = param.Description;
             _priceLabel.text = param.PriceText;
@@ -137,14 +138,6 @@ namespace Pinball.UI
             ApplySoldVisual();
             _passiveLabel.SetActive(false);
             _upgradeLabel.SetActive(false);
-        }
-
-        static string GetKindText(bool isPassive)
-        {
-            if (isPassive)
-                return LocalizationTable.Get(KIND_PASSIVE_KEY, KIND_PASSIVE_TEXT);
-
-            return LocalizationTable.Get(KIND_UPGRADE_KEY, KIND_UPGRADE_TEXT);
         }
     }
 }

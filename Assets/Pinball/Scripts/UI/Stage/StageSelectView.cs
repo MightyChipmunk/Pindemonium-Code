@@ -16,6 +16,7 @@ namespace Pinball.UI
             float TargetScoreMultiplier,
             int RewardMoney,
             StageGimmickData[] Gimmicks,
+            int HiddenGimmickCount,
             int RerollPrice,
             bool CanReroll);
 
@@ -97,6 +98,7 @@ namespace Pinball.UI
                 TargetScoreMultiplier: args.TargetScoreMultiplier,
                 RewardMoney: args.RewardMoney,
                 Gimmicks: args.Gimmicks,
+                HiddenGimmickCount: args.HiddenGimmickCount,
                 RerollPrice: args.RerollPrice,
                 CanReroll: args.CanReroll));
         }

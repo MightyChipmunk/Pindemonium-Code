@@ -128,6 +128,7 @@ namespace Pinball.Ingame.State
                 TargetScoreMultiplier: isCurrent ? _resolver.GetTargetScoreMultiplier() : StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
                 RewardMoney: _stageClearBaseMoney,
                 Gimmicks: isCurrent ? BuildCurrentGimmicks() : null,
+                HiddenGimmickCount: isCurrent ? 0 : stage.GimmickRollCount,
                 RerollPrice: _roller.CurrentRerollPrice,
                 CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
         }
@@ -163,6 +164,7 @@ namespace Pinball.Ingame.State
                 TargetScoreMultiplier: StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
                 RewardMoney: 0,
                 Gimmicks: null,
+                HiddenGimmickCount: 0,
                 RerollPrice: 0,
                 CanReroll: false);
         }

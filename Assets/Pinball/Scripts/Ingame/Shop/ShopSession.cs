@@ -55,6 +55,18 @@ namespace Pinball.Ingame.Shop
             return _offers[slotIndex];
         }
 
+        public bool IsOffered(ShopItemData item)
+        {
+            if (null == _offers || null == item)
+                return false;
+
+            for (int i = 0; i < _offers.Length; ++i)
+                if (_offers[i] == item)
+                    return true;
+
+            return false;
+        }
+
         public void MarkSold(int slotIndex)
         {
             if (null == _offers)

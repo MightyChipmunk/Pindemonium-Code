@@ -24,6 +24,7 @@ namespace Pinball.UI
             float TargetScoreMultiplier,
             int RewardMoney,
             StageGimmickData[] Gimmicks,
+            int HiddenGimmickCount,
             int RerollPrice,
             bool CanReroll);
 
@@ -47,6 +48,7 @@ namespace Pinball.UI
         const float CLEARED_ALPHA = 0.3f;
         const float DEFAULT_TARGET_SCORE_MULTIPLIER = 1f;
         const float CURRENT_RAISE_OFFSET = 40f;
+        const string UNKNOWN_GIMMICK_TEXT = "???";
 
         [SerializeField] RectTransform _content = null;
         [SerializeField] CanvasGroup _canvasGroup = null;
@@ -104,7 +106,7 @@ namespace Pinball.UI
             _targetScoreLabel.text = param.TargetScore.ToString(TARGET_SCORE_FORMAT);
             BindMultiplier(param.TargetScoreMultiplier);
             _rewardLabel.text = string.Format(REWARD_FORMAT, param.RewardMoney);
-            BindGimmicks(param.Gimmicks);
+            BindGimmicks(param.Gimmicks, param.HiddenGimmickCount);
             BindActions(param);
         }
 
@@ -123,18 +125,21 @@ namespace Pinball.UI
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, multiplier);
         }
 
-        void BindGimmicks(StageGimmickData[] gimmicks)
+        void BindGimmicks(StageGimmickData[] gimmicks, int hiddenCount)
         {
             int gimmickCount = null == gimmicks ? 0 : gimmicks.Length;
-            _gimmickPanel.SetActive(gimmickCount > 0);
-            _emptyGimmickRoot.SetActive(gimmickCount <= 0);
+            int shownCount = gimmickCount > 0 ? gimmickCount : Mathf.Max(0, hiddenCount);
+            _gimmickPanel.SetActive(shownCount > 0);
+            _emptyGimmickRoot.SetActive(shownCount <= 0);
 
             for (int i = 0; i < _gimmickLabels.Length; ++i)
             {
-                bool isUsed = i < gimmickCount;
+                bool isUsed = i < shownCount;
                 _gimmickLabels[i].gameObject.SetActive(isUsed);
-                if (isUsed)
-                    _gimmickLabels[i].text = StageGimmickLabelFormatter.Format(gimmicks[i]);
+                if (!isUsed)
+                    continue;
+
+                _gimmickLabels[i].text = i < gimmickCount ? StageGimmickLabelFormatter.Format(gimmicks[i]) : UNKNOWN_GIMMICK_TEXT;
             }
         }
 

@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Pinball.Ingame.Shop;
 using Pinball.Localization;
 using TMPro;
 using UnityEngine;
@@ -8,7 +9,7 @@ namespace Pinball.UI
 {
     public class CardPackPopupView : UIViewBase
     {
-        public record CardArgs(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, bool IsPassive, bool IsTaken);
+        public record CardArgs(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, bool IsPassive, ShopItemData.EPassiveCategory PassiveCategory, bool IsTaken);
 
         public record PickEntry(int CardIndex, bool IsPassive, int OwnedIndex, int PreviousCount);
 
@@ -126,6 +127,7 @@ namespace Pinball.UI
 
             card.BindItem(new ShopItemView.BindParam(
                 IsPassive: args.IsPassive,
+                PassiveCategory: args.PassiveCategory,
                 Title: args.Title.Resolve(),
                 Icon: args.Icon,
                 Description: args.Description.Resolve(),

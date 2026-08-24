@@ -12,7 +12,7 @@ namespace Pinball.UI
 {
     public class ShopView : UIViewBase
     {
-        public record OfferEntry(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, int Price, bool IsPassive);
+        public record OfferEntry(LocalizedTextRef Title, Sprite Icon, LocalizedTextRef Description, int Price, bool IsPassive, ShopItemData.EPassiveCategory PassiveCategory);
 
         public record OwnedEntry(Sprite Icon, int Count, LocalizedTextRef Title, LocalizedTextRef Description, int SellPrice, ShopItemData.EPassiveCategory Category);
 
@@ -69,12 +69,6 @@ namespace Pinball.UI
         const string NOT_ENOUGH_MONEY_KEY = "ui.shop.not_enough_money";
         const string PASSIVE_SLOT_FULL_FORMAT = "{0} PASSIVE SLOTS FULL";
         const string PASSIVE_SLOT_FULL_KEY = "ui.shop.passive_slots_full";
-        const string PASSIVE_CATEGORY_BALL_TEXT = "BALL";
-        const string PASSIVE_CATEGORY_BALL_KEY = "ui.passive.category_ball";
-        const string PASSIVE_CATEGORY_MAP_TEXT = "MAP";
-        const string PASSIVE_CATEGORY_MAP_KEY = "ui.passive.category_map";
-        const string PASSIVE_CATEGORY_COMMON_TEXT = "COMMON";
-        const string PASSIVE_CATEGORY_COMMON_KEY = "ui.passive.category_common";
         const float PASSIVE_SHAKE_STRENGTH = 18f;
         const float MONEY_SHAKE_STRENGTH = 24f;
         const float VIEWPORT_CENTER_RATIO = 0.5f;
@@ -94,8 +88,7 @@ namespace Pinball.UI
         [SerializeField] ShopItemView[] _offerSlots = null;
         [SerializeField] HorizontalLayoutGroup _offerRow = null;
         [SerializeField] ItemIconGridView[] _passiveGrids = null;
-        [SerializeField] RectTransform _passiveSlotRoot = null;
-        [SerializeField] RectTransform _upgradeSlotRoot = null;
+        [SerializeField] RectTransform[] _passiveGroupRoots = null;
         [SerializeField] ScrollRect _upgradeScroll = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
         [SerializeField] Button _upgradeListButton = null;
@@ -122,7 +115,7 @@ namespace Pinball.UI
         SlotRevealAnimator _offerReveal = null;
         SlotRevealAnimator _packReveal = null;
         ShakeFeedback _moneyDenied = null;
-        ShakeFeedback _passiveDenied = null;
+        ShakeFeedback[] _passiveDeniedArr = null;
         Args _animatedArgs = null;
         Args _boundArgs = null;
         List<int>[] _passiveOwnedIndices = null;
@@ -169,7 +162,9 @@ namespace Pinball.UI
             _offerReveal = new SlotRevealAnimator(offerSlotRoots);
             _packReveal = new SlotRevealAnimator(packSlotRoots);
             _moneyDenied = new ShakeFeedback(_moneyPlaque, MONEY_SHAKE_STRENGTH, _moneyPlaqueImage, _moneyDeniedColor);
-            _passiveDenied = new ShakeFeedback(_passiveSlotRoot, PASSIVE_SHAKE_STRENGTH);
+            _passiveDeniedArr = new ShakeFeedback[PASSIVE_CATEGORY_COUNT];
+            for (int i = 0; i < PASSIVE_CATEGORY_COUNT; ++i)
+                _passiveDeniedArr[i] = new ShakeFeedback(_passiveGroupRoots[i], PASSIVE_SHAKE_STRENGTH);
 
             _voucherSlot.Init(0, OnVoucherClicked);
             _rerollButton.onClick.AddListener(OnRerollClicked);
@@ -191,8 +186,10 @@ namespace Pinball.UI
             _packReveal = null;
             _moneyDenied.Dispose();
             _moneyDenied = null;
-            _passiveDenied.Dispose();
-            _passiveDenied = null;
+            for (int i = 0; i < _passiveDeniedArr.Length; ++i)
+                _passiveDeniedArr[i].Dispose();
+
+            _passiveDeniedArr = null;
             _messagePopup.Release();
             for (int i = 0; i < _offerSlots.Length; ++i)
                 _offerSlots[i].Release();
@@ -218,7 +215,9 @@ namespace Pinball.UI
             _offerReveal.Kill();
             _packReveal.Kill();
             _moneyDenied.Kill();
-            _passiveDenied.Kill();
+            for (int i = 0; i < _passiveDeniedArr.Length; ++i)
+                _passiveDeniedArr[i].Kill();
+
             _animatedArgs = null;
             _boundArgs = null;
             _selectedPassiveCategory = NO_SLOT_INDEX;
@@ -275,13 +274,11 @@ namespace Pinball.UI
 
         RectTransform PrepareOwnedSlot(bool isPassive, int ownedIndex)
         {
-            RectTransform slotRoot = isPassive ? _passiveSlotRoot : _upgradeSlotRoot;
-            LayoutRebuilder.ForceRebuildLayoutImmediate(slotRoot);
-
             ItemIconGridView grid = GetOwnedGrid(isPassive, ownedIndex, out int slotIndex);
             if (null == grid)
                 return null;
 
+            LayoutRebuilder.ForceRebuildLayoutImmediate(grid.GetContentRect());
             RectTransform iconRect = grid.GetSlotIconRect(slotIndex);
             if (null == iconRect)
                 return null;
@@ -431,6 +428,7 @@ namespace Pinball.UI
 
             slot.BindItem(new ShopItemView.BindParam(
                 IsPassive: offer.IsPassive,
+                PassiveCategory: offer.PassiveCategory,
                 Title: offer.Title.Resolve(),
                 Icon: offer.Icon,
                 Description: offer.Description.Resolve(),
@@ -625,7 +623,7 @@ namespace Pinball.UI
 
             _sellLabel.text = LocalizationTable.Format(SELL_KEY, SELL_FORMAT, sellPrice);
             _sellButtonRoot.gameObject.SetActive(true);
-            LayoutRebuilder.ForceRebuildLayoutImmediate(_passiveSlotRoot);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_passiveGrids[category].GetContentRect());
             PlaceSellButton(category, slotIndex);
         }
 
@@ -787,23 +785,18 @@ namespace Pinball.UI
                     _moneyDenied.Play();
                     break;
                 case UIManager.EEvent.ShopPassiveSlotFull:
-                    _messagePopup.PlayTextAt(LocalizationTable.Format(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_FORMAT, GetPassiveCategoryName(payload)), GetRequestSourcePosition());
-                    _passiveDenied.Play();
+                    _messagePopup.PlayTextAt(LocalizationTable.Format(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_FORMAT, PassiveCategoryLabel.Get((ShopItemData.EPassiveCategory)payload)), GetRequestSourcePosition());
+                    PlayPassiveDenied(payload);
                     break;
             }
         }
 
-        static string GetPassiveCategoryName(int categoryIndex)
+        void PlayPassiveDenied(int categoryIndex)
         {
-            switch ((ShopItemData.EPassiveCategory)categoryIndex)
-            {
-                case ShopItemData.EPassiveCategory.Ball:
-                    return LocalizationTable.Get(PASSIVE_CATEGORY_BALL_KEY, PASSIVE_CATEGORY_BALL_TEXT);
-                case ShopItemData.EPassiveCategory.Map:
-                    return LocalizationTable.Get(PASSIVE_CATEGORY_MAP_KEY, PASSIVE_CATEGORY_MAP_TEXT);
-                default:
-                    return LocalizationTable.Get(PASSIVE_CATEGORY_COMMON_KEY, PASSIVE_CATEGORY_COMMON_TEXT);
-            }
+            if (categoryIndex < 0 || categoryIndex >= _passiveDeniedArr.Length)
+                return;
+
+            _passiveDeniedArr[categoryIndex].Play();
         }
 
         Vector3 GetRequestSourcePosition()
