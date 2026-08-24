@@ -18,9 +18,18 @@ namespace Pinball.Ingame.Cheat.Editor
             Upgrade = 2,
         }
 
+        public enum EPassiveCategoryFilter
+        {
+            All = 0,
+            Ball = 1,
+            Map = 2,
+            Common = 3,
+        }
+
         class ItemRow
         {
             public ShopItemData Item = null;
+            public VisualElement Root = null;
             public Label CountLabel = null;
             public int OwnedCount = INVALID_OWNED_COUNT;
         }
@@ -38,10 +47,15 @@ namespace Pinball.Ingame.Cheat.Editor
         const string PRICE_FORMAT = "COST {0}";
         const string PASSIVE_LABEL = "PASSIVE";
         const string UPGRADE_LABEL = "UPGRADE";
+        const string BALL_CATEGORY_LABEL = "볼";
+        const string MAP_CATEGORY_LABEL = "맵";
+        const string COMMON_CATEGORY_LABEL = "공용";
         const string UNREGISTERED_LABEL = "미등록";
         const string UNREGISTERED_TOOLTIP = "ShopCatalogData에 등록되지 않아 상점 목록에는 뜨지 않는 아이템입니다.";
         const string APPLY_LABEL = "적용";
         const string REMOVE_LABEL = "제거";
+        const string OWNED_SECTION_FORMAT = "■ 보유 중 ({0})";
+        const string UNOWNED_SECTION_FORMAT = "□ 미보유 ({0})";
         const string EMPTY_LIST_LABEL = "조건에 맞는 아이템이 없습니다.";
         const string NOT_PLAYING_WARNING = "[IngameCheat] 플레이 중이 아니거나 인게임이 초기화되지 않았습니다.";
         const string APPLIED_LOG_FORMAT = "[IngameCheat] 적용: {0}";
@@ -54,7 +68,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
         const string SLOT_FULL_WARNING_FORMAT = "[IngameCheat] 패시브 슬롯이 가득 찼거나 이미 보유한 아이템입니다: {0}";
         const string INVALID_INPUT_WARNING = "[IngameCheat] 입력값이 올바르지 않습니다.";
-        const string FILTER_KEY_FORMAT = "{0}|{1}";
+        const string FILTER_KEY_FORMAT = "{0}|{1}|{2}";
         const int DEFAULT_MONEY_AMOUNT = 100;
         const int MIN_APPLY_COUNT = 1;
         const int INVALID_OWNED_COUNT = -1;
@@ -62,6 +76,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const float WINDOW_MIN_WIDTH = 420f;
         const float WINDOW_MIN_HEIGHT = 320f;
         const float KIND_LABEL_WIDTH = 74f;
+        const float CATEGORY_LABEL_WIDTH = 40f;
         const float PRICE_LABEL_WIDTH = 64f;
         const float OWNED_LABEL_WIDTH = 56f;
         const float APPLY_BUTTON_WIDTH = 52f;
@@ -69,10 +84,17 @@ namespace Pinball.Ingame.Cheat.Editor
         const float ROW_PADDING = 3f;
         const float BADGE_PADDING = 4f;
         const float STATUS_PADDING = 6f;
+        const float SECTION_HEADER_TOP_PADDING = 8f;
+        const float SECTION_HEADER_BOTTOM_PADDING = 2f;
+        const float SECTION_EMPTY_LEFT_PADDING = 12f;
 
         static readonly Color PASSIVE_COLOR = new Color(0.68f, 0.53f, 1f, 1f);
         static readonly Color UPGRADE_COLOR = new Color(0.35f, 0.82f, 0.68f, 1f);
         static readonly Color UNREGISTERED_COLOR = new Color(1f, 0.72f, 0.35f, 1f);
+        static readonly Color BALL_CATEGORY_COLOR = new Color(0.44f, 0.72f, 1f, 1f);
+        static readonly Color MAP_CATEGORY_COLOR = new Color(0.56f, 0.86f, 0.45f, 1f);
+        static readonly Color COMMON_CATEGORY_COLOR = new Color(0.76f, 0.76f, 0.8f, 1f);
+        static readonly Color SECTION_HEADER_COLOR = new Color(0.85f, 0.85f, 0.9f, 1f);
 
         /// <summary>
         /// 목록을 마지막으로 다시 만들 때 사용한 필터 키.
@@ -84,14 +106,22 @@ namespace Pinball.Ingame.Cheat.Editor
 
         [SerializeField, BoxGroup(MONEY_GROUP), LabelText("추가할 금액")] int _moneyAmount = DEFAULT_MONEY_AMOUNT;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("종류")] EKindFilter _kindFilter = EKindFilter.All;
+        [SerializeField, BoxGroup(ITEM_GROUP), LabelText("패시브 분류"), ShowIf(nameof(ShowsPassiveCategoryFilter))] EPassiveCategoryFilter _passiveCategoryFilter = EPassiveCategoryFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("이름 검색")] string _searchText = string.Empty;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("업그레이드 적용/제거 횟수")] int _applyCount = MIN_APPLY_COUNT;
 
         Label _statusLabel = null;
-        ScrollView _listView = null;
+        Label _ownedHeaderLabel = null;
+        Label _unownedHeaderLabel = null;
+        Label _ownedEmptyLabel = null;
+        Label _unownedEmptyLabel = null;
+        VisualElement _ownedSection = null;
+        VisualElement _unownedSection = null;
         List<ItemRow> _rows = null;
         ShopCatalogData _catalog = null;
         IngameCheatHandler _handler = null;
+
+        bool ShowsPassiveCategoryFilter() => _kindFilter != EKindFilter.Upgrade;
 
         [MenuItem(MENU_PATH)]
         public static void OpenWindow()
@@ -109,10 +139,24 @@ namespace Pinball.Ingame.Cheat.Editor
             _statusLabel = CreateStatusLabel();
             rootVisualElement.Insert(0, _statusLabel);
 
-            _listView = new ScrollView();
-            _listView.style.flexGrow = 1f;
-            _listView.style.marginTop = ROW_PADDING;
-            rootVisualElement.Add(_listView);
+            ScrollView scrollView = new ScrollView();
+            scrollView.style.flexGrow = 1f;
+            scrollView.style.marginTop = ROW_PADDING;
+            rootVisualElement.Add(scrollView);
+
+            _ownedHeaderLabel = CreateSectionHeaderLabel();
+            _ownedSection = new VisualElement();
+            _ownedEmptyLabel = CreateSectionEmptyLabel();
+            scrollView.Add(_ownedHeaderLabel);
+            scrollView.Add(_ownedSection);
+            scrollView.Add(_ownedEmptyLabel);
+
+            _unownedHeaderLabel = CreateSectionHeaderLabel();
+            _unownedSection = new VisualElement();
+            _unownedEmptyLabel = CreateSectionEmptyLabel();
+            scrollView.Add(_unownedHeaderLabel);
+            scrollView.Add(_unownedSection);
+            scrollView.Add(_unownedEmptyLabel);
 
             RebuildRows();
             rootVisualElement.schedule.Execute(Refresh).Every(REFRESH_INTERVAL_MS);
@@ -126,7 +170,12 @@ namespace Pinball.Ingame.Cheat.Editor
                 _rows = null;
             }
 
-            _listView = null;
+            _ownedSection = null;
+            _unownedSection = null;
+            _ownedHeaderLabel = null;
+            _unownedHeaderLabel = null;
+            _ownedEmptyLabel = null;
+            _unownedEmptyLabel = null;
             _statusLabel = null;
             _catalog = null;
             _handler = null;
@@ -222,12 +271,14 @@ namespace Pinball.Ingame.Cheat.Editor
         {
             IngameCheatHandler handler = GetHandler();
             UpdateStatus(handler);
-            UpdateOwnedCounts(handler);
 
-            if (_appliedFilterKey == GetFilterKey())
+            if (_appliedFilterKey != GetFilterKey())
+            {
+                RebuildRows();
                 return;
+            }
 
-            RebuildRows();
+            UpdateOwnedCounts(handler);
         }
 
         void UpdateStatus(IngameCheatHandler handler)
@@ -253,27 +304,39 @@ namespace Pinball.Ingame.Cheat.Editor
             if (null == _rows)
                 return;
 
+            bool sectionChanged = false;
             for (int i = 0; i < _rows.Count; ++i)
             {
                 int ownedCount = null == handler ? 0 : handler.GetOwnedCount(_rows[i].Item);
                 if (_rows[i].OwnedCount == ownedCount)
                     continue;
 
+                bool wasOwned = _rows[i].OwnedCount > 0;
                 _rows[i].OwnedCount = ownedCount;
                 _rows[i].CountLabel.text = string.Format(OWNED_FORMAT, ownedCount);
+                if (wasOwned == (ownedCount > 0))
+                    continue;
+
+                AttachRowToSection(_rows[i]);
+                sectionChanged = true;
             }
+
+            if (sectionChanged)
+                UpdateSectionState();
         }
 
         void RebuildRows()
         {
-            if (null == _listView || null == _rows)
+            if (null == _ownedSection || null == _unownedSection || null == _rows)
                 return;
 
             _appliedFilterKey = GetFilterKey();
             _rows.Clear();
-            _listView.Clear();
+            _ownedSection.Clear();
+            _unownedSection.Clear();
             _catalog = LoadCatalog();
 
+            IngameCheatHandler handler = GetHandler();
             string[] guids = AssetDatabase.FindAssets(ITEM_ASSET_FILTER);
             for (int i = 0; i < guids.Length; ++i)
             {
@@ -281,14 +344,13 @@ namespace Pinball.Ingame.Cheat.Editor
                 if (!IsMatched(item))
                     continue;
 
-                _listView.Add(CreateRowElement(item));
+                AddRow(item, null == handler ? 0 : handler.GetOwnedCount(item));
             }
 
-            if (_rows.Count <= 0)
-                _listView.Add(new Label(EMPTY_LIST_LABEL));
+            UpdateSectionState();
         }
 
-        VisualElement CreateRowElement(ShopItemData item)
+        void AddRow(ShopItemData item, int ownedCount)
         {
             bool isPassive = item.Kind == ShopItemData.EItemKind.Passive;
             VisualElement row = new VisualElement();
@@ -299,6 +361,11 @@ namespace Pinball.Ingame.Cheat.Editor
 
             row.Add(CreateBadgeLabel(isPassive ? PASSIVE_LABEL : UPGRADE_LABEL, isPassive ? PASSIVE_COLOR : UPGRADE_COLOR, KIND_LABEL_WIDTH));
 
+            if (isPassive)
+                row.Add(CreateBadgeLabel(GetCategoryLabel(item.PassiveCategory), GetCategoryColor(item.PassiveCategory), CATEGORY_LABEL_WIDTH));
+            else
+                row.Add(CreateSpacerElement(CATEGORY_LABEL_WIDTH));
+
             Label nameLabel = new Label(item.GetDisplayName());
             nameLabel.tooltip = item.GetDescription();
             nameLabel.style.flexGrow = 1f;
@@ -306,14 +373,18 @@ namespace Pinball.Ingame.Cheat.Editor
             row.Add(nameLabel);
 
             if (!IsRegisteredItem(item))
-                row.Add(CreateBadgeLabel(UNREGISTERED_LABEL, UNREGISTERED_COLOR, KIND_LABEL_WIDTH));
+            {
+                Label unregisteredLabel = CreateBadgeLabel(UNREGISTERED_LABEL, UNREGISTERED_COLOR, KIND_LABEL_WIDTH);
+                unregisteredLabel.tooltip = UNREGISTERED_TOOLTIP;
+                row.Add(unregisteredLabel);
+            }
 
             Label priceLabel = new Label(string.Format(PRICE_FORMAT, item.Price));
             priceLabel.style.width = PRICE_LABEL_WIDTH;
             priceLabel.style.unityTextAlign = TextAnchor.MiddleRight;
             row.Add(priceLabel);
 
-            Label countLabel = new Label(string.Format(OWNED_FORMAT, 0));
+            Label countLabel = new Label(string.Format(OWNED_FORMAT, ownedCount));
             countLabel.style.width = OWNED_LABEL_WIDTH;
             countLabel.style.unityTextAlign = TextAnchor.MiddleRight;
             row.Add(countLabel);
@@ -330,9 +401,35 @@ namespace Pinball.Ingame.Cheat.Editor
 
             ItemRow itemRow = new ItemRow();
             itemRow.Item = item;
+            itemRow.Root = row;
             itemRow.CountLabel = countLabel;
+            itemRow.OwnedCount = ownedCount;
             _rows.Add(itemRow);
-            return row;
+            AttachRowToSection(itemRow);
+        }
+
+        void AttachRowToSection(ItemRow row)
+        {
+            row.Root.RemoveFromHierarchy();
+            if (row.OwnedCount > 0)
+                _ownedSection.Add(row.Root);
+            else
+                _unownedSection.Add(row.Root);
+        }
+
+        void UpdateSectionState()
+        {
+            _ownedHeaderLabel.text = string.Format(OWNED_SECTION_FORMAT, _ownedSection.childCount);
+            _unownedHeaderLabel.text = string.Format(UNOWNED_SECTION_FORMAT, _unownedSection.childCount);
+            _ownedEmptyLabel.style.display = _ownedSection.childCount > 0 ? DisplayStyle.None : DisplayStyle.Flex;
+            _unownedEmptyLabel.style.display = _unownedSection.childCount > 0 ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        VisualElement CreateSpacerElement(float width)
+        {
+            VisualElement spacer = new VisualElement();
+            spacer.style.width = width;
+            return spacer;
         }
 
         Label CreateBadgeLabel(string text, Color color, float width)
@@ -344,6 +441,25 @@ namespace Pinball.Ingame.Cheat.Editor
             label.style.unityTextAlign = TextAnchor.MiddleCenter;
             label.style.paddingLeft = BADGE_PADDING;
             label.style.paddingRight = BADGE_PADDING;
+            return label;
+        }
+
+        Label CreateSectionHeaderLabel()
+        {
+            Label label = new Label(string.Empty);
+            label.style.color = SECTION_HEADER_COLOR;
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.paddingTop = SECTION_HEADER_TOP_PADDING;
+            label.style.paddingBottom = SECTION_HEADER_BOTTOM_PADDING;
+            return label;
+        }
+
+        Label CreateSectionEmptyLabel()
+        {
+            Label label = new Label(EMPTY_LIST_LABEL);
+            label.style.paddingLeft = SECTION_EMPTY_LEFT_PADDING;
+            label.style.paddingTop = ROW_PADDING;
+            label.style.paddingBottom = ROW_PADDING;
             return label;
         }
 
@@ -460,6 +576,9 @@ namespace Pinball.Ingame.Cheat.Editor
             if (_kindFilter == EKindFilter.Upgrade && item.Kind != ShopItemData.EItemKind.Upgrade)
                 return false;
 
+            if (ShowsPassiveCategoryFilter() && !IsCategoryMatched(item))
+                return false;
+
             if (string.IsNullOrEmpty(_searchText))
                 return true;
 
@@ -467,9 +586,59 @@ namespace Pinball.Ingame.Cheat.Editor
             return item.GetDisplayName().ToLowerInvariant().Contains(keyword) || item.name.ToLowerInvariant().Contains(keyword);
         }
 
+        bool IsCategoryMatched(ShopItemData item)
+        {
+            if (_passiveCategoryFilter == EPassiveCategoryFilter.All)
+                return true;
+
+            if (item.Kind != ShopItemData.EItemKind.Passive)
+                return false;
+
+            return item.PassiveCategory == ToPassiveCategory(_passiveCategoryFilter);
+        }
+
+        ShopItemData.EPassiveCategory ToPassiveCategory(EPassiveCategoryFilter filter)
+        {
+            switch (filter)
+            {
+                case EPassiveCategoryFilter.Ball:
+                    return ShopItemData.EPassiveCategory.Ball;
+                case EPassiveCategoryFilter.Map:
+                    return ShopItemData.EPassiveCategory.Map;
+                default:
+                    return ShopItemData.EPassiveCategory.Common;
+            }
+        }
+
+        string GetCategoryLabel(ShopItemData.EPassiveCategory category)
+        {
+            switch (category)
+            {
+                case ShopItemData.EPassiveCategory.Ball:
+                    return BALL_CATEGORY_LABEL;
+                case ShopItemData.EPassiveCategory.Map:
+                    return MAP_CATEGORY_LABEL;
+                default:
+                    return COMMON_CATEGORY_LABEL;
+            }
+        }
+
+        Color GetCategoryColor(ShopItemData.EPassiveCategory category)
+        {
+            switch (category)
+            {
+                case ShopItemData.EPassiveCategory.Ball:
+                    return BALL_CATEGORY_COLOR;
+                case ShopItemData.EPassiveCategory.Map:
+                    return MAP_CATEGORY_COLOR;
+                default:
+                    return COMMON_CATEGORY_COLOR;
+            }
+        }
+
         string GetFilterKey()
         {
-            return string.Format(FILTER_KEY_FORMAT, _kindFilter, _searchText);
+            return string.Format(FILTER_KEY_FORMAT, _kindFilter, _passiveCategoryFilter, _searchText);
         }
     }
 }
