@@ -23,7 +23,8 @@ namespace Pinball.UI
         const string KIND_UPGRADE_TEXT = "UPGRADE";
         const string KIND_UPGRADE_KEY = "ui.shop.kind_upgrade";
 
-        [SerializeField] TMP_Text _kindLabel = null;
+        [SerializeField] GameObject _passiveLabel = null;
+        [SerializeField] GameObject _upgradeLabel = null;
         [SerializeField] Sprite _passiveBandSprite = null;
         [SerializeField] Sprite _upgradeBandSprite = null;
 
@@ -44,7 +45,8 @@ namespace Pinball.UI
             _canvasGroup.alpha = FULL_ALPHA;
             _bandImage.sprite = param.IsPassive ? _passiveBandSprite : _upgradeBandSprite;
             _titleLabel.text = param.Title;
-            _kindLabel.text = GetKindText(param.IsPassive);
+            _passiveLabel.SetActive(param.IsPassive);
+            _upgradeLabel.SetActive(!param.IsPassive);
             SetIcon(param.Icon);
             _descriptionLabel.text = param.Description;
             _priceLabel.text = param.PriceText;
@@ -56,7 +58,8 @@ namespace Pinball.UI
         {
             KillPurchase();
             base.BindSold();
-            _kindLabel.text = string.Empty;
+            _passiveLabel.SetActive(false);
+            _upgradeLabel.SetActive(false);
         }
 
         public void PlayPurchase(Vector3 targetWorldPosition, float targetWorldWidth, bool showsSoldStamp)
@@ -132,7 +135,8 @@ namespace Pinball.UI
         void ApplySold()
         {
             ApplySoldVisual();
-            _kindLabel.text = string.Empty;
+            _passiveLabel.SetActive(false);
+            _upgradeLabel.SetActive(false);
         }
 
         static string GetKindText(bool isPassive)
