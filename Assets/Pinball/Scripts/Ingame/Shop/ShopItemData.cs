@@ -62,6 +62,8 @@ namespace Pinball.Ingame.Shop
             LampRequirementDown = 31,
             StandupDamageScore = 32,
             DropTargetOrderBonus = 33,
+            ComboGainRate = 34,
+            ComboDigitDamage = 35,
         }
 
         [SerializeField] string _nameKey = string.Empty;

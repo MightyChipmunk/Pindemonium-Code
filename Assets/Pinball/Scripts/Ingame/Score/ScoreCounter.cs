@@ -32,7 +32,7 @@ namespace Pinball.Ingame.Score
             _stageGimmickScoreMultiplierGetter = stageGimmickScoreMultiplierGetter;
             _gimmickScoreReporter = gimmickScoreReporter;
             _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
-            _comboTracker = new ComboTracker(comboConfig, StatProvider.GetComboMultiplierBonus, StatProvider.GetComboTimeoutBonus);
+            _comboTracker = new ComboTracker(comboConfig, StatProvider.GetComboMultiplierBonus, StatProvider.GetComboTimeoutBonus, StatProvider.GetComboGainRate);
             _comboTracker.OnComboChanged += HandleComboChanged;
             _comboTracker.OnComboEnded += HandleComboEnded;
         }

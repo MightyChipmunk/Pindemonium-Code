@@ -112,7 +112,32 @@ namespace Pinball.Ingame.Stat
 
         public static float GetFinalDamageScale()
         {
-            return DEFAULT_SCALE + GetEffectSum(ShopItemData.EEffectType.BallDamageRatio);
+            return DEFAULT_SCALE + GetEffectSum(ShopItemData.EEffectType.BallDamageRatio) + GetComboDigitDamageRatio();
+        }
+
+        static float GetComboDigitDamageRatio()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.ComboDigitDamage))
+                return 0f;
+
+            if (null == _comboCountGetter)
+                return 0f;
+
+            int comboPerStep = Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.SUB_VALUE_INDEX));
+            int resetComboCount = Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.EXTRA_VALUE_INDEX));
+            if (comboPerStep <= 0 || resetComboCount <= 0)
+                return 0f;
+
+            int stepCount = _comboCountGetter() % resetComboCount / comboPerStep;
+            return GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.MAIN_VALUE_INDEX) * stepCount;
+        }
+
+        public static float GetComboGainRate()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.ComboGainRate))
+                return DEFAULT_SCALE;
+
+            return Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.ComboGainRate, ShopItemData.MAIN_VALUE_INDEX));
         }
 
         public static float GetLowBallScoreRatio()
