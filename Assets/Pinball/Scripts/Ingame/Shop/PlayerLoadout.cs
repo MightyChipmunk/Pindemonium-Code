@@ -11,6 +11,11 @@ namespace Pinball.Ingame.Shop
         const int FIRST_UPGRADE_COUNT = 1;
         const int PASSIVE_CATEGORY_COUNT = 3;
 
+        static readonly ShopItemData.EEffectType[][] EXCLUSIVE_EFFECT_GROUP_ARR =
+        {
+            new ShopItemData.EEffectType[] { ShopItemData.EEffectType.LampRequirementUp, ShopItemData.EEffectType.LampRequirementDown },
+        };
+
         List<ShopItemData> _passives = null;
         List<ShopItemData> _upgrades = null;
         List<int> _upgradeCounts = null;
@@ -118,7 +123,38 @@ namespace Pinball.Ingame.Shop
             if (GetPassiveCount(item.PassiveCategory) >= GetPassiveSlotCount(item.PassiveCategory))
                 return false;
 
+            if (HasConflictingPassive(item))
+                return false;
+
             return !_passives.Contains(item);
+        }
+
+        public bool HasConflictingPassive(ShopItemData item)
+        {
+            if (null == item)
+                return false;
+
+            for (int i = 0; i < EXCLUSIVE_EFFECT_GROUP_ARR.Length; ++i)
+            {
+                ShopItemData.EEffectType[] group = EXCLUSIVE_EFFECT_GROUP_ARR[i];
+                if (!ContainsEffect(group, item.EffectType))
+                    continue;
+
+                for (int k = 0; k < group.Length; ++k)
+                    if (group[k] != item.EffectType && HasEffect(group[k]))
+                        return true;
+            }
+
+            return false;
+        }
+
+        static bool ContainsEffect(ShopItemData.EEffectType[] group, ShopItemData.EEffectType effectType)
+        {
+            for (int i = 0; i < group.Length; ++i)
+                if (group[i] == effectType)
+                    return true;
+
+            return false;
         }
 
         public bool TryAddPassive(ShopItemData item)

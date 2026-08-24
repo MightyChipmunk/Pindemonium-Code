@@ -284,10 +284,11 @@ namespace Pinball.Ingame.State
             return firstGrant;
         }
 
-        void NotifyPassiveSlotFull(ShopItemData.EPassiveCategory category)
+        void NotifyPassiveDenied(ShopItemData item)
         {
             AudioManager.Play(AudioStorage.EAudioClipType.ShopDenied);
-            UIManager.RaiseEvent(UIManager.EEvent.ShopPassiveSlotFull, (int)category);
+            UIManager.EEvent uiEvent = _loadout.HasConflictingPassive(item) ? UIManager.EEvent.ShopPassiveConflicted : UIManager.EEvent.ShopPassiveSlotFull;
+            UIManager.RaiseEvent(uiEvent, (int)item.PassiveCategory);
         }
 
         bool TrySpendMoney(int price)
@@ -426,7 +427,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveSlotFull(item.PassiveCategory);
+                NotifyPassiveDenied(item);
                 return;
             }
 
@@ -567,7 +568,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveSlotFull(item.PassiveCategory);
+                NotifyPassiveDenied(item);
                 return;
             }
 

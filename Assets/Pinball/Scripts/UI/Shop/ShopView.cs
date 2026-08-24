@@ -69,6 +69,8 @@ namespace Pinball.UI
         const string NOT_ENOUGH_MONEY_KEY = "ui.shop.not_enough_money";
         const string PASSIVE_SLOT_FULL_FORMAT = "{0} PASSIVE SLOTS FULL";
         const string PASSIVE_SLOT_FULL_KEY = "ui.shop.passive_slots_full";
+        const string PASSIVE_CONFLICT_TEXT = "CONFLICTS WITH AN OWNED PASSIVE";
+        const string PASSIVE_CONFLICT_KEY = "ui.shop.passive_conflict";
         const float PASSIVE_SHAKE_STRENGTH = 18f;
         const float MONEY_SHAKE_STRENGTH = 24f;
         const float VIEWPORT_CENTER_RATIO = 0.5f;
@@ -786,6 +788,10 @@ namespace Pinball.UI
                     break;
                 case UIManager.EEvent.ShopPassiveSlotFull:
                     _messagePopup.PlayTextAt(LocalizationTable.Format(PASSIVE_SLOT_FULL_KEY, PASSIVE_SLOT_FULL_FORMAT, PassiveCategoryLabel.Get((ShopItemData.EPassiveCategory)payload)), GetRequestSourcePosition());
+                    PlayPassiveDenied(payload);
+                    break;
+                case UIManager.EEvent.ShopPassiveConflicted:
+                    _messagePopup.PlayTextAt(LocalizationTable.Get(PASSIVE_CONFLICT_KEY, PASSIVE_CONFLICT_TEXT), GetRequestSourcePosition());
                     PlayPassiveDenied(payload);
                     break;
             }
