@@ -1,5 +1,3 @@
-using Pinball.Ingame.Map;
-
 namespace Pinball.Ingame.Stage
 {
     public static class StageGimmickBlacklist
@@ -39,9 +37,6 @@ namespace Pinball.Ingame.Stage
         {
             if (absent.Type != StageGimmickData.EType.GimmickAbsent)
                 return false;
-
-            if (other.Type == StageGimmickData.EType.BumperUnbreakable)
-                return absent.TargetGimmickType == MapInteractable.EGimmickType.Bumper;
 
             if (!UsesTargetGimmickType(other.Type))
                 return false;

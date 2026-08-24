@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.FX;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -11,6 +12,7 @@ namespace Pinball.Ingame.Map
         const int SIREN_CYCLE_COUNT = 3;
         const float SIREN_STEP_INTERVAL = 0.08f;
         const float SIREN_CYCLE_INTERVAL = 0.12f;
+        const int NO_LIT_LAMP = 0;
 
         [SerializeField] Lamp[] _lamps = null;
         [SerializeField] int _clearScoreReward = 0;
@@ -18,7 +20,9 @@ namespace Pinball.Ingame.Map
         [SerializeField] PoolableFX.EFXType _clearFX = PoolableFX.EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
-        int _litCount = 0;
+        int _hitCount = 0;
+        int _requiredCount = 0;
+        int _litLampCount = NO_LIT_LAMP;
         bool _isPlayingSiren = false;
 
         public override EGimmickType GimmickType => EGimmickType.LampBank;
@@ -26,12 +30,14 @@ namespace Pinball.Ingame.Map
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
-            _litCount = 0;
+            _hitCount = 0;
+            _litLampCount = NO_LIT_LAMP;
             _isPlayingSiren = false;
 
             if (null == _lamps)
                 return;
 
+            _requiredCount = StatProvider.GetLampRequiredCount(_lamps.Length);
             for (int i = 0; i < _lamps.Length; ++i)
                 _lamps[i].Init();
         }
@@ -46,6 +52,7 @@ namespace Pinball.Ingame.Map
             }
 
             _isPlayingSiren = false;
+            _requiredCount = 0;
 
             if (null == _lamps)
                 return;
@@ -65,22 +72,32 @@ namespace Pinball.Ingame.Map
             if (!IsBallLayer(other.gameObject.layer))
                 return;
 
-            Lamp lamp = _lamps[_litCount];
-            lamp.PlayLightUp();
-            PlayFX(_lightUpFX, lamp.transform.position);
+            ++_hitCount;
+            LightUpProgressLamps();
             PlayGimmickHit();
-            ++_litCount;
 
-            if (_litCount < _lamps.Length)
+            if (_hitCount < _requiredCount)
                 return;
 
             Clear();
         }
 
+        void LightUpProgressLamps()
+        {
+            int targetLampCount = Mathf.Clamp(Mathf.RoundToInt((float)_hitCount * _lamps.Length / _requiredCount), NO_LIT_LAMP, _lamps.Length);
+            for (int i = _litLampCount; i < targetLampCount; ++i)
+            {
+                _lamps[i].PlayLightUp();
+                PlayFX(_lightUpFX, _lamps[i].transform.position);
+            }
+
+            _litLampCount = Mathf.Max(_litLampCount, targetLampCount);
+        }
+
         void Clear()
         {
             _isPlayingSiren = true;
-            GainScore(_clearScoreReward);
+            GainScore(Mathf.RoundToInt(_clearScoreReward * StatProvider.GetLampScoreMultiplier()));
             PlayFX(_clearFX, transform.position);
             PlayBankClearedSound();
 
@@ -103,7 +120,8 @@ namespace Pinball.Ingame.Map
                 await UniTask.Delay(TimeSpan.FromSeconds(SIREN_CYCLE_INTERVAL), cancellationToken: cancellationToken);
             }
 
-            _litCount = 0;
+            _hitCount = 0;
+            _litLampCount = NO_LIT_LAMP;
             _isPlayingSiren = false;
         }
 

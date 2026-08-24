@@ -20,6 +20,8 @@ namespace Pinball.Ingame.Map
         const int RESPAWN_PUNCH_VIBRATO = 6;
         const float MIN_BURN_INTERVAL = 0.05f;
         const float MIN_RESPAWN_DELAY_SCALE = 0.3f;
+        const float NO_OVERKILL_SCORE_RATIO = 0f;
+        const float SNIPER_MARK_SPIN_SPEED = 90f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
         static readonly Color FROZEN_TINT = new Color(0.5f, 0.85f, 1f, 1f);
@@ -29,6 +31,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
         [SerializeField] SpriteRenderer _visualRenderer = null;
+        [SerializeField] Transform _sniperMark = null;
 
         CancellationTokenSource _cancellationTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
@@ -39,20 +42,18 @@ namespace Pinball.Ingame.Map
         Color _visualBaseColor = Color.white;
         float _currentHealth = 0f;
         float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
+        float _sniperMarkRemain = 0f;
+        float _radius = 0f;
         bool _isBroken = false;
         bool _isFrozen = false;
-        bool _isUnbreakable = false;
+        bool _isSniperMarked = false;
 
         public override EGimmickType GimmickType => EGimmickType.Bumper;
         public bool IsBroken => _isBroken;
+        public bool IsSniperMarked => _isSniperMarked;
 
         public event Action OnBroken;
         public event Action<BumperInteractable, float> OnBallDamaged;
-
-        public void SetUnbreakable(bool isUnbreakable)
-        {
-            _isUnbreakable = isUnbreakable;
-        }
 
         protected override void OnInit()
         {
@@ -72,7 +73,9 @@ namespace Pinball.Ingame.Map
             _currentHealth = _spec.MaxHealth;
             _isBroken = false;
             ClearFrozen();
+            ClearSniperMark();
             _collider.enabled = true;
+            _radius = CalculateRadius();
         }
 
         protected override void OnRelease()
@@ -81,6 +84,7 @@ namespace Pinball.Ingame.Map
             OnBallDamaged = null;
             StopBurning();
             ClearFrozen();
+            ClearSniperMark();
 
             if (null != _cancellationTokenSource)
             {
@@ -91,13 +95,13 @@ namespace Pinball.Ingame.Map
 
             KillVisualTween(false);
             _isBroken = false;
-            _isUnbreakable = false;
         }
 
         protected override void OnDeactivated()
         {
             StopBurning();
             ClearFrozen();
+            ClearSniperMark();
             KillVisualTween(false);
             base.OnDeactivated();
         }
@@ -105,6 +109,14 @@ namespace Pinball.Ingame.Map
         protected override Vector2 GetBounceDirection(Collision2D collision)
         {
             return (collision.rigidbody.position - (Vector2)transform.position).normalized;
+        }
+
+        protected override PoolableFX.EFXType GetBallHitFX()
+        {
+            if (_isBroken)
+                return PoolableFX.EFXType.NonePooling;
+
+            return _spec.HitFX;
         }
 
         protected override float GetScoreMultiplier()
@@ -125,10 +137,11 @@ namespace Pinball.Ingame.Map
 
         protected override float GetDamageMultiplier()
         {
-            if (!_isFrozen)
-                return DEFAULT_DAMAGE_MULTIPLIER;
+            float multiplier = _isFrozen ? _frozenDamageMultiplier : DEFAULT_DAMAGE_MULTIPLIER;
+            if (!_isSniperMarked)
+                return multiplier;
 
-            return _frozenDamageMultiplier;
+            return multiplier * Mathf.Max(DEFAULT_DAMAGE_MULTIPLIER, StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperSniperMark, ShopItemData.MAIN_VALUE_INDEX));
         }
 
         protected override void OnBallHit(Collision2D collision, float damage)
@@ -136,14 +149,88 @@ namespace Pinball.Ingame.Map
             if (_isBroken)
                 return;
 
-            PlayFX(_spec.HitFX, collision.GetContact(0).point);
             PlayVisualPunch(HIT_PUNCH_RATIO, HIT_PUNCH_DURATION, HIT_PUNCH_VIBRATO);
 
             if (null == _gradeData)
                 return;
 
-            ReduceHealth(damage);
+            float overkillScoreRatio = ConsumeSniperMark();
+            ReduceHealth(damage, overkillScoreRatio);
             OnBallDamaged?.Invoke(this, damage);
+        }
+
+        public float GetRadius()
+        {
+            return _radius;
+        }
+
+        float CalculateRadius()
+        {
+            CircleCollider2D circleCollider = _collider as CircleCollider2D;
+            if (null == circleCollider)
+                return _collider.bounds.extents.x;
+
+            return circleCollider.radius * Mathf.Max(transform.lossyScale.x, transform.lossyScale.y);
+        }
+
+        public bool CanApplySniperMark()
+        {
+            return !_isBroken && !IsDeactivated && !_isSniperMarked;
+        }
+
+        public void ApplySniperMark(float durationSeconds)
+        {
+            if (!CanApplySniperMark())
+                return;
+
+            if (durationSeconds <= 0f)
+                return;
+
+            _isSniperMarked = true;
+            _sniperMarkRemain = durationSeconds;
+            RefreshSniperMarkVisual();
+        }
+
+        public void TickSniperMark(float deltaTime)
+        {
+            if (!_isSniperMarked)
+                return;
+
+            if (null != _sniperMark)
+                _sniperMark.Rotate(Vector3.forward, SNIPER_MARK_SPIN_SPEED * deltaTime);
+
+            _sniperMarkRemain -= deltaTime;
+            if (_sniperMarkRemain > 0f)
+                return;
+
+            ClearSniperMark();
+        }
+
+        float ConsumeSniperMark()
+        {
+            if (!_isSniperMarked)
+                return NO_OVERKILL_SCORE_RATIO;
+
+            ClearSniperMark();
+            return StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperSniperMark, ShopItemData.BONUS_VALUE_INDEX);
+        }
+
+        void ClearSniperMark()
+        {
+            _isSniperMarked = false;
+            _sniperMarkRemain = 0f;
+            RefreshSniperMarkVisual();
+        }
+
+        void RefreshSniperMarkVisual()
+        {
+            if (null == _sniperMark)
+                return;
+
+            if (!_isSniperMarked)
+                _sniperMark.localRotation = Quaternion.identity;
+
+            _sniperMark.gameObject.SetActive(_isSniperMarked);
         }
 
         public void ApplyDamage(float damage, PoolableFX.EFXType extraFX)
@@ -161,7 +248,18 @@ namespace Pinball.Ingame.Map
             PlayFX(extraFX, transform.position);
             PlayVisualPunch(HIT_PUNCH_RATIO, HIT_PUNCH_DURATION, HIT_PUNCH_VIBRATO);
             GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
-            ReduceHealth(damage);
+            ReduceHealth(damage, NO_OVERKILL_SCORE_RATIO);
+        }
+
+        public void GainHitScore(int score)
+        {
+            if (_isBroken)
+                return;
+
+            if (score <= 0)
+                return;
+
+            GainScore(score, transform.position, EScoreSource.PassiveEffect);
         }
 
         public void Ignite(float damagePerTick, float intervalSeconds, float durationSeconds, PoolableFX.EFXType burnFX)
@@ -209,14 +307,17 @@ namespace Pinball.Ingame.Map
             RefreshVisualTint();
         }
 
-        void ReduceHealth(float damage)
+        void ReduceHealth(float damage, float overkillScoreRatio)
         {
-            if (_isUnbreakable)
+            if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperFortify))
                 return;
 
             _currentHealth -= damage;
             if (_currentHealth >= 0f)
                 return;
+
+            if (overkillScoreRatio > NO_OVERKILL_SCORE_RATIO)
+                GainScore(Mathf.RoundToInt(-_currentHealth * GetScoreMultiplier() * overkillScoreRatio), transform.position, EScoreSource.PassiveEffect);
 
             Break();
         }
@@ -233,7 +334,7 @@ namespace Pinball.Ingame.Map
 
                 PlayFX(_burnFX, transform.position);
                 GainScore(Mathf.RoundToInt(damagePerTick * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
-                ReduceHealth(damagePerTick);
+                ReduceHealth(damagePerTick, NO_OVERKILL_SCORE_RATIO);
             }
 
             StopBurning();
@@ -291,6 +392,7 @@ namespace Pinball.Ingame.Map
             _isBroken = true;
             StopBurning();
             ClearFrozen();
+            ClearSniperMark();
             _collider.enabled = false;
             GainScore(_spec.BreakScore, transform.position, EScoreSource.GimmickBreak);
             PlayFX(_spec.BreakFX, transform.position);

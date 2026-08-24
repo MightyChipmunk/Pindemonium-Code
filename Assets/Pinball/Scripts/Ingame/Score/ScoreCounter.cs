@@ -11,6 +11,7 @@ namespace Pinball.Ingame.Score
         const float DEFAULT_SCORE_MULTIPLIER = 1f;
 
         ComboTracker _comboTracker = null;
+        SlingshotScoreGrowth _slingshotGrowth = null;
         Action<int, Vector2> _scorePopupPlayer = null;
         Func<MapInteractable.EGimmickType, float> _stageGimmickScoreMultiplierGetter = null;
         int _current = 0;
@@ -22,9 +23,10 @@ namespace Pinball.Ingame.Score
         public event Action<int, float, int> OnComboChanged;
         public event Action<int, float, int> OnComboEnded;
 
-        public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter)
+        public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, SlingshotScoreGrowth slingshotGrowth)
         {
             _current = initialScore;
+            _slingshotGrowth = slingshotGrowth;
             _scorePopupPlayer = scorePopupPlayer;
             _stageGimmickScoreMultiplierGetter = stageGimmickScoreMultiplierGetter;
             _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
@@ -43,7 +45,9 @@ namespace Pinball.Ingame.Score
 
         public void HandleMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint, MapInteractable.EScoreSource scoreSource)
         {
+            CountSlingshotHit(gimmickType, scoreSource);
             float bonusRatio = GetSourceScoreRatio(gimmickType, scoreSource)
+                + GetSlingshotGrowthRatio(gimmickType)
                 + StatProvider.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)
                 + StatProvider.GetLowBallScoreRatio();
             int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * _hitGradeScoreMultiplier * GetStageGimmickScoreMultiplier(gimmickType));
@@ -59,6 +63,31 @@ namespace Pinball.Ingame.Score
         {
             RefreshHitGradeMultiplier(grade);
             AddParryScore(grade, worldPoint);
+        }
+
+        void CountSlingshotHit(MapInteractable.EGimmickType gimmickType, MapInteractable.EScoreSource scoreSource)
+        {
+            if (null == _slingshotGrowth)
+                return;
+
+            if (gimmickType != MapInteractable.EGimmickType.Slingshot)
+                return;
+
+            if (scoreSource != MapInteractable.EScoreSource.BallHit)
+                return;
+
+            _slingshotGrowth.CountHit();
+        }
+
+        float GetSlingshotGrowthRatio(MapInteractable.EGimmickType gimmickType)
+        {
+            if (null == _slingshotGrowth)
+                return 0f;
+
+            if (gimmickType != MapInteractable.EGimmickType.Slingshot)
+                return 0f;
+
+            return _slingshotGrowth.GetScoreRatio();
         }
 
         static float GetSourceScoreRatio(MapInteractable.EGimmickType gimmickType, MapInteractable.EScoreSource scoreSource)

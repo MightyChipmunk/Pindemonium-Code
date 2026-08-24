@@ -17,11 +17,6 @@ namespace Pinball.Ingame.Stage
             _source = source;
         }
 
-        public bool IsBumperUnbreakable()
-        {
-            return null != FindGimmick(StageGimmickData.EType.BumperUnbreakable);
-        }
-
         public int GetTargetScore(int baseTargetScore)
         {
             return Mathf.RoundToInt(baseTargetScore * GetTargetScoreMultiplier());

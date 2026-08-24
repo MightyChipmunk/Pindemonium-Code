@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Pinball.Audio;
 using Pinball.FX;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -30,6 +31,12 @@ namespace Pinball.Ingame.Map
         const float SPIN_TICK_MIN_PITCH = 0.85f;
         const float SPIN_TICK_MAX_PITCH = 1.6f;
         const float SPIN_TICK_END_PROGRESS = 1f;
+        const int NO_BONUS_INDEX = -1;
+        const int MIN_BONUS_INDICATOR_COUNT = 3;
+        const float NO_BONUS_MULTIPLIER = 1f;
+
+        static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 0.75f, 1f, 1f);
+        static readonly Color WEAK_TARGET_TINT = new Color(0.3f, 0.47f, 0.66f, 1f);
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
@@ -49,6 +56,7 @@ namespace Pinball.Ingame.Map
         float[] _spinIntervals = null;
         int _litIndex = NO_LIT_INDEX;
         int _captureCount = 0;
+        int _bonusCenterIndex = NO_BONUS_INDEX;
 
         public override EGimmickType GimmickType => EGimmickType.Saucer;
 
@@ -64,6 +72,7 @@ namespace Pinball.Ingame.Map
 
             InitIndicators();
             BuildSpinIntervals();
+            RefreshBonusTargets();
             _collider.enabled = true;
         }
 
@@ -106,6 +115,7 @@ namespace Pinball.Ingame.Map
                 _indicators[i].Release();
 
             _litIndex = NO_LIT_INDEX;
+            _bonusCenterIndex = NO_BONUS_INDEX;
         }
 
         void BuildSpinIntervals()
@@ -171,7 +181,7 @@ namespace Pinball.Ingame.Map
             await SpinIndicatorsAsync(targetIndex, cancellationToken);
             await UniTask.Delay(TimeSpan.FromSeconds(SPIN_STOP_LEAD_TIME), cancellationToken: cancellationToken);
 
-            int reward = GetCurrentReward();
+            int reward = Mathf.RoundToInt(GetCurrentReward() * GetTargetBonusMultiplier(targetIndex));
             ReleaseHeldBody(GetEjectDirection(targetIndex));
             SetLitIndex(NO_LIT_INDEX);
             PlayEjectMotion();
@@ -190,6 +200,7 @@ namespace Pinball.Ingame.Map
             _collider.enabled = false;
             PlayIndicatorsHide();
             await UniTask.Delay(TimeSpan.FromSeconds(_cooldownDuration), cancellationToken: cancellationToken);
+            RefreshBonusTargets();
             PlayIndicatorsShow();
             _collider.enabled = true;
         }
@@ -210,6 +221,62 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _indicators.Length; ++i)
                 _indicators[i].PlayShow(i * INDICATOR_STAGGER_INTERVAL);
+        }
+
+        void RefreshBonusTargets()
+        {
+            _bonusCenterIndex = NO_BONUS_INDEX;
+
+            if (null == _indicators || _indicators.Length < MIN_BONUS_INDICATOR_COUNT)
+                return;
+
+            if (StatProvider.HasSaucerTargetBonus())
+                _bonusCenterIndex = UnityEngine.Random.Range(0, _indicators.Length);
+
+            ApplyBonusTints();
+        }
+
+        void ApplyBonusTints()
+        {
+            for (int i = 0; i < _indicators.Length; ++i)
+            {
+                if (i == _bonusCenterIndex)
+                {
+                    _indicators[i].SetTint(STRONG_TARGET_TINT);
+                    continue;
+                }
+
+                if (IsWeakTargetIndex(i))
+                {
+                    _indicators[i].SetTint(WEAK_TARGET_TINT);
+                    continue;
+                }
+
+                _indicators[i].ClearTint();
+            }
+        }
+
+        bool IsWeakTargetIndex(int index)
+        {
+            if (_bonusCenterIndex == NO_BONUS_INDEX)
+                return false;
+
+            int count = _indicators.Length;
+            return index == (_bonusCenterIndex + 1) % count || index == (_bonusCenterIndex - 1 + count) % count;
+        }
+
+        float GetTargetBonusMultiplier(int targetIndex)
+        {
+            if (_bonusCenterIndex == NO_BONUS_INDEX || targetIndex == NO_LIT_INDEX)
+                return NO_BONUS_MULTIPLIER;
+
+            if (targetIndex == _bonusCenterIndex)
+                return StatProvider.GetSaucerTargetBonus(true);
+
+            if (IsWeakTargetIndex(targetIndex))
+                return StatProvider.GetSaucerTargetBonus(false);
+
+            return NO_BONUS_MULTIPLIER;
         }
 
         int PickTargetIndex()

@@ -30,7 +30,8 @@ namespace Pinball.Ingame.Run
             int BallPassiveSlotCount,
             int MapPassiveSlotCount,
             int CommonPassiveSlotCount,
-            int StageClearMoney);
+            int StageClearMoney,
+            int SlingshotHitCount);
 
         const int FIRST_STAGE_NUMBER = 1;
         const int MIN_COMMON_PASSIVE_SLOT_COUNT = 0;
@@ -57,7 +58,8 @@ namespace Pinball.Ingame.Run
                 BallPassiveSlotCount: param.BaseBallPassiveSlotCount,
                 MapPassiveSlotCount: param.BaseMapPassiveSlotCount,
                 CommonPassiveSlotCount: Mathf.Max(MIN_COMMON_PASSIVE_SLOT_COUNT, param.BaseCommonPassiveSlotCount + setup.PassiveSlotAdd),
-                StageClearMoney: Mathf.Max(0, param.BaseStageClearMoney + setup.StageClearMoneyAdd));
+                StageClearMoney: Mathf.Max(0, param.BaseStageClearMoney + setup.StageClearMoneyAdd),
+                SlingshotHitCount: isNewRun ? 0 : saved.SlingshotHitCount);
         }
 
         static int ResolveSavedFlipperIndex(FlipperCatalogData catalog, string flipperId)

@@ -6,8 +6,6 @@ namespace Pinball.Ingame.Stage
 {
     public static class StageGimmickLabelFormatter
     {
-        const string BUMPER_UNBREAKABLE_LABEL = "BUMPER UNBREAKABLE";
-        const string BUMPER_UNBREAKABLE_KEY = "gimmick.bumper_unbreakable";
         const string TARGET_SCORE_FORMAT = "TARGET SCORE x{0:0.#}";
         const string TARGET_SCORE_KEY = "gimmick.target_score";
         const string TIME_LIMIT_FORMAT = "TIME LIMIT {0}:{1:00}";
@@ -43,8 +41,6 @@ namespace Pinball.Ingame.Stage
 
             switch (gimmick.Type)
             {
-                case StageGimmickData.EType.BumperUnbreakable:
-                    return LocalizationTable.Get(BUMPER_UNBREAKABLE_KEY, BUMPER_UNBREAKABLE_LABEL);
                 case StageGimmickData.EType.TargetScoreMultiplier:
                     return LocalizationTable.Format(TARGET_SCORE_KEY, TARGET_SCORE_FORMAT, gimmick.Value);
                 case StageGimmickData.EType.TimeLimit:

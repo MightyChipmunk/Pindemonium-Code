@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -55,7 +56,7 @@ namespace Pinball.Ingame.Map
 
         protected override void GainHitScore(float damage, Vector2 worldPoint)
         {
-            GainScore(_scoreReward, worldPoint);
+            GainScore(Mathf.RoundToInt(_scoreReward * StatProvider.GetStandupDamageScoreMultiplier(damage)), worldPoint);
         }
 
         protected override void OnBallHit(Collision2D collision, float damage)

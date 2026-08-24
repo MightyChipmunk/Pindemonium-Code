@@ -1,4 +1,6 @@
+using System;
 using Pinball.Audio;
+using Pinball.FX;
 using Pinball.Util;
 using UnityEngine;
 
@@ -10,14 +12,22 @@ namespace Pinball.Ingame
         const float MIN_HIT_SPEED = 2.5f;
         const float MAX_HIT_SPEED = 12f;
         const float MIN_HIT_VOLUME_RATIO = 0.4f;
+        const float MIN_HIT_FX_IMPULSE = 3f;
+        const PoolableFX.EFXType WALL_HIT_FX = PoolableFX.EFXType.BallCollide;
         const float MAX_HIT_VOLUME_RATIO = 1f;
+
+        static readonly Color STONE_TINT = new Color(0.49f, 0.59f, 1f, 1f);
 
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
         [SerializeField] SpriteRenderer _renderer = null;
         [SerializeField] BallTrail _trail = null;
         [SerializeField] BallAuraController _auraController = null;
+        [SerializeField] SpriteRenderer _spikeRenderer = null;
+        [SerializeField] SpriteRenderer _scopeRenderer = null;
         [SerializeField] LayerMask _hitSoundLayerMask = 0;
+
+        Action<PoolableFX.EFXType, Vector2> _hitFXPlayer = null;
 
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
@@ -37,6 +47,28 @@ namespace Pinball.Ingame
         public Vector2 GetVelocity()
         {
             return _rigidbody.linearVelocity;
+        }
+
+        public void SetHitFXPlayer(Action<PoolableFX.EFXType, Vector2> hitFXPlayer)
+        {
+            _hitFXPlayer = hitFXPlayer;
+        }
+
+        public void SetSpikesActive(bool isActive)
+        {
+            _spikeRenderer.enabled = isActive;
+        }
+
+        public void SetScopeActive(bool isActive)
+        {
+            _scopeRenderer.enabled = isActive;
+        }
+
+        public void SetStoneActive(bool isActive)
+        {
+            Color tint = isActive ? STONE_TINT : Color.white;
+            tint.a = _renderer.color.a;
+            _renderer.color = tint;
         }
 
         public void SetAura(BallAura.EAuraType auraType, bool isActive)
@@ -78,6 +110,9 @@ namespace Pinball.Ingame
         {
             gameObject.SetActive(true);
             SetAlpha(OPAQUE_ALPHA);
+            SetSpikesActive(false);
+            SetScopeActive(false);
+            SetStoneActive(false);
             _trail.Init();
             _auraController.Init();
         }
@@ -86,6 +121,7 @@ namespace Pinball.Ingame
         {
             SetKinematic(true);
             _auraController.Release();
+            _hitFXPlayer = null;
             _trail.Release();
         }
 
@@ -99,6 +135,10 @@ namespace Pinball.Ingame
             float hitSpeedSqr = collision.relativeVelocity.sqrMagnitude;
             if (hitSpeedSqr < MIN_HIT_SPEED * MIN_HIT_SPEED)
                 return;
+
+            ContactPoint2D contact = collision.GetContact(0);
+            if (contact.normalImpulse >= MIN_HIT_FX_IMPULSE)
+                _hitFXPlayer?.Invoke(WALL_HIT_FX, contact.point);
 
             float speedRatio = Mathf.InverseLerp(MIN_HIT_SPEED, MAX_HIT_SPEED, Mathf.Sqrt(hitSpeedSqr));
             AudioManager.PlayScaled(AudioStorage.EAudioClipType.BallHitNormal,

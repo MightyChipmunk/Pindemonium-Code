@@ -14,6 +14,8 @@ namespace Pinball.Ingame.State
 {
     public class PlayState : IngameStateBase
     {
+        const float FULL_BLAST_RADIUS_RATIO = 1f;
+
         public record InitParam(
             Func<int, MapRoot> MapLoader,
             Func<Collider2D, float, float> DamageEvaluator,
@@ -108,6 +110,9 @@ namespace Pinball.Ingame.State
             _param.SurgeTicker?.Invoke(deltaTime);
             _ballFlow.Tick(deltaTime);
             _stageTracker.Tick(deltaTime);
+
+            if (null != _currentMap)
+                _currentMap.TickSniperMark(deltaTime);
         }
 
         public void TogglePause()
@@ -183,8 +188,7 @@ namespace Pinball.Ingame.State
                 OnGimmickBallHit: _ballFlow.CountGimmickHit,
                 GimmickHitPresenter: _director.PlayGimmickHit,
                 IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
-                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit,
-                IsBumperUnbreakable: _gimmickResolver.IsBumperUnbreakable()));
+                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit));
         }
 
         void OnStageCleared(int stageNumber, StageData stage)
@@ -257,6 +261,9 @@ namespace Pinball.Ingame.State
 
         void OnBumperDamaged(BumperInteractable bumper, float damage)
         {
+            bumper.GainHitScore(Mathf.RoundToInt(StatProvider.GetBumperHitScore()));
+            ApplyBlast(bumper, damage);
+
             if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperBurn))
             {
                 float burnDamage = damage * StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
@@ -277,6 +284,22 @@ namespace Pinball.Ingame.State
             float chainRatio = StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperChainLightning);
             int maxChainCount = Mathf.RoundToInt(StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperChainLightning, ShopItemData.SUB_VALUE_INDEX));
             _currentMap.ApplyChainDamage(bumper, damage, chainRatio, maxChainCount);
+        }
+
+        void ApplyBlast(BumperInteractable bumper, float damage)
+        {
+            if (!StatProvider.HasEffect(ShopItemData.EEffectType.BumperBlast))
+                return;
+
+            if (null == _currentMap)
+                return;
+
+            float damageRatio = StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperBlast);
+            float maxRadiusDamage = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBlast, ShopItemData.SUB_VALUE_INDEX);
+            float maxRadiusScale = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBlast, ShopItemData.EXTRA_VALUE_INDEX);
+            float radiusRatio = maxRadiusDamage <= 0f ? FULL_BLAST_RADIUS_RATIO : Mathf.Clamp01(damage / maxRadiusDamage);
+            float blastRadius = bumper.GetRadius() * maxRadiusScale * radiusRatio;
+            _currentMap.ApplyBlastDamage(bumper, damage, blastRadius, damageRatio);
         }
 
         void OnBumperBroken()

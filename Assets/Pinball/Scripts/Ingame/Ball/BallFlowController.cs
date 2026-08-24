@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Pinball.Audio;
+using Pinball.FX;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Score;
 using Pinball.Ingame.Shop;
@@ -19,12 +20,14 @@ namespace Pinball.Ingame
 
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
-            Func<bool> IsPlayingGetter);
+            Func<bool> IsPlayingGetter,
+            Action<PoolableFX.EFXType, Vector2> FXPlayer);
 
         BallSpawner _spawner = null;
         BallStockCounter _ballStock = null;
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
+        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         MapRoot _map = null;
         Ball _activeBall = null;
         List<Ball> _cloneBalls = null;
@@ -47,6 +50,7 @@ namespace Pinball.Ingame
             _spawner = spawner;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
+            _fxPlayer = param.FXPlayer;
             _usedBallCount = 0;
             _cloneBalls = new List<Ball>();
             _cloneLifeRemains = new List<float>();
@@ -77,6 +81,7 @@ namespace Pinball.Ingame
                 return;
 
             ball.SetMass(StatProvider.GetBallMass());
+            ball.SetHitFXPlayer(_fxPlayer);
             ApplyPassiveAura(ball);
             ball.SetAura(BallAura.EAuraType.Surge, _isSurgeCharged);
             _activeBall = ball;
@@ -285,6 +290,7 @@ namespace Pinball.Ingame
             clone.MoveTo(GetCloneSpawnPosition());
             clone.SetKinematic(false);
             clone.SetAlpha(CLONE_ALPHA);
+            clone.SetHitFXPlayer(_fxPlayer);
             ApplyPassiveAura(clone);
             clone.AddImpulse(GetRandomSplitImpulse());
             AudioManager.Play(AudioStorage.EAudioClipType.BallCloneSpawn);
@@ -317,6 +323,10 @@ namespace Pinball.Ingame
             ball.SetAura(BallAura.EAuraType.Lightning, StatProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning));
             ball.SetAura(BallAura.EAuraType.Frost, StatProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze));
             ball.SetAura(BallAura.EAuraType.Gold, StatProvider.HasEffect(ShopItemData.EEffectType.GimmickBreakMoney));
+            ball.SetAura(BallAura.EAuraType.Blast, StatProvider.HasEffect(ShopItemData.EEffectType.BumperBlast));
+            ball.SetSpikesActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperHitScoreAdd));
+            ball.SetScopeActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperSniperMark));
+            ball.SetStoneActive(StatProvider.HasEffect(ShopItemData.EEffectType.BallDamageRatio));
         }
 
         bool IsControlBlocked()

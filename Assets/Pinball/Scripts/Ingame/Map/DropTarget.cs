@@ -15,23 +15,33 @@ namespace Pinball.Ingame.Map
         const float RAISED_ALPHA = 1f;
         const float DROPPED_ALPHA = 0.4f;
 
+        static readonly Color HIGHLIGHT_TINT = new Color(1f, 0.72f, 0.24f, 1f);
+
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
         [SerializeField] SpriteRenderer _visualRenderer = null;
         [SerializeField] float _dropDistance = 0.25f;
 
         Func<int, bool> _ballLayerChecker = null;
-        Action<Collider2D> _onDropped = null;
+        Action<int, Collider2D> _onDropped = null;
         Tween _moveTween = null;
         Vector3 _raisedLocalPosition = Vector3.zero;
+        Color _baseColor = Color.white;
+        int _index = 0;
         bool _isDropped = false;
 
-        public void Init(Func<int, bool> ballLayerChecker, Action<Collider2D> onDropped)
+        public void Init(int index, Func<int, bool> ballLayerChecker, Action<int, Collider2D> onDropped)
         {
+            _index = index;
             _ballLayerChecker = ballLayerChecker;
             _onDropped = onDropped;
             _isDropped = false;
             _collider.enabled = true;
+
+            if (null != _visualRenderer)
+                _baseColor = _visualRenderer.color;
+
+            SetHighlighted(false);
             SetAlpha(RAISED_ALPHA);
 
             if (null == _visual)
@@ -43,8 +53,22 @@ namespace Pinball.Ingame.Map
         public void Release()
         {
             KillMoveTween(false);
+            SetHighlighted(false);
             _onDropped = null;
             _ballLayerChecker = null;
+        }
+
+        public void SetHighlighted(bool isHighlighted)
+        {
+            if (null == _visualRenderer)
+                return;
+
+            Color tint = isHighlighted ? HIGHLIGHT_TINT : _baseColor;
+            Color color = _visualRenderer.color;
+            color.r = tint.r;
+            color.g = tint.g;
+            color.b = tint.b;
+            _visualRenderer.color = color;
         }
 
         public void Raise()
@@ -86,7 +110,7 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _moveTween = _visual.DOLocalMove(GetDroppedLocalPosition(), DROP_DURATION);
 
-            _onDropped?.Invoke(ballCollider);
+            _onDropped?.Invoke(_index, ballCollider);
         }
 
         Vector3 GetDroppedLocalPosition()

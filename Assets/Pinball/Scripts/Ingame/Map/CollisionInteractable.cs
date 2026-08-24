@@ -1,3 +1,4 @@
+using Pinball.FX;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -17,6 +18,7 @@ namespace Pinball.Ingame.Map
             if (!IsBallLayer(collision.gameObject.layer))
                 return;
 
+            PlayFX(GetBallHitFX(), collision.GetContact(0).point);
             NotifyBallHit(collision.collider);
             PlayGimmickHit();
 
@@ -33,6 +35,11 @@ namespace Pinball.Ingame.Map
         protected virtual void GainHitScore(float damage, Vector2 worldPoint)
         {
             GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), worldPoint);
+        }
+
+        protected virtual PoolableFX.EFXType GetBallHitFX()
+        {
+            return PoolableFX.EFXType.BallCollide;
         }
 
         protected virtual float GetScoreMultiplier()

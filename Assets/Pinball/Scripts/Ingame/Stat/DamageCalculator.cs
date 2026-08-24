@@ -22,12 +22,11 @@ namespace Pinball.Ingame.Stat
 
         public float Calculate(Collider2D ballCollider, float collisionImpulse)
         {
-            float attackPower = StatProvider.GetBallAttackPower();
-            float flatDamage = StatProvider.GetHitFlatDamage();
+            float attackPower = StatProvider.GetBallAttackPower() * StatProvider.GetFinalDamageScale();
             if (IsCloneBall(ballCollider))
-                return (collisionImpulse * attackPower + flatDamage) * StatProvider.GetCloneDamageRatio();
+                return collisionImpulse * attackPower * StatProvider.GetCloneDamageRatio();
 
-            return collisionImpulse * attackPower * ConsumeSurgeMultiplier() + flatDamage;
+            return collisionImpulse * attackPower * ConsumeSurgeMultiplier();
         }
 
         bool IsCloneBall(Collider2D ballCollider)

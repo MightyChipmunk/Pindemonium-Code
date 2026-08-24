@@ -4,6 +4,8 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
 using Pinball.FX;
+using Pinball.Ingame.Shop;
+using Pinball.Ingame.Stat;
 using Pinball.Util;
 using UnityEngine;
 
@@ -14,6 +16,7 @@ namespace Pinball.Ingame.Map
         const float CHAIN_INTERVAL = 0.1f;
         const PoolableFX.EFXType CHAIN_FX = PoolableFX.EFXType.LightningBall;
         const PoolableFX.EFXType CHAIN_LINK_FX = PoolableFX.EFXType.LightningChainLink;
+        const PoolableFX.EFXType BLAST_FX = PoolableFX.EFXType.Blast;
 
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
@@ -27,8 +30,7 @@ namespace Pinball.Ingame.Map
             Action<Collider2D> OnGimmickBallHit,
             Action GimmickHitPresenter,
             Func<MapInteractable.EGimmickType, bool> IsGimmickAbsentGetter,
-            Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter,
-            bool IsBumperUnbreakable);
+            Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter);
 
         [SerializeField] MapInteractable[] _interactables = null;
         [SerializeField] Flipper _leftFlipper = null;
@@ -38,16 +40,22 @@ namespace Pinball.Ingame.Map
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
         Action<BumperInteractable, float> _onBumperDamaged = null;
         Action _onBumperBroken = null;
+        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
         List<BumperInteractable> _bumpers = null;
+        List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
+        float _sniperMarkElapsed = 0f;
 
         public void Init(InitParam param)
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _bumpers = new List<BumperInteractable>();
+            _markCandidates = new List<BumperInteractable>();
+            _sniperMarkElapsed = 0f;
             _onBumperDamaged = param.OnBumperDamaged;
             _onBumperBroken = param.OnBumperBroken;
+            _fxPlayer = param.FXPlayer;
             _lineFXPlayer = param.LineFXPlayer;
 
             if (null != _interactables)
@@ -71,7 +79,6 @@ namespace Pinball.Ingame.Map
                     if (null == bumper)
                         continue;
 
-                    bumper.SetUnbreakable(param.IsBumperUnbreakable);
                     _bumpers.Add(bumper);
                     bumper.OnBallDamaged += HandleBumperDamaged;
                     bumper.OnBroken += HandleBumperBroken;
@@ -101,6 +108,7 @@ namespace Pinball.Ingame.Map
         public void Release()
         {
             CancelChainDamage();
+            _fxPlayer = null;
             _lineFXPlayer = null;
             _spring.Release();
             _rightFlipper.OnBallStruck -= OnFlipperBallStruck;
@@ -123,6 +131,12 @@ namespace Pinball.Ingame.Map
                 _bumpers = null;
             }
 
+            if (null != _markCandidates)
+            {
+                _markCandidates.Clear();
+                _markCandidates = null;
+            }
+
             if (null == _interactables)
                 return;
 
@@ -138,6 +152,66 @@ namespace Pinball.Ingame.Map
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
             _cancellationTokenSource = null;
+        }
+
+        public void TickSniperMark(float deltaTime)
+        {
+            if (null == _bumpers)
+                return;
+
+            for (int i = 0; i < _bumpers.Count; ++i)
+                _bumpers[i].TickSniperMark(deltaTime);
+
+            float markInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperSniperMark, ShopItemData.SUB_VALUE_INDEX);
+            if (markInterval <= 0f)
+                return;
+
+            _sniperMarkElapsed += deltaTime;
+            if (_sniperMarkElapsed < markInterval)
+                return;
+
+            _sniperMarkElapsed = 0f;
+            MarkRandomBumper(StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperSniperMark, ShopItemData.EXTRA_VALUE_INDEX));
+        }
+
+        void MarkRandomBumper(float markDuration)
+        {
+            _markCandidates.Clear();
+            for (int i = 0; i < _bumpers.Count; ++i)
+                if (_bumpers[i].CanApplySniperMark())
+                    _markCandidates.Add(_bumpers[i]);
+
+            BumperInteractable target = RandomDraw.TakeOne(_markCandidates);
+            if (null == target)
+                return;
+
+            target.ApplySniperMark(markDuration);
+        }
+
+        public void ApplyBlastDamage(BumperInteractable source, float baseDamage, float blastRadius, float damageRatio)
+        {
+            if (null == _bumpers)
+                return;
+
+            if (blastRadius <= 0f || damageRatio <= 0f)
+                return;
+
+            Vector2 originPoint = source.transform.position;
+            _fxPlayer?.Invoke(BLAST_FX, originPoint);
+
+            float sqrRadius = blastRadius * blastRadius;
+            float blastDamage = baseDamage * damageRatio;
+            for (int i = 0; i < _bumpers.Count; ++i)
+            {
+                BumperInteractable bumper = _bumpers[i];
+                if (bumper == source || bumper.IsBroken || bumper.IsDeactivated)
+                    continue;
+
+                if (((Vector2)bumper.transform.position - originPoint).sqrMagnitude > sqrRadius)
+                    continue;
+
+                bumper.ApplyDamage(blastDamage, PoolableFX.EFXType.NonePooling);
+            }
         }
 
         public void ApplyChainDamage(BumperInteractable source, float baseDamage, float chainRatio, int maxChainCount)

@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -13,6 +14,7 @@ namespace Pinball.Ingame.Map
         const int MIN_REVOLUTION_DIVISOR = 1;
         const float TICK_MIN_PITCH = 0.85f;
         const float TICK_MAX_PITCH = 1.5f;
+        const float BASE_SCORE_MULTIPLIER = 1f;
 
         [SerializeField] Transform _visual = null;
         [SerializeField] int _scoreRewardPerRevolution = 0;
@@ -25,6 +27,7 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         float _remainingRevolutions = 0f;
         float _currentAngle = 0f;
+        float _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
         bool _isSpinning = false;
         bool _hasPendingBallHit = false;
 
@@ -35,6 +38,7 @@ namespace Pinball.Ingame.Map
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _remainingRevolutions = 0f;
             _currentAngle = REST_ANGLE;
+            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
             _isSpinning = false;
             _hasPendingBallHit = false;
             ApplyVisualAngle(REST_ANGLE);
@@ -50,6 +54,7 @@ namespace Pinball.Ingame.Map
             }
 
             _remainingRevolutions = 0f;
+            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
             _isSpinning = false;
             _hasPendingBallHit = false;
         }
@@ -103,6 +108,7 @@ namespace Pinball.Ingame.Map
         async UniTaskVoid SpinAsync(CancellationToken cancellationToken)
         {
             _isSpinning = true;
+            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
 
             while (_remainingRevolutions > 0f)
             {
@@ -115,7 +121,8 @@ namespace Pinball.Ingame.Map
                 if (_currentAngle >= FULL_ROTATION)
                 {
                     _currentAngle -= FULL_ROTATION;
-                    GainScore(_scoreRewardPerRevolution, transform.position, ConsumeScoreSource());
+                    GainScore(Mathf.RoundToInt(_scoreRewardPerRevolution * _spinScoreMultiplier), transform.position, ConsumeScoreSource());
+                    _spinScoreMultiplier *= BASE_SCORE_MULTIPLIER + StatProvider.GetSpinnerScoreGrowth();
                     PlaySpinTick();
                 }
 
@@ -124,6 +131,7 @@ namespace Pinball.Ingame.Map
 
             _remainingRevolutions = 0f;
             _currentAngle = REST_ANGLE;
+            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
             ApplyVisualAngle(REST_ANGLE);
             _isSpinning = false;
         }

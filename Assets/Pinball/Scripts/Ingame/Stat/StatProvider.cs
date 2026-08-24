@@ -8,6 +8,7 @@ namespace Pinball.Ingame.Stat
     public static class StatProvider
     {
         const int MIN_SCALING_BALL_COUNT = 1;
+        const int MIN_LAMP_REQUIRED_COUNT = 1;
         const float DEFAULT_SCALE = 1f;
         const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 珥덇린?붾릺吏 ?딆? ?곹깭?먯꽌 ?ㅽ꺈??議고쉶?덉뒿?덈떎.";
 
@@ -109,6 +110,11 @@ namespace Pinball.Ingame.Stat
             return ratioPerHit * _comboCountGetter();
         }
 
+        public static float GetFinalDamageScale()
+        {
+            return DEFAULT_SCALE + GetEffectSum(ShopItemData.EEffectType.BallDamageRatio);
+        }
+
         public static float GetLowBallScoreRatio()
         {
             float maxRatio = GetEffectSum(ShopItemData.EEffectType.LowBallScoreRatio);
@@ -126,9 +132,9 @@ namespace Pinball.Ingame.Stat
             return maxRatio * (initialCount - remainingCount) / (initialCount - MIN_SCALING_BALL_COUNT);
         }
 
-        public static float GetHitFlatDamage()
+        public static float GetBumperHitScore()
         {
-            return GetEffectSum(ShopItemData.EEffectType.HitFlatDamageAdd);
+            return GetEffectSum(ShopItemData.EEffectType.BumperHitScoreAdd);
         }
 
         public static float GetCloneDamageRatio()
@@ -168,7 +174,84 @@ namespace Pinball.Ingame.Stat
             if (!EnsureReady() || null == _loadout)
                 return 0f;
 
-            return _loadout.GetGimmickScoreRatio(gimmickType);
+            return _loadout.GetGimmickScoreRatio(gimmickType) + GetPassiveGimmickScoreRatio(gimmickType);
+        }
+
+        static float GetPassiveGimmickScoreRatio(MapInteractable.EGimmickType gimmickType)
+        {
+            if (gimmickType == MapInteractable.EGimmickType.Bumper)
+                return GetEffectSum(ShopItemData.EEffectType.BumperFortify);
+
+            return GetEffectSum(ShopItemData.EEffectType.NonBumperScoreRatio);
+        }
+
+        public static float GetSpinnerScoreGrowth()
+        {
+            return GetEffectSum(ShopItemData.EEffectType.SpinnerScoreGrowth);
+        }
+
+        public static float GetSlingshotScoreGrowth()
+        {
+            return GetEffectSum(ShopItemData.EEffectType.SlingshotScoreGrowth);
+        }
+
+        public static float GetSaucerTargetBonus(bool isStrongTarget)
+        {
+            if (!HasEffect(ShopItemData.EEffectType.SaucerTargetBonus))
+                return DEFAULT_SCALE;
+
+            int valueIndex = isStrongTarget ? ShopItemData.MAIN_VALUE_INDEX : ShopItemData.SUB_VALUE_INDEX;
+            return Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.SaucerTargetBonus, valueIndex));
+        }
+
+        public static bool HasSaucerTargetBonus()
+        {
+            return HasEffect(ShopItemData.EEffectType.SaucerTargetBonus);
+        }
+
+        public static int GetLampRequiredCount(int baseCount)
+        {
+            float delta = GetEffectSum(ShopItemData.EEffectType.LampRequirementUp) + GetEffectSum(ShopItemData.EEffectType.LampRequirementDown);
+            return Mathf.Max(MIN_LAMP_REQUIRED_COUNT, baseCount + Mathf.RoundToInt(delta));
+        }
+
+        public static float GetLampScoreMultiplier()
+        {
+            float multiplier = DEFAULT_SCALE;
+
+            if (HasEffect(ShopItemData.EEffectType.LampRequirementUp))
+                multiplier *= GetEffectValue(ShopItemData.EEffectType.LampRequirementUp, ShopItemData.SUB_VALUE_INDEX);
+
+            if (HasEffect(ShopItemData.EEffectType.LampRequirementDown))
+                multiplier *= GetEffectValue(ShopItemData.EEffectType.LampRequirementDown, ShopItemData.SUB_VALUE_INDEX);
+
+            return multiplier;
+        }
+
+        public static float GetStandupDamageScoreMultiplier(float damage)
+        {
+            if (!HasEffect(ShopItemData.EEffectType.StandupDamageScore))
+                return DEFAULT_SCALE;
+
+            float maxDamage = GetEffectValue(ShopItemData.EEffectType.StandupDamageScore, ShopItemData.SUB_VALUE_INDEX);
+            if (maxDamage <= 0f)
+                return DEFAULT_SCALE;
+
+            float maxMultiplier = Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.StandupDamageScore, ShopItemData.MAIN_VALUE_INDEX));
+            return Mathf.Lerp(DEFAULT_SCALE, maxMultiplier, Mathf.Clamp01(damage / maxDamage));
+        }
+
+        public static float GetDropTargetOrderMultiplier()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.DropTargetOrderBonus))
+                return DEFAULT_SCALE;
+
+            return Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.DropTargetOrderBonus, ShopItemData.MAIN_VALUE_INDEX));
+        }
+
+        public static bool HasDropTargetOrder()
+        {
+            return HasEffect(ShopItemData.EEffectType.DropTargetOrderBonus);
         }
 
         public static float GetEffectSum(ShopItemData.EEffectType effectType)

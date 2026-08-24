@@ -17,6 +17,7 @@ namespace Pinball.Ingame.Map
         Tween _fadeTween = null;
         Tween _scaleTween = null;
         Vector3 _baseScale = Vector3.one;
+        Color _baseColor = Color.white;
         float _dimAlpha = 1f;
 
         public void Init()
@@ -26,6 +27,7 @@ namespace Pinball.Ingame.Map
             if (null == _renderer)
                 return;
 
+            _baseColor = _renderer.color;
             _dimAlpha = _renderer.color.a;
             SetLit(false);
         }
@@ -35,7 +37,25 @@ namespace Pinball.Ingame.Map
             KillFadeTween();
             KillScaleTween();
             transform.localScale = _baseScale;
+            ClearTint();
             SetLit(false);
+        }
+
+        public void SetTint(Color tint)
+        {
+            if (null == _renderer)
+                return;
+
+            Color color = _renderer.color;
+            color.r = tint.r;
+            color.g = tint.g;
+            color.b = tint.b;
+            _renderer.color = color;
+        }
+
+        public void ClearTint()
+        {
+            SetTint(_baseColor);
         }
 
         public void SetLit(bool isLit)

@@ -68,6 +68,7 @@ namespace Pinball.Ingame
         PlayerController _playerController = null;
         BallFlowController _ballFlow = null;
         ScoreCounter _scoreCounter = null;
+        SlingshotScoreGrowth _slingshotGrowth = null;
         DamageCalculator _damageCalculator = null;
         StageProgressTracker _stageTracker = null;
         StageGimmickResolver _gimmickResolver = null;
@@ -218,7 +219,8 @@ namespace Pinball.Ingame
             _stageTracker.OnStageStarted += OnStageStarted;
             _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage());
 
-            _scoreCounter = new ScoreCounter(start.Score, _comboConfig, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier);
+            _slingshotGrowth = new SlingshotScoreGrowth(start.SlingshotHitCount);
+            _scoreCounter = new ScoreCounter(start.Score, _comboConfig, _uiRoot.PlayScorePopup, _gimmickResolver.GetGimmickScoreMultiplier, _slingshotGrowth);
             _scoreCounter.OnComboChanged += OnComboChanged;
             _scoreCounter.OnComboEnded += OnComboEnded;
         }
@@ -250,7 +252,8 @@ namespace Pinball.Ingame
         {
             _ballFlow = new BallFlowController(new BallFlowController.InitParam(
                 IsControlBlockedGetter: GetIsControlBlocked,
-                IsPlayingGetter: GetIsPlaying), _ballSpawner);
+                IsPlayingGetter: GetIsPlaying,
+                FXPlayer: _director.PlayFX), _ballSpawner);
             _drainZone.OnColliderEntered += _ballFlow.HandleBallDrained;
 
             _damageCalculator = new DamageCalculator(new DamageCalculator.InitParam(
@@ -489,6 +492,8 @@ namespace Pinball.Ingame
 
         void OnComboEnded(int comboCount, float multiplier, int bonusScore)
         {
+            _director.ResetComboPitch();
+
             if (bonusScore <= 0)
             {
                 _uiRoot.HideCombo();
@@ -579,7 +584,8 @@ namespace Pinball.Ingame
                 VoucherOfferedIds: _vouchers.CollectOfferedIds(),
                 VoucherOfferId: _vouchers.GetOfferId(),
                 VoucherOfferRound: _vouchers.OfferRoundIndex,
-                VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex));
+                VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex,
+                SlingshotHitCount: _slingshotGrowth.HitCount));
         }
 
         void OnUIEvent(UIManager.EEvent uiEvent, int payload)

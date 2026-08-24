@@ -11,6 +11,7 @@ namespace Pinball.Ingame.Shop
         public const int MAIN_VALUE_INDEX = 0;
         public const int SUB_VALUE_INDEX = 1;
         public const int EXTRA_VALUE_INDEX = 2;
+        public const int BONUS_VALUE_INDEX = 3;
 
         public enum EItemKind
         {
@@ -44,11 +45,23 @@ namespace Pinball.Ingame.Shop
             BumperFreeze = 14,
             BallResupplyMoney = 15,
             TimedAttackPowerSurge = 16,
-            HitFlatDamageAdd = 17,
+            BumperHitScoreAdd = 17,
             BallCloneSpawn = 18,
             UpgradeOnPassiveSell = 19,
             GimmickBreakScoreRatio = 20,
             BumperRespawnTimeRatio = 21,
+            BumperSniperMark = 22,
+            BumperBlast = 23,
+            BallDamageRatio = 24,
+            BumperFortify = 25,
+            SpinnerScoreGrowth = 26,
+            SlingshotScoreGrowth = 27,
+            SaucerTargetBonus = 28,
+            NonBumperScoreRatio = 29,
+            LampRequirementUp = 30,
+            LampRequirementDown = 31,
+            StandupDamageScore = 32,
+            DropTargetOrderBonus = 33,
         }
 
         [SerializeField] string _nameKey = string.Empty;
