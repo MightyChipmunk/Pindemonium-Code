@@ -12,9 +12,12 @@ namespace Pinball.Ingame.Map
         const float SHAKE_DURATION = 0.5f;
         const float SHAKE_STRENGTH = 0.14f;
         const int SHAKE_VIBRATO = 20;
+        const float RAISED_ALPHA = 1f;
+        const float DROPPED_ALPHA = 0.4f;
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
+        [SerializeField] SpriteRenderer _visualRenderer = null;
         [SerializeField] float _dropDistance = 0.25f;
 
         Func<int, bool> _ballLayerChecker = null;
@@ -29,6 +32,7 @@ namespace Pinball.Ingame.Map
             _onDropped = onDropped;
             _isDropped = false;
             _collider.enabled = true;
+            SetAlpha(RAISED_ALPHA);
 
             if (null == _visual)
                 return;
@@ -51,6 +55,7 @@ namespace Pinball.Ingame.Map
             _isDropped = false;
             _collider.enabled = true;
             KillMoveTween(false);
+            SetAlpha(RAISED_ALPHA);
 
             if (null == _visual)
                 return;
@@ -76,6 +81,7 @@ namespace Pinball.Ingame.Map
             _isDropped = true;
             _collider.enabled = false;
             KillMoveTween(false);
+            SetAlpha(DROPPED_ALPHA);
 
             if (null != _visual)
                 _moveTween = _visual.DOLocalMove(GetDroppedLocalPosition(), DROP_DURATION);
@@ -86,6 +92,16 @@ namespace Pinball.Ingame.Map
         Vector3 GetDroppedLocalPosition()
         {
             return _raisedLocalPosition + Vector3.down * _dropDistance;
+        }
+
+        void SetAlpha(float alpha)
+        {
+            if (null == _visualRenderer)
+                return;
+
+            Color color = _visualRenderer.color;
+            color.a = alpha;
+            _visualRenderer.color = color;
         }
 
         void KillMoveTween(bool isComplete)
@@ -115,6 +131,7 @@ namespace Pinball.Ingame.Map
         protected override void OnBindSerializedField()
         {
             _collider = GetComponent<Collider2D>();
+            _visualRenderer = GetComponentInChildren<SpriteRenderer>();
         }
 #endif // UNITY_EDITOR
     }
