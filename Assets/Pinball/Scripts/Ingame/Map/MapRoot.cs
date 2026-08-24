@@ -198,6 +198,7 @@ namespace Pinball.Ingame.Map
 
             Vector2 originPoint = source.transform.position;
             _fxPlayer?.Invoke(BLAST_FX, originPoint);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectBlast);
 
             float sqrRadius = blastRadius * blastRadius;
             float blastDamage = baseDamage * damageRatio;

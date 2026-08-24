@@ -188,6 +188,7 @@ namespace Pinball.Ingame.Map
 
             _isSniperMarked = true;
             _sniperMarkRemain = durationSeconds;
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectSniperMark);
             RefreshSniperMarkVisual();
         }
 
@@ -203,6 +204,7 @@ namespace Pinball.Ingame.Map
             if (_sniperMarkRemain > 0f)
                 return;
 
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectSniperExpire);
             ClearSniperMark();
         }
 
@@ -211,6 +213,7 @@ namespace Pinball.Ingame.Map
             if (!_isSniperMarked)
                 return NO_OVERKILL_SCORE_RATIO;
 
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectSniperHit);
             ClearSniperMark();
             return StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperSniperMark, ShopItemData.BONUS_VALUE_INDEX);
         }
