@@ -429,7 +429,7 @@ namespace Pinball.Ingame
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
-            _saveHandler.UpdateBestStage(stageNumber);
+            _saveHandler.UpdateBestStage(null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId(), stageNumber);
             SaveProgress(false);
             ShowStageInfo();
         }

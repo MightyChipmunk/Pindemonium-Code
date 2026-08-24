@@ -43,18 +43,12 @@ namespace Pinball.Lobby
         void RefreshLobbyLabels()
         {
             _uiRoot.SetContinueStage(GetSavedStageNumber());
-            _uiRoot.SetBestStage(GetBestStageNumber());
         }
 
         static int GetSavedStageNumber()
         {
             IngamePlayData saved = SaveManager.GetIngameData();
             return null == saved ? 0 : saved.StageNumber;
-        }
-
-        static int GetBestStageNumber()
-        {
-            return SaveManager.BestStageNumber;
         }
 
         void OnDestroy()

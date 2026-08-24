@@ -72,7 +72,8 @@ namespace Pinball.Lobby
                 AbilityKey: flipper.GetAbilityKey(),
                 DrawbackKey: flipper.GetDrawbackKey(),
                 IsUnlocked: _unlockProgress.IsFlipperUnlocked(flipper),
-                UnlockTier: _unlockProgress.GetFlipperUnlockTier(flipper));
+                UnlockTier: _unlockProgress.GetFlipperUnlockTier(flipper),
+                BestStageNumber: SaveManager.GetBestStageNumber(flipper.GetId()));
         }
 
         public void OpenContinue()

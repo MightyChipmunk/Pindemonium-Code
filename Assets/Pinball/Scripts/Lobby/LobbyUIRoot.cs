@@ -10,8 +10,6 @@ namespace Pinball.Lobby
     {
         const string STAGE_CHIP_FORMAT = "STAGE {0}";
         const string STAGE_CHIP_KEY = "ui.lobby.stage_chip";
-        const string BEST_STAGE_FORMAT = "BEST STAGE {0}";
-        const string BEST_STAGE_KEY = "ui.lobby.best_stage";
         const float CONTINUE_FULL_ALPHA = 1f;
         const float CONTINUE_DIMMED_ALPHA = 0.45f;
 
@@ -27,7 +25,6 @@ namespace Pinball.Lobby
         [SerializeField] GameObject _continueStageChip = null;
         [SerializeField] TMP_Text _continueStageLabel = null;
         [SerializeField] RectTransform _continueLabelRect = null;
-        [SerializeField] TMP_Text _bestStageLabel = null;
 
         Action _onContinueClicked = null;
         Action _onNewGameClicked = null;
@@ -67,14 +64,6 @@ namespace Pinball.Lobby
 
             _continueLabelRect.anchoredPosition = hasStage ? CONTINUE_LABEL_POSITION_WITH_CHIP : CONTINUE_LABEL_POSITION_CENTERED;
             _continueLabelRect.sizeDelta = hasStage ? CONTINUE_LABEL_SIZE_WITH_CHIP : CONTINUE_LABEL_SIZE_CENTERED;
-        }
-
-        public void SetBestStage(int bestStageNumber)
-        {
-            bool hasBest = bestStageNumber > 0;
-            _bestStageLabel.gameObject.SetActive(hasBest);
-            if (hasBest)
-                _bestStageLabel.text = LocalizationTable.Format(BEST_STAGE_KEY, BEST_STAGE_FORMAT, bestStageNumber);
         }
 
         public void Release()

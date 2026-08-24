@@ -45,9 +45,9 @@ namespace Pinball.Ingame.Save
                 param.VoucherPurchasedRound));
         }
 
-        public void UpdateBestStage(int stageNumber)
+        public void UpdateBestStage(string flipperId, int stageNumber)
         {
-            SaveManager.UpdateBestStage(stageNumber);
+            SaveManager.UpdateBestStage(flipperId, stageNumber);
         }
 
         public void ClearPlayData()
