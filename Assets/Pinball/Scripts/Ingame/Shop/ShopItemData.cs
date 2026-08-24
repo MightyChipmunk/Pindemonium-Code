@@ -38,6 +38,8 @@ namespace Pinball.Ingame.Shop
             HitFlatDamageAdd = 17,
             BallCloneSpawn = 18,
             UpgradeOnPassiveSell = 19,
+            GimmickBreakScoreRatio = 20,
+            BumperRespawnTimeRatio = 21,
         }
 
         [SerializeField] string _nameKey = string.Empty;

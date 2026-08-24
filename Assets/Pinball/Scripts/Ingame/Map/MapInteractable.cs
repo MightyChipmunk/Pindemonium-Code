@@ -24,6 +24,7 @@ namespace Pinball.Ingame.Map
         {
             BallHit = 0,
             PassiveEffect = 1,
+            GimmickBreak = 2,
         }
 
         public record InitParam(
@@ -192,7 +193,7 @@ namespace Pinball.Ingame.Map
 
         void CountScoreGain(EScoreSource scoreSource)
         {
-            if (scoreSource != EScoreSource.BallHit)
+            if (scoreSource == EScoreSource.PassiveEffect)
                 return;
 
             if (_scoreGainLimit <= NO_SCORE_GAIN_LIMIT)

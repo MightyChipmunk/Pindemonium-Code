@@ -43,12 +43,12 @@ namespace Pinball.Ingame.Score
 
         public void HandleMapScoreGained(MapInteractable.EGimmickType gimmickType, int score, Vector2 worldPoint, MapInteractable.EScoreSource scoreSource)
         {
-            float bonusRatio = StatProvider.GetGimmickScoreRatio(gimmickType)
+            float bonusRatio = GetSourceScoreRatio(gimmickType, scoreSource)
                 + StatProvider.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)
                 + StatProvider.GetLowBallScoreRatio();
             int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * _hitGradeScoreMultiplier * GetStageGimmickScoreMultiplier(gimmickType));
 
-            if (scoreSource == MapInteractable.EScoreSource.BallHit)
+            if (scoreSource != MapInteractable.EScoreSource.PassiveEffect)
                 _comboTracker.AddBounce(finalScore);
 
             Add(finalScore);
@@ -59,6 +59,14 @@ namespace Pinball.Ingame.Score
         {
             RefreshHitGradeMultiplier(grade);
             AddParryScore(grade, worldPoint);
+        }
+
+        static float GetSourceScoreRatio(MapInteractable.EGimmickType gimmickType, MapInteractable.EScoreSource scoreSource)
+        {
+            if (scoreSource == MapInteractable.EScoreSource.GimmickBreak)
+                return StatProvider.GetEffectSum(ShopItemData.EEffectType.GimmickBreakScoreRatio);
+
+            return StatProvider.GetGimmickScoreRatio(gimmickType);
         }
 
         float GetStageGimmickScoreMultiplier(MapInteractable.EGimmickType gimmickType)

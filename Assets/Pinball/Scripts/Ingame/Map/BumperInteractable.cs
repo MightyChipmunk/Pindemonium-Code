@@ -4,6 +4,8 @@ using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Pinball.Audio;
 using Pinball.FX;
+using Pinball.Ingame.Shop;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -18,6 +20,7 @@ namespace Pinball.Ingame.Map
         const int RESPAWN_PUNCH_VIBRATO = 6;
         const float MIN_BURN_INTERVAL = 0.05f;
         const float BURN_DURATION = 3f;
+        const float MIN_RESPAWN_DELAY_SCALE = 0.3f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
         static readonly Color FROZEN_TINT = new Color(0.5f, 0.85f, 1f, 1f);
@@ -289,7 +292,7 @@ namespace Pinball.Ingame.Map
             StopBurning();
             ClearFrozen();
             _collider.enabled = false;
-            GainScore(_spec.BreakScore);
+            GainScore(_spec.BreakScore, transform.position, EScoreSource.GimmickBreak);
             PlayFX(_spec.BreakFX, transform.position);
             AudioManager.Play(AudioStorage.EAudioClipType.BumperBreak);
             KillVisualTween(false);
@@ -303,9 +306,15 @@ namespace Pinball.Ingame.Map
                 RespawnAsync(_cancellationTokenSource.Token).Forget();
         }
 
+        float GetRespawnDelay()
+        {
+            float scale = Mathf.Max(MIN_RESPAWN_DELAY_SCALE, 1f - StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperRespawnTimeRatio));
+            return _spec.RespawnDelay * scale;
+        }
+
         async UniTaskVoid RespawnAsync(CancellationToken cancellationToken)
         {
-            await UniTask.Delay(TimeSpan.FromSeconds(_spec.RespawnDelay), cancellationToken: cancellationToken);
+            await UniTask.Delay(TimeSpan.FromSeconds(GetRespawnDelay()), cancellationToken: cancellationToken);
 
             _currentHealth = _spec.MaxHealth;
             _isBroken = false;
