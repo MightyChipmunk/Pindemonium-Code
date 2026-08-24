@@ -19,7 +19,6 @@ namespace Pinball.Ingame.Map
         const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
         const float MIN_BURN_INTERVAL = 0.05f;
-        const float BURN_DURATION = 3f;
         const float MIN_RESPAWN_DELAY_SCALE = 0.3f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
@@ -165,7 +164,7 @@ namespace Pinball.Ingame.Map
             ReduceHealth(damage);
         }
 
-        public void Ignite(float damagePerTick, float intervalSeconds, PoolableFX.EFXType burnFX)
+        public void Ignite(float damagePerTick, float intervalSeconds, float durationSeconds, PoolableFX.EFXType burnFX)
         {
             if (_isBroken)
                 return;
@@ -179,7 +178,8 @@ namespace Pinball.Ingame.Map
             RefreshVisualTint();
             PlayFX(_burnFX, transform.position);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectBurn);
-            BurnAsync(damagePerTick, Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds), _burnTokenSource.Token).Forget();
+            float tickInterval = Mathf.Max(MIN_BURN_INTERVAL, intervalSeconds);
+            BurnAsync(damagePerTick, tickInterval, Mathf.Max(tickInterval, durationSeconds), _burnTokenSource.Token).Forget();
         }
 
         public void ApplyFrostHit(float shatterDamageMultiplier, PoolableFX.EFXType freezeFX, PoolableFX.EFXType shatterFX)
@@ -221,9 +221,9 @@ namespace Pinball.Ingame.Map
             Break();
         }
 
-        async UniTaskVoid BurnAsync(float damagePerTick, float intervalSeconds, CancellationToken cancellationToken)
+        async UniTaskVoid BurnAsync(float damagePerTick, float intervalSeconds, float durationSeconds, CancellationToken cancellationToken)
         {
-            int tickCount = Mathf.Max(1, Mathf.RoundToInt(BURN_DURATION / intervalSeconds));
+            int tickCount = Mathf.Max(1, Mathf.RoundToInt(durationSeconds / intervalSeconds));
             for (int i = 0; i < tickCount; ++i)
             {
                 await UniTask.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken: cancellationToken);

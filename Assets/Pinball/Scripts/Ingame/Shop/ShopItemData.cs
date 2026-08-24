@@ -10,6 +10,7 @@ namespace Pinball.Ingame.Shop
     {
         public const int MAIN_VALUE_INDEX = 0;
         public const int SUB_VALUE_INDEX = 1;
+        public const int EXTRA_VALUE_INDEX = 2;
 
         public enum EItemKind
         {

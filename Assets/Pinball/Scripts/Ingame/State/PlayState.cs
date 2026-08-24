@@ -260,7 +260,9 @@ namespace Pinball.Ingame.State
             if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperBurn))
             {
                 float burnDamage = damage * StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
-                bumper.Ignite(burnDamage, StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.SUB_VALUE_INDEX), PoolableFX.EFXType.Fireball);
+                float burnInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.SUB_VALUE_INDEX);
+                float burnDuration = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.EXTRA_VALUE_INDEX);
+                bumper.Ignite(burnDamage, burnInterval, burnDuration, PoolableFX.EFXType.Fireball);
             }
 
             if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze))
