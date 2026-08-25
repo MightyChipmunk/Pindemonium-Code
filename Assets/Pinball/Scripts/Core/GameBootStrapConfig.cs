@@ -12,7 +12,7 @@ namespace Pinball.Core
         [SerializeField] SettingsConfigData _settingsConfig = null;
         [SerializeField] LocalizationTableData _localizationTable = null;
         [SerializeField] UIViewCatalogData _viewCatalog = null;
-        [SerializeField] BlockerView _blockerPrefab = null;
+        [SerializeField] ScreenTransitionView _transitionPrefab = null;
         [SerializeField] AudioStorage _audioStorage = null;
         [SerializeField] BgmStorage _bgmStorage = null;
         [SerializeField] BgmPlayer _bgmPlayerPrefab = null;
@@ -20,9 +20,13 @@ namespace Pinball.Core
         public SettingsConfigData SettingsConfig => _settingsConfig;
         public LocalizationTableData LocalizationTable => _localizationTable;
         public UIViewCatalogData ViewCatalog => _viewCatalog;
-        public BlockerView BlockerPrefab => _blockerPrefab;
         public AudioStorage AudioStorage => _audioStorage;
         public BgmStorage BgmStorage => _bgmStorage;
+
+        public ScreenTransitionView GetTransitionPrefab()
+        {
+            return _transitionPrefab;
+        }
 
         public BgmPlayer GetBgmPlayerPrefab()
         {

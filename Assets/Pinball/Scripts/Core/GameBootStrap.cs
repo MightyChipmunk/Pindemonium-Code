@@ -36,7 +36,8 @@ namespace Pinball.Core
             LocalizationManager.EnsureInit();
             LocalizationTable.EnsureInit(config.LocalizationTable);
             UIManager.EnsureInit(config.ViewCatalog);
-            Blocker.EnsureInit(config.BlockerPrefab);
+            Blocker.Init();
+            ScreenTransition.EnsureInit(config.GetTransitionPrefab());
             AudioStorage.Init(config.AudioStorage);
             BgmStorage.Init(config.BgmStorage);
             BgmManager.Init(config.GetBgmPlayerPrefab());
@@ -56,6 +57,7 @@ namespace Pinball.Core
             BgmManager.Release();
             BgmStorage.Release();
             AudioStorage.Release();
+            ScreenTransition.Release();
             Blocker.Release();
             UIManager.Release();
             LocalizationTable.Release();
