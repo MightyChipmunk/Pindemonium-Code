@@ -51,7 +51,7 @@ namespace Pinball.UI
         }
 
         const string MONEY_FORMAT = "$ {0}";
-        const string REROLL_FORMAT = "REROLL ${0}";
+        const string REROLL_FORMAT = "REROLL\n${0}";
         const string REROLL_KEY = "ui.shop.reroll";
         const string PRICE_FORMAT = "${0}";
         const string OWNED_COUNT_FORMAT = "x{0}";
