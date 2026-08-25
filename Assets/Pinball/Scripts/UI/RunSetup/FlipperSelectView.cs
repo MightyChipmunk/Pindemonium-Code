@@ -36,7 +36,9 @@ namespace Pinball.UI
         const string FIRST_CLEAR_HINT_KEY = "ui.lobby.unlock_hint_first";
         const string CLEAR_COUNT_HINT_FORMAT = "CLEAR THE RUN x{0} TO UNLOCK";
         const string CLEAR_COUNT_HINT_KEY = "ui.lobby.unlock_hint_count";
-        const string BEST_STAGE_FORMAT = "BEST STAGE {0}";
+        const string BEST_RECORD_FORMAT = "BEST RECORD: {0}";
+        const string BEST_RECORD_KEY = "ui.flipper_select.best_record";
+        const string BEST_STAGE_FORMAT = "STAGE {0}";
         const string BEST_STAGE_KEY = "ui.flipper_select.best_stage";
         const string BEST_CLEAR_TEXT = "GAME CLEAR";
         const string BEST_CLEAR_KEY = "ui.flipper_select.best_clear";
@@ -120,14 +122,14 @@ namespace Pinball.UI
 
         void BindBestRecord(FlipperEntry flipper)
         {
-            string recordText = GetBestRecordText(flipper);
-            bool hasBest = !string.IsNullOrEmpty(recordText);
+            string recordValue = GetBestRecordValue(flipper);
+            bool hasBest = !string.IsNullOrEmpty(recordValue);
             _bestStageLabel.gameObject.SetActive(hasBest);
             if (hasBest)
-                _bestStageLabel.text = recordText;
+                _bestStageLabel.text = LocalizationTable.Format(BEST_RECORD_KEY, BEST_RECORD_FORMAT, recordValue);
         }
 
-        static string GetBestRecordText(FlipperEntry flipper)
+        static string GetBestRecordValue(FlipperEntry flipper)
         {
             if (null == flipper)
                 return string.Empty;
