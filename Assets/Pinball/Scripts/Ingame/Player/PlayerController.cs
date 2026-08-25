@@ -136,7 +136,7 @@ namespace Pinball.Ingame.Player
 
         void SetFlipperPressed(Flipper.ESide side, bool isPressed)
         {
-            if (_isNudgeAiming)
+            if (_isNudgeAiming && isPressed)
                 return;
 
             if (IsControlBlocked())
@@ -150,9 +150,6 @@ namespace Pinball.Ingame.Player
 
         void HandleLaunchChanged(bool isPressed)
         {
-            if (_isNudgeAiming)
-                return;
-
             if (IsControlBlocked())
                 return;
 
@@ -161,6 +158,9 @@ namespace Pinball.Ingame.Player
 
             if (isPressed)
             {
+                if (_isNudgeAiming)
+                    return;
+
                 _map.SetSpringCharging(true);
                 return;
             }
