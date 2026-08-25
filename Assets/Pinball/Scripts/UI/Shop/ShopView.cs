@@ -39,6 +39,7 @@ namespace Pinball.UI
             OwnedEntry[] Upgrades,
             PackEntry[] Packs,
             VoucherEntry Voucher,
+            VoucherListPopupView.Entry[] OwnedVouchers,
             int StageNumber,
             int TotalStageCount,
             int RoundNumber,
@@ -79,6 +80,8 @@ namespace Pinball.UI
         const float PASSIVE_SHAKE_STRENGTH = 18f;
         const float MONEY_SHAKE_STRENGTH = 24f;
         const float VIEWPORT_CENTER_RATIO = 0.5f;
+        const string OWNED_VOUCHER_FORMAT = "VOUCHERS {0}";
+        const string OWNED_VOUCHER_KEY = "ui.shop.owned_vouchers";
         const string SELL_FORMAT = "SELL ${0}";
         const string SELL_KEY = "ui.shop.sell";
         const float SELL_BUTTON_GAP = 16f;
@@ -111,6 +114,8 @@ namespace Pinball.UI
         [SerializeField] ShopCardSlotView[] _packSlots = null;
         [SerializeField] ShopCardSlotView _voucherSlot = null;
         [SerializeField] Sprite _voucherBandSprite = null;
+        [SerializeField] Button _ownedVoucherButton = null;
+        [SerializeField] TMP_Text _ownedVoucherLabel = null;
         [SerializeField] Button _menuButton = null;
         [SerializeField] TMP_Text _roundLabel = null;
         [SerializeField] TMP_Text _stageLabel = null;
@@ -174,6 +179,7 @@ namespace Pinball.UI
                 _passiveDeniedArr[i] = new ShakeFeedback(_passiveGroupRoots[i], PASSIVE_SHAKE_STRENGTH);
 
             _voucherSlot.Init(0, OnVoucherClicked);
+            _ownedVoucherButton.onClick.AddListener(OnOwnedVoucherClicked);
             _rerollButton.onClick.AddListener(OnRerollClicked);
             _startButton.onClick.AddListener(OnStartClicked);
             _menuButton.onClick.AddListener(OnMenuClicked);
@@ -203,6 +209,7 @@ namespace Pinball.UI
             for (int i = 0; i < _packSlots.Length; ++i)
                 _packSlots[i].Release();
             _voucherSlot.Release();
+            _ownedVoucherButton.onClick.RemoveListener(OnOwnedVoucherClicked);
             _rerollButton.onClick.RemoveListener(OnRerollClicked);
             _startButton.onClick.RemoveListener(OnStartClicked);
             _menuButton.onClick.RemoveListener(OnMenuClicked);
@@ -234,6 +241,7 @@ namespace Pinball.UI
             HideSellButton();
             HideUpgradeListPanel();
             _lastRequestSource = null;
+            UIManager.Hide(UIViewCatalogData.EViewType.VoucherListPopup);
             for (int i = 0; i < _passiveGrids.Length; ++i)
                 _passiveGrids[i].Clear();
             _upgradeGrid.Clear();
@@ -266,6 +274,7 @@ namespace Pinball.UI
             BindOfferSection(viewArgs.Offers, playsReveal, purchase);
             BindPackSection(viewArgs.Packs, playsReveal);
             BindVoucher(viewArgs.Voucher);
+            BindOwnedVouchers(viewArgs.OwnedVouchers);
         }
 
         public bool TryBeginPurchaseFly(bool isPassive, int ownedIndex, int previousCount, out Vector3 position, out float width)
@@ -360,6 +369,21 @@ namespace Pinball.UI
                 PriceText: string.Format(PRICE_FORMAT, voucher.Price),
                 BandSprite: _voucherBandSprite,
                 CanBuy: true));
+        }
+
+        void BindOwnedVouchers(VoucherListPopupView.Entry[] ownedVouchers)
+        {
+            int ownedCount = null == ownedVouchers ? 0 : ownedVouchers.Length;
+            _ownedVoucherButton.gameObject.SetActive(ownedCount > 0);
+            if (ownedCount <= 0)
+            {
+                UIManager.Hide(UIViewCatalogData.EViewType.VoucherListPopup);
+                return;
+            }
+
+            _ownedVoucherLabel.text = LocalizationTable.Format(OWNED_VOUCHER_KEY, OWNED_VOUCHER_FORMAT, ownedCount);
+            if (UIManager.IsOpen(UIViewCatalogData.EViewType.VoucherListPopup))
+                UIManager.Show(new VoucherListPopupView.Args(ownedVouchers));
         }
 
         void BindPacks(PackEntry[] packs)
@@ -838,6 +862,14 @@ namespace Pinball.UI
         {
             _lastRequestSource = _voucherSlot.transform;
             UIManager.RaiseEvent(UIManager.EEvent.ShopVoucherBuyRequested);
+        }
+
+        void OnOwnedVoucherClicked()
+        {
+            if (null == _boundArgs)
+                return;
+
+            UIManager.Show(new VoucherListPopupView.Args(_boundArgs.OwnedVouchers));
         }
 
         void OnRerollClicked()

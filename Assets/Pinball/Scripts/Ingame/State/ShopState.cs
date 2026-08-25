@@ -325,6 +325,7 @@ namespace Pinball.Ingame.State
                 Upgrades: BuildUpgradeEntries(),
                 Packs: BuildPackEntries(),
                 Voucher: BuildVoucherEntry(),
+                OwnedVouchers: BuildOwnedVoucherEntries(),
                 StageNumber: isEndless ? _stageCatalog.GetEndlessStageNumber(stageNumber - 1) : stageNumber,
                 TotalStageCount: _stageCatalog.Count,
                 RoundNumber: isEndless ? GetRoundIndex() - _stageCatalog.RoundCount + 1 : GetRoundIndex() + 1,
@@ -367,6 +368,24 @@ namespace Pinball.Ingame.State
                 Icon: voucher.GetIcon(),
                 Description: voucher.GetDescriptionRef(),
                 Price: _vouchers.GetDiscountedPrice(PlayerVouchers.PRICE));
+        }
+
+        VoucherListPopupView.Entry[] BuildOwnedVoucherEntries()
+        {
+            VoucherListPopupView.Entry[] entries = new VoucherListPopupView.Entry[_vouchers.OwnedCount];
+            for (int i = 0; i < entries.Length; ++i)
+            {
+                VoucherData voucher = _vouchers.GetOwned(i);
+                if (null == voucher)
+                    continue;
+
+                entries[i] = new VoucherListPopupView.Entry(
+                    Title: voucher.GetNameRef(),
+                    Icon: voucher.GetIcon(),
+                    Description: voucher.GetDescriptionRef());
+            }
+
+            return entries;
         }
 
         void TryBuyPack(int slotIndex)
