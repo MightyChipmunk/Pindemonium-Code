@@ -104,6 +104,7 @@ namespace Pinball.UI
         [SerializeField] Button _upgradeListButton = null;
         [SerializeField] RectTransform _upgradeListPanel = null;
         [SerializeField] RectTransform _upgradeListContent = null;
+        [SerializeField] UIScrollView _upgradeListScroll = null;
         [SerializeField] UpgradeListRowView _upgradeListRowOrigin = null;
         [SerializeField] RectTransform _sellButtonRoot = null;
         [SerializeField] Button _sellButton = null;
@@ -570,7 +571,13 @@ namespace Pinball.UI
 
             _upgradeListButton.gameObject.SetActive(upgradeCount > 0);
             if (upgradeCount <= 0)
+            {
                 HideUpgradeListPanel();
+                return;
+            }
+
+            if (_upgradeListPanel.gameObject.activeSelf)
+                RefreshUpgradeListLayout();
         }
 
         void ReturnUpgradeListRows()
@@ -596,6 +603,13 @@ namespace Pinball.UI
             }
 
             _upgradeListPanel.gameObject.SetActive(true);
+            RefreshUpgradeListLayout();
+            _upgradeListScroll.ResetPosition();
+        }
+
+        void RefreshUpgradeListLayout()
+        {
+            _upgradeListScroll.Refresh();
             LayoutRebuilder.ForceRebuildLayoutImmediate(_upgradeListPanel);
         }
 

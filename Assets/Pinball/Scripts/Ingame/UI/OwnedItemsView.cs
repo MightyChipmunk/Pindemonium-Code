@@ -25,6 +25,7 @@ namespace Pinball.Ingame.UI
         [SerializeField] ItemIconGridView[] _passiveGrids = null;
         [SerializeField] GameObject _upgradeSection = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
+        [SerializeField] UIScrollView _upgradeScroll = null;
 
         List<ItemIconGridView.Entry>[] _categoryEntries = null;
 
@@ -65,6 +66,15 @@ namespace Pinball.Ingame.UI
 
             BindUpgrades(args.Upgrades);
             LayoutRebuilder.ForceRebuildLayoutImmediate(_root);
+            RefreshUpgradeScroll();
+        }
+
+        void RefreshUpgradeScroll()
+        {
+            if (!_upgradeSection.activeSelf)
+                return;
+
+            _upgradeScroll.Refresh();
         }
 
         void GroupPassives(List<Entry> passives)

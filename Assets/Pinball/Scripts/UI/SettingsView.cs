@@ -27,7 +27,6 @@ namespace Pinball.UI
         const string ON_KEY = "ui.settings.on";
         const string OFF_LABEL = "OFF";
         const string OFF_KEY = "ui.settings.off";
-        const float SCROLL_TOP_POSITION = 1f;
 
         [SerializeField] Button _flipperLeftButton = null;
         [SerializeField] TMP_Text _flipperLeftLabel = null;
@@ -62,7 +61,7 @@ namespace Pinball.UI
         [SerializeField] Button _languageNextButton = null;
         [SerializeField] TMP_Text _languageLabel = null;
         [SerializeField] Button _closeButton = null;
-        [SerializeField] ScrollRect _systemScroll = null;
+        [SerializeField] UIScrollView _systemScroll = null;
 
         TMP_Text _capturingLabel = null;
         string _capturingLabelBackup = string.Empty;
@@ -129,20 +128,13 @@ namespace Pinball.UI
         public override void Bind(UIViewArgs args)
         {
             RefreshLabels();
+            _systemScroll.Refresh();
 
             if (_isOpened)
                 return;
 
             _isOpened = true;
-            ResetSystemScroll();
-        }
-
-        void ResetSystemScroll()
-        {
-            if (null == _systemScroll)
-                return;
-
-            _systemScroll.verticalNormalizedPosition = SCROLL_TOP_POSITION;
+            _systemScroll.ResetPosition();
         }
 
         void RefreshLabels()

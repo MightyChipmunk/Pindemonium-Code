@@ -42,6 +42,7 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _ballLabel = null;
         [SerializeField] ItemIconGridView[] _passiveGrids = null;
         [SerializeField] ItemIconGridView _upgradeGrid = null;
+        [SerializeField] UIScrollView _upgradeScroll = null;
         [SerializeField] Button _gimmickScoreButton = null;
         [SerializeField] Button _closeButton = null;
 
@@ -94,6 +95,8 @@ namespace Pinball.UI
             UITooltip.Hide();
             BindPassiveGrids(viewArgs.Passives);
             BindGrid(_upgradeGrid, viewArgs.Upgrades);
+            _upgradeScroll.Refresh();
+            _upgradeScroll.ResetPosition();
         }
 
         void BindPassiveGrids(ItemEntry[] items)
