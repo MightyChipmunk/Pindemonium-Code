@@ -113,8 +113,8 @@ namespace Pinball.Ingame.State
                 return 0;
 
             int cap = _vouchers.BoostInterestCap(_config.InterestMax);
-            int interest = Mathf.Min(_moneyGetter() / _config.InterestPerAmount, cap);
-            return _vouchers.BoostInterest(interest);
+            int interest = _vouchers.BoostInterest(_moneyGetter() / _config.InterestPerAmount);
+            return Mathf.Min(interest, cap);
         }
 
         public void RefreshOpenedView()
