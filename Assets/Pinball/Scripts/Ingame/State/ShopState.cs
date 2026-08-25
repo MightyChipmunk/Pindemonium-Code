@@ -425,8 +425,8 @@ namespace Pinball.Ingame.State
                 return;
 
             _vouchers.PurchaseOffer();
-            ApplyVoucherImmediateEffect(voucher);
-            if (ApplyBonusUpgradeOnBuy())
+            bool isLoadoutChanged = ApplyVoucherImmediateEffect(voucher);
+            if (ApplyBonusUpgradeOnBuy() || isLoadoutChanged)
                 OnLoadoutChanged?.Invoke();
 
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
@@ -434,17 +434,19 @@ namespace Pinball.Ingame.State
             RefreshShopView(false);
         }
 
-        void ApplyVoucherImmediateEffect(VoucherData voucher)
+        bool ApplyVoucherImmediateEffect(VoucherData voucher)
         {
             switch (voucher.Effect)
             {
                 case VoucherData.EEffect.PassiveSlotAdd:
                     _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
-                    break;
+                    return true;
                 case VoucherData.EEffect.ShopFirstRerollFree:
                     _session.SetFirstRerollFree();
-                    break;
+                    return false;
             }
+
+            return false;
         }
 
         void TryPickPackItem(int cardIndex)

@@ -167,8 +167,8 @@ namespace Pinball.Ingame
             }
             else
             {
-                _loadout.Restore(start.SavedData, _shopCatalog);
                 RestoreVouchers(start.SavedData);
+                _loadout.Restore(start.SavedData, _shopCatalog);
             }
 
             StatProvider.Init(_statData, _loadout, _vouchers, _selectedFlipper, GetRemainingBallCount, GetComboCount);
