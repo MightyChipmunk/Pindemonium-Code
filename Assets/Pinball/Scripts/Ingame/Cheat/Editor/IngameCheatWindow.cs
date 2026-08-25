@@ -31,6 +31,8 @@ namespace Pinball.Ingame.Cheat.Editor
             public ShopItemData Item = null;
             public VisualElement Root = null;
             public Label CountLabel = null;
+            public Button ApplyButton = null;
+            public Button RemoveButton = null;
             public int OwnedCount = INVALID_OWNED_COUNT;
         }
 
@@ -424,6 +426,8 @@ namespace Pinball.Ingame.Cheat.Editor
             itemRow.Item = item;
             itemRow.Root = row;
             itemRow.CountLabel = countLabel;
+            itemRow.ApplyButton = applyButton;
+            itemRow.RemoveButton = removeButton;
             itemRow.OwnedCount = ownedCount;
             _rows.Add(itemRow);
             AttachRowToSection(itemRow);
@@ -431,8 +435,12 @@ namespace Pinball.Ingame.Cheat.Editor
 
         void AttachRowToSection(ItemRow row)
         {
+            bool isOwned = row.OwnedCount > 0;
+            row.ApplyButton.style.display = isOwned ? DisplayStyle.None : DisplayStyle.Flex;
+            row.RemoveButton.style.display = isOwned ? DisplayStyle.Flex : DisplayStyle.None;
+
             row.Root.RemoveFromHierarchy();
-            if (row.OwnedCount > 0)
+            if (isOwned)
                 _ownedSection.Add(row.Root);
             else
                 _unownedSection.Add(row.Root);
