@@ -15,7 +15,7 @@ namespace Pinball.Ingame.Map
         const float ORDER_PITCH_RESET_SECONDS = 6f;
 
         [SerializeField] DropTarget[] _targets = null;
-        [SerializeField] int _dropScoreReward = 0;
+        [SerializeField, Tooltip("드롭 1개당 적립 점수. 즉시 지급하지 않고 뱅크 클리어 시 클리어 점수와 합산해 한 번에 지급한다")] int _dropScoreReward = 0;
         [SerializeField] int _clearScoreReward = 0;
         [SerializeField] float _resetDelay = 1.5f;
 
@@ -128,17 +128,17 @@ namespace Pinball.Ingame.Map
 
             ++_droppedCount;
             bool isBankCleared = _droppedCount >= _targets.Length;
-            int clearScore = isBankCleared ? Mathf.RoundToInt(_clearScoreReward * GetClearScoreMultiplier()) : 0;
             RefreshOrderHighlight();
 
             NotifyBallHit(ballCollider);
             PlayDropSound(isOrderStep);
-            GainScore(_dropScoreReward);
 
             if (!isBankCleared || _isReleased)
                 return;
 
-            GainScore(clearScore);
+            int dropScore = _dropScoreReward * _droppedCount;
+            int clearScore = Mathf.RoundToInt(_clearScoreReward * GetClearScoreMultiplier());
+            GainScore(dropScore + clearScore);
             PlayBankClearedSound();
             PlayClearShake();
 
