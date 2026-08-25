@@ -26,8 +26,9 @@ namespace Pinball.Ingame.Map
         [SerializeField] PoolableFX.EFXType _clearFX = PoolableFX.EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
-        Vector3[] _lampBasePositionArr = null;
-        Vector3[] _lampBaseScaleArr = null;
+        Vector3 _lampBasePosition = Vector3.zero;
+        Vector3 _lampBaseScale = Vector3.one;
+        bool _hasCapturedLampBase = false;
         int _hitCount = 0;
         int _requiredCount = 0;
         int _litLampCount = NO_LIT_LAMP;
@@ -55,14 +56,12 @@ namespace Pinball.Ingame.Map
 
         void CaptureLampBaseTransforms()
         {
-            _lampBasePositionArr = new Vector3[_lamps.Length];
-            _lampBaseScaleArr = new Vector3[_lamps.Length];
+            if (_hasCapturedLampBase)
+                return;
 
-            for (int i = 0; i < _lamps.Length; ++i)
-            {
-                _lampBasePositionArr[i] = _lamps[i].transform.localPosition;
-                _lampBaseScaleArr[i] = _lamps[i].transform.localScale;
-            }
+            _hasCapturedLampBase = true;
+            _lampBasePosition = _lamps[ROW_REFERENCE_INDEX].transform.localPosition;
+            _lampBaseScale = _lamps[ROW_REFERENCE_INDEX].transform.localScale;
         }
 
         void LayoutLamps()
@@ -70,8 +69,8 @@ namespace Pinball.Ingame.Map
             float rowWidth = _baseLampSpacing * _baseRequiredCount;
             float spacing = rowWidth / _requiredCount;
             float scaleRatio = Mathf.Min(FULL_LAMP_SCALE_RATIO, spacing / _baseLampSpacing);
-            Vector3 rowPosition = _lampBasePositionArr[ROW_REFERENCE_INDEX];
-            Vector3 lampScale = _lampBaseScaleArr[ROW_REFERENCE_INDEX] * scaleRatio;
+            Vector3 rowPosition = _lampBasePosition;
+            Vector3 lampScale = _lampBaseScale * scaleRatio;
 
             for (int i = 0; i < _lamps.Length; ++i)
             {
@@ -83,22 +82,6 @@ namespace Pinball.Ingame.Map
                 _lamps[i].transform.localPosition = rowPosition;
                 _lamps[i].transform.localScale = lampScale;
             }
-        }
-
-        void RestoreLampBaseTransforms()
-        {
-            if (null == _lampBasePositionArr)
-                return;
-
-            for (int i = 0; i < _lamps.Length; ++i)
-            {
-                _lamps[i].transform.localPosition = _lampBasePositionArr[i];
-                _lamps[i].transform.localScale = _lampBaseScaleArr[i];
-                _lamps[i].gameObject.SetActive(true);
-            }
-
-            _lampBasePositionArr = null;
-            _lampBaseScaleArr = null;
         }
 
         protected override void OnRelease()
@@ -118,8 +101,6 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _lamps.Length; ++i)
                 _lamps[i].Release();
-
-            RestoreLampBaseTransforms();
         }
 
         void OnTriggerEnter2D(Collider2D other)
