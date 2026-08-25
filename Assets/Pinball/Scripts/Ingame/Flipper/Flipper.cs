@@ -235,11 +235,11 @@ namespace Pinball.Ingame
             switch (grade)
             {
                 case EHitGrade.Perfect:
-                    return _config.PerfectBonusMultiplier * StatProvider.GetPerfectImpulseScale();
+                    return _config.PerfectBonusMultiplier * StatProvider.GetPerfectImpulseScale() * StatProvider.GetHitGradeFlipPowerScale(grade);
                 case EHitGrade.SweetSpot:
                     return _config.SweetSpotBonusMultiplier * GetTimingScale(_config.SweetSpotTimingMinScale);
                 default:
-                    return NORMAL_MULTIPLIER * GetSpotScale(hitRatio) * GetTimingScale(_config.NormalTimingMinScale);
+                    return NORMAL_MULTIPLIER * GetSpotScale(hitRatio) * GetTimingScale(_config.NormalTimingMinScale) * StatProvider.GetHitGradeFlipPowerScale(grade);
             }
         }
 

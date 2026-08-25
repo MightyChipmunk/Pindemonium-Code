@@ -40,7 +40,7 @@ namespace Pinball.Ingame.Shop
             BumperChainLightning = 8,
             GimmickScoreRatioAdd = 9,
             LowBallScoreRatio = 10,
-            HitGradeScoreRatio = 11,
+            HitGradeFlipPowerRatio = 11,
             ComboAttackPowerRatio = 12,
             GimmickBreakMoney = 13,
             BumperFreeze = 14,

@@ -10,6 +10,7 @@ namespace Pinball.Ingame.Stat
         const int MIN_SCALING_BALL_COUNT = 1;
         const int MIN_LAMP_REQUIRED_COUNT = 1;
         const float DEFAULT_SCALE = 1f;
+        const float MIN_FLIP_POWER_SCALE = 0f;
         const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 珥덇린?붾릺吏 ?딆? ?곹깭?먯꽌 ?ㅽ꺈??議고쉶?덉뒿?덈떎.";
 
         static PinballStatData _statData = null;
@@ -52,6 +53,20 @@ namespace Pinball.Ingame.Stat
         public static float GetPerfectImpulseScale()
         {
             return EnsureReady() ? _tuning.PerfectImpulseScale : DEFAULT_SCALE;
+        }
+
+        public static float GetHitGradeFlipPowerScale(Flipper.EHitGrade grade)
+        {
+            if (!HasEffect(ShopItemData.EEffectType.HitGradeFlipPowerRatio))
+                return DEFAULT_SCALE;
+
+            if (grade == Flipper.EHitGrade.Perfect)
+                return DEFAULT_SCALE + GetEffectSum(ShopItemData.EEffectType.HitGradeFlipPowerRatio);
+
+            if (grade == Flipper.EHitGrade.Normal)
+                return Mathf.Max(MIN_FLIP_POWER_SCALE, DEFAULT_SCALE - GetEffectValue(ShopItemData.EEffectType.HitGradeFlipPowerRatio, ShopItemData.SUB_VALUE_INDEX));
+
+            return DEFAULT_SCALE;
         }
 
         public static float GetFlipperLengthScale()
