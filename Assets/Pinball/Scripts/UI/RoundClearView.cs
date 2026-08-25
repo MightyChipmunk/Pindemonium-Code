@@ -7,13 +7,15 @@ namespace Pinball.UI
 {
     public class RoundClearView : UIViewBase
     {
-        public record Args(int RoundNumber) : UIViewArgs
+        public record Args(int RoundNumber, bool IsEndless) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.RoundClear;
         }
 
         const string TITLE_FORMAT = "ROUND {0} CLEAR!";
         const string TITLE_KEY = "ui.round_clear.title";
+        const string ENDLESS_TITLE_FORMAT = "ENDLESS ROUND {0} CLEAR!";
+        const string ENDLESS_TITLE_KEY = "ui.round_clear.endless_title";
         const string REWARD_TEXT = "BONUS CARD PACK!";
         const string REWARD_KEY = "ui.round_clear.reward";
         const float INTRO_DELAY = 0.25f;
@@ -42,7 +44,9 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            _titleLabel.text = LocalizationTable.Format(TITLE_KEY, TITLE_FORMAT, viewArgs.RoundNumber);
+            _titleLabel.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_TITLE_KEY, ENDLESS_TITLE_FORMAT, viewArgs.RoundNumber)
+                : LocalizationTable.Format(TITLE_KEY, TITLE_FORMAT, viewArgs.RoundNumber);
             _rewardLabel.text = LocalizationTable.Get(REWARD_KEY, REWARD_TEXT);
             PlayShow();
         }

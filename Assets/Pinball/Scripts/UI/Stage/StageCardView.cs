@@ -18,6 +18,7 @@ namespace Pinball.UI
 
         public record BindParam(
             int StageNumber,
+            bool IsEndless,
             EState State,
             bool IsFinal,
             int TargetScore,
@@ -30,6 +31,8 @@ namespace Pinball.UI
 
         const string STAGE_FORMAT = "STAGE {0}";
         const string STAGE_KEY = "ui.stage_card.stage";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_STAGE_KEY = "ui.stage_card.endless_stage";
         const string TARGET_SCORE_FORMAT = "N0";
         const string MULTIPLIER_FORMAT = "x{0:0.#}";
         const string REWARD_FORMAT = "${0}";
@@ -96,7 +99,9 @@ namespace Pinball.UI
         {
             bool isCurrent = param.State == EState.Current;
             gameObject.SetActive(true);
-            _titleLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, param.StageNumber);
+            _titleLabel.text = param.IsEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, param.StageNumber)
+                : LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, param.StageNumber);
             _tagLabel.text = GetTagText(param.State, param.IsFinal);
             _bandImage.color = param.IsFinal ? _finalBandColor : _bandBaseColor;
             _content.anchoredPosition = _contentBasePosition + (isCurrent ? Vector2.up * CURRENT_RAISE_OFFSET : Vector2.zero);

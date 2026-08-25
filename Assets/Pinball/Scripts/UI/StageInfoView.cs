@@ -12,6 +12,8 @@ namespace Pinball.UI
 
         const string STAGE_FORMAT = "STAGE {0}";
         const string STAGE_KEY = "ui.stage_info.stage";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_STAGE_KEY = "ui.stage_info.endless_stage";
         const string SCORE_GOAL_FORMAT = "TARGET SCORE {0}";
         const string SCORE_GOAL_KEY = "ui.stage_info.score_goal";
         const string NUMBER_FORMAT = "N0";
@@ -34,10 +36,12 @@ namespace Pinball.UI
         int _targetScore = 0;
         int _score = 0;
 
-        public void SetInfo(int stageNumber, int targetScore, int remainingSeconds)
+        public void SetInfo(int stageNumber, bool isEndless, int targetScore, int remainingSeconds)
         {
             _targetScore = targetScore;
-            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, stageNumber);
+            _stageLabel.text = isEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, stageNumber)
+                : LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, stageNumber);
             _goalLabel.text = LocalizationTable.Format(SCORE_GOAL_KEY, SCORE_GOAL_FORMAT, targetScore.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture));
             BindProgress();
             BindTime(remainingSeconds);

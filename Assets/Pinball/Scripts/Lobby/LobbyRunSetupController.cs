@@ -66,6 +66,7 @@ namespace Pinball.Lobby
             if (null == flipper)
                 return null;
 
+            UserData.FlipperBestEntry best = SaveManager.GetFlipperBest(flipper.GetId());
             return new FlipperSelectView.FlipperEntry(
                 NameKey: flipper.GetNameKey(),
                 Icon: flipper.GetIcon(),
@@ -73,7 +74,9 @@ namespace Pinball.Lobby
                 DrawbackKey: flipper.GetDrawbackKey(),
                 IsUnlocked: _unlockProgress.IsFlipperUnlocked(flipper),
                 UnlockTier: _unlockProgress.GetFlipperUnlockTier(flipper),
-                BestStageNumber: SaveManager.GetBestStageNumber(flipper.GetId()));
+                BestStageNumber: best.StageNumber,
+                IsClearRecorded: best.IsCleared,
+                BestEndlessStageNumber: best.EndlessStageNumber);
         }
 
         public void OpenContinue()
@@ -83,10 +86,13 @@ namespace Pinball.Lobby
                 return;
 
             FlipperData flipper = ResolveSavedFlipper(saved.FlipperId);
+            int stageIndex = saved.StageNumber - 1;
+            bool isEndless = saved.IsEndless && null != _stageCatalog && _stageCatalog.IsEndlessStageIndex(stageIndex);
             UIManager.Show(new ContinueRunView.Args(
                 FlipperNameKey: null == flipper ? string.Empty : flipper.GetNameKey(),
                 FlipperIcon: null == flipper ? null : flipper.GetIcon(),
-                StageNumber: saved.StageNumber,
+                StageNumber: isEndless ? _stageCatalog.GetEndlessStageNumber(stageIndex) : saved.StageNumber,
+                IsEndless: isEndless,
                 TotalStageCount: null == _stageCatalog ? 0 : _stageCatalog.Count,
                 Money: saved.Money,
                 Score: saved.TotalScore,

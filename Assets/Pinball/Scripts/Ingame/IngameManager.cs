@@ -43,6 +43,7 @@ namespace Pinball.Ingame
         [SerializeField] PresentationConfigData _presentationConfig = null;
         [SerializeField] FXPoolData _fxPoolData = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
+        [SerializeField] EndlessConfigData _endlessConfig = null;
         [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
         [SerializeField] GameBootStrapConfig _bootStrapConfig = null;
         [SerializeField] ComboConfigData _comboConfig = null;
@@ -216,8 +217,9 @@ namespace Pinball.Ingame
             _gimmickRoller = new StageGimmickRoller(_gimmickCatalog);
             _gimmickRoller.SetFirstRerollFree(_vouchers.Has(VoucherData.EEffect.StageFirstRerollFree));
             _gimmickResolver = new StageGimmickResolver(_gimmickRoller);
-            _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver);
+            _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver, _endlessConfig, start.IsEndless);
             _stageTracker.OnStageStarted += OnStageStarted;
+            _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
             _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage());
 
             _slingshotGrowth = new SlingshotScoreGrowth(start.SlingshotHitCount);
@@ -311,6 +313,7 @@ namespace Pinball.Ingame
 
             _stageSelectState = new StageSelectState(new StageSelectState.InitParam(
                 StageCatalog: _stageCatalog,
+                EndlessConfig: _endlessConfig,
                 StageNumberGetter: GetStageNumber,
                 MoneyGetter: GetMoney,
                 MoneySpender: _wallet.TrySpend,
@@ -420,6 +423,9 @@ namespace Pinball.Ingame
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * StatProvider.GetBallResupplyMoney());
             _wallet.Add(remainingBalls + _stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
             _isRoundRewardPending = StageCatalogData.IsRoundLastStage(_stageTracker.StageNumber - 1);
+            if (_stageTracker.IsEndless && _stageTracker.EndlessStageNumber > 0)
+                _saveHandler.UpdateBestEndlessStage(GetFlipperId(), _stageTracker.EndlessStageNumber);
+
             _stageTracker.AdvanceToNextStage();
             _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
             SaveProgress(true);
@@ -438,9 +444,21 @@ namespace Pinball.Ingame
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
-            _saveHandler.UpdateBestStage(null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId(), stageNumber);
+            if (!_stageTracker.IsEndless)
+                _saveHandler.UpdateBestStage(GetFlipperId(), stageNumber);
+
             SaveProgress(false);
             ShowStageInfo();
+        }
+
+        void OnAllStagesCleared()
+        {
+            _saveHandler.UpdateBestClear(GetFlipperId());
+        }
+
+        string GetFlipperId()
+        {
+            return null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId();
         }
 
         void OnStageScoreChanged(int stageScore)
@@ -462,7 +480,12 @@ namespace Pinball.Ingame
                 return;
 
             int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
-            _uiRoot.SetStageInfo(_stageTracker.StageNumber, _stageTracker.TargetScore, remainingSeconds);
+            _uiRoot.SetStageInfo(GetDisplayStageNumber(), _stageTracker.IsEndless, _stageTracker.TargetScore, remainingSeconds);
+        }
+
+        int GetDisplayStageNumber()
+        {
+            return _stageTracker.IsEndless ? _stageTracker.EndlessStageNumber : _stageTracker.StageNumber;
         }
 
         void OnShopLoadoutChanged()
@@ -518,7 +541,8 @@ namespace Pinball.Ingame
         IngameResultPresenter.RunSummary BuildRunSummary()
         {
             return new IngameResultPresenter.RunSummary(
-                StageNumber: _stageTracker.StageNumber,
+                StageNumber: GetDisplayStageNumber(),
+                IsEndless: _stageTracker.IsEndless,
                 Score: _scoreCounter.Current,
                 Money: _wallet.Current,
                 UsedBallCount: _ballFlow.UsedBallCount,
@@ -583,6 +607,7 @@ namespace Pinball.Ingame
         {
             _saveHandler.Save(new IngameSaveHandler.SaveParam(
                 StageNumber: _stageTracker.StageNumber,
+                IsEndless: _stageTracker.IsEndless,
                 IsShopPending: isShopPending,
                 IsRoundRewardPending: _isRoundRewardPending,
                 Money: _wallet.Current,
@@ -610,7 +635,24 @@ namespace Pinball.Ingame
                 case UIManager.EEvent.PauseResumeRequested:
                     OnPauseResumeRequested();
                     break;
+                case UIManager.EEvent.EndlessStartRequested:
+                    OnEndlessStartRequested();
+                    break;
             }
+        }
+
+        void OnEndlessStartRequested()
+        {
+            if (null == _stateMachine || !_stateMachine.IsCurrent(EIngameState.Result))
+                return;
+
+            if (_stageTracker.IsEndless)
+                return;
+
+            _stageTracker.StartEndless();
+            SettleStageClear();
+            UIManager.Hide(UIViewCatalogData.EViewType.GameResult);
+            _stateMachine.ChangeState(EIngameState.Shop, new ShopState.EnterParam(OpensImmediately: true));
         }
 
         void OnPauseToggleRequested()

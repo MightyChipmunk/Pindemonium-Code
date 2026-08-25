@@ -9,21 +9,28 @@ namespace Pinball.Save
     public class UserData : SaveDataBase
     {
         public const int NO_PENDING_REWARD_TIER = -1;
-        public const int NO_BEST_STAGE = 0;
+
+        const int NO_BEST_STAGE = 0;
 
         [Serializable]
         public struct FlipperBestEntry
         {
             [SerializeField] string _flipperId;
             [SerializeField] int _stageNumber;
+            [SerializeField] bool _isCleared;
+            [SerializeField] int _endlessStageNumber;
 
             public string FlipperId => _flipperId;
             public int StageNumber => _stageNumber;
+            public bool IsCleared => _isCleared;
+            public int EndlessStageNumber => _endlessStageNumber;
 
-            public FlipperBestEntry(string flipperId, int stageNumber)
+            public FlipperBestEntry(string flipperId, int stageNumber, bool isCleared, int endlessStageNumber)
             {
                 _flipperId = flipperId;
                 _stageNumber = stageNumber;
+                _isCleared = isCleared;
+                _endlessStageNumber = endlessStageNumber;
             }
         }
 
@@ -51,13 +58,31 @@ namespace Pinball.Save
             return Contains(_unlockedItemIds, itemId);
         }
 
-        public int GetBestStageNumber(string flipperId)
+        public FlipperBestEntry GetFlipperBest(string flipperId)
         {
             int index = IndexOfFlipperBest(flipperId);
-            return index == INVALID_INDEX ? NO_BEST_STAGE : _flipperBestStages[index].StageNumber;
+            return index == INVALID_INDEX ? default : _flipperBestStages[index];
         }
 
         public bool TryUpdateBestStage(string flipperId, int stageNumber)
+        {
+            return TryMergeFlipperBest(flipperId, stageNumber, false, NO_BEST_STAGE);
+        }
+
+        public bool TryUpdateBestClear(string flipperId)
+        {
+            return TryMergeFlipperBest(flipperId, NO_BEST_STAGE, true, NO_BEST_STAGE);
+        }
+
+        public bool TryUpdateBestEndlessStage(string flipperId, int endlessStageNumber)
+        {
+            if (endlessStageNumber <= NO_BEST_STAGE)
+                return false;
+
+            return TryMergeFlipperBest(flipperId, NO_BEST_STAGE, true, endlessStageNumber);
+        }
+
+        bool TryMergeFlipperBest(string flipperId, int stageNumber, bool isCleared, int endlessStageNumber)
         {
             if (string.IsNullOrEmpty(flipperId))
                 return false;
@@ -68,14 +93,20 @@ namespace Pinball.Save
             int index = IndexOfFlipperBest(flipperId);
             if (index == INVALID_INDEX)
             {
-                _flipperBestStages.Add(new FlipperBestEntry(flipperId, stageNumber));
+                _flipperBestStages.Add(new FlipperBestEntry(flipperId, stageNumber, isCleared, endlessStageNumber));
                 return true;
             }
 
-            if (stageNumber <= _flipperBestStages[index].StageNumber)
+            FlipperBestEntry current = _flipperBestStages[index];
+            FlipperBestEntry merged = new FlipperBestEntry(
+                flipperId,
+                Math.Max(current.StageNumber, stageNumber),
+                current.IsCleared || isCleared,
+                Math.Max(current.EndlessStageNumber, endlessStageNumber));
+            if (merged.StageNumber == current.StageNumber && merged.IsCleared == current.IsCleared && merged.EndlessStageNumber == current.EndlessStageNumber)
                 return false;
 
-            _flipperBestStages[index] = new FlipperBestEntry(flipperId, stageNumber);
+            _flipperBestStages[index] = merged;
             return true;
         }
 

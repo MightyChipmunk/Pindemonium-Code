@@ -10,6 +10,7 @@ namespace Pinball.UI
         public record CardArgs(
             bool IsVisible,
             int StageNumber,
+            bool IsEndless,
             StageCardView.EState State,
             bool IsFinal,
             int TargetScore,
@@ -25,6 +26,7 @@ namespace Pinball.UI
             int RemainingBalls,
             int RoundNumber,
             int RoundCount,
+            bool IsEndless,
             CardArgs[] Cards) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageSelect;
@@ -35,6 +37,8 @@ namespace Pinball.UI
         const string BALLS_KEY = "ui.stage_select.balls";
         const string ROUND_FORMAT = "ROUND {0} OF {1}";
         const string ROUND_KEY = "ui.stage_select.round";
+        const string ENDLESS_ROUND_FORMAT = "ENDLESS ROUND {0}";
+        const string ENDLESS_ROUND_KEY = "ui.stage_select.endless_round";
 
         [SerializeField] TMP_Text _progressLabel = null;
         [SerializeField] TMP_Text _moneyLabel = null;
@@ -67,7 +71,9 @@ namespace Pinball.UI
         {
             _moneyLabel.text = string.Format(MONEY_FORMAT, args.Money);
             _ballsLabel.text = LocalizationTable.Format(BALLS_KEY, BALLS_FORMAT, args.RemainingBalls);
-            _progressLabel.text = LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, args.RoundNumber, args.RoundCount);
+            _progressLabel.text = args.IsEndless
+                ? LocalizationTable.Format(ENDLESS_ROUND_KEY, ENDLESS_ROUND_FORMAT, args.RoundNumber)
+                : LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, args.RoundNumber, args.RoundCount);
         }
 
         void BindCards(CardArgs[] cards)
@@ -92,6 +98,7 @@ namespace Pinball.UI
 
             card.Bind(new StageCardView.BindParam(
                 StageNumber: args.StageNumber,
+                IsEndless: args.IsEndless,
                 State: args.State,
                 IsFinal: args.IsFinal,
                 TargetScore: args.TargetScore,

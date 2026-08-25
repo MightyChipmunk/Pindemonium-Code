@@ -10,7 +10,7 @@ namespace Pinball.Ingame.Presentation
 {
     public class IngameResultPresenter
     {
-        public record RunSummary(int StageNumber, int Score, int Money, int UsedBallCount, int[] GimmickScores);
+        public record RunSummary(int StageNumber, bool IsEndless, int Score, int Money, int UsedBallCount, int[] GimmickScores);
 
         const int PASSIVE_OWNED_COUNT = 1;
 
@@ -65,6 +65,7 @@ namespace Pinball.Ingame.Presentation
 
             return new ResultStatsView.Args(
                 StageNumber: summary.StageNumber,
+                IsEndless: summary.IsEndless,
                 Score: summary.Score,
                 Money: summary.Money,
                 UsedBallCount: summary.UsedBallCount,

@@ -7,13 +7,15 @@ namespace Pinball.UI
 {
     public class StageClearView : UIViewBase
     {
-        public record Args(int StageNumber) : UIViewArgs
+        public record Args(int StageNumber, bool IsEndless) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.StageClear;
         }
 
         const string CLEAR_FORMAT = "STAGE {0} CLEAR!";
         const string CLEAR_KEY = "ui.stage_clear.title";
+        const string ENDLESS_CLEAR_FORMAT = "ENDLESS {0} CLEAR!";
+        const string ENDLESS_CLEAR_KEY = "ui.stage_clear.endless_title";
         const float SCALE_DURATION = 0.35f;
         const float HOLD_DURATION = 1.2f;
 
@@ -30,7 +32,9 @@ namespace Pinball.UI
             if (null == viewArgs)
                 return;
 
-            _label.text = LocalizationTable.Format(CLEAR_KEY, CLEAR_FORMAT, viewArgs.StageNumber);
+            _label.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_CLEAR_KEY, ENDLESS_CLEAR_FORMAT, viewArgs.StageNumber)
+                : LocalizationTable.Format(CLEAR_KEY, CLEAR_FORMAT, viewArgs.StageNumber);
             PlayShow();
         }
 

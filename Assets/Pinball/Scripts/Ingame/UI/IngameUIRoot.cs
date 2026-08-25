@@ -22,6 +22,7 @@ namespace Pinball.Ingame.UI
         int _score = 0;
         int _ballCount = 0;
         int _stageNumber = NO_STAGE_NUMBER;
+        bool _isEndlessStage = false;
         int _stageTargetScore = 0;
         int _stageRemainingSeconds = Pinball.UI.StageInfoView.NO_TIME_LIMIT;
 
@@ -65,12 +66,13 @@ namespace Pinball.Ingame.UI
             _ownedItemsView.SetItems(args);
         }
 
-        public void SetStageInfo(int stageNumber, int targetScore, int remainingSeconds)
+        public void SetStageInfo(int stageNumber, bool isEndless, int targetScore, int remainingSeconds)
         {
             _stageNumber = stageNumber;
+            _isEndlessStage = isEndless;
             _stageTargetScore = targetScore;
             _stageRemainingSeconds = remainingSeconds;
-            _stageInfoView.SetInfo(stageNumber, targetScore, remainingSeconds);
+            _stageInfoView.SetInfo(stageNumber, isEndless, targetScore, remainingSeconds);
         }
 
         public void SetCombo(int comboCount, float multiplier, int pendingBonus, float stepProgress)
@@ -96,7 +98,7 @@ namespace Pinball.Ingame.UI
             if (_stageNumber == NO_STAGE_NUMBER)
                 return;
 
-            _stageInfoView.SetInfo(_stageNumber, _stageTargetScore, _stageRemainingSeconds);
+            _stageInfoView.SetInfo(_stageNumber, _isEndlessStage, _stageTargetScore, _stageRemainingSeconds);
         }
 
         public void PlayScorePopup(int score, Vector2 worldPoint)

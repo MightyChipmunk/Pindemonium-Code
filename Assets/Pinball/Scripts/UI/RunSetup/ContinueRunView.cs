@@ -14,6 +14,7 @@ namespace Pinball.UI
             string FlipperNameKey,
             Sprite FlipperIcon,
             int StageNumber,
+            bool IsEndless,
             int TotalStageCount,
             int Money,
             int Score,
@@ -24,6 +25,8 @@ namespace Pinball.UI
 
         const string STAGE_FORMAT = "{0} OF {1}";
         const string STAGE_KEY = "ui.continue.stage";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_STAGE_KEY = "ui.continue.endless_stage";
         const string MONEY_FORMAT = "${0}";
         const string SCORE_FORMAT = "N0";
         const string EMPTY_GIMMICK_TEXT = "NONE";
@@ -61,7 +64,9 @@ namespace Pinball.UI
                 Icon: viewArgs.FlipperIcon,
                 IsUnlocked: true,
                 LockedHint: string.Empty));
-            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
+            _stageLabel.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, viewArgs.StageNumber)
+                : LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
             _moneyLabel.text = string.Format(MONEY_FORMAT, viewArgs.Money);
             _scoreLabel.text = viewArgs.Score.ToString(SCORE_FORMAT, CultureInfo.InvariantCulture);
             BindGimmicks(viewArgs.Gimmicks);

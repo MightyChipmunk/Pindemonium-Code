@@ -6,6 +6,7 @@ namespace Pinball.Ingame.Save
     {
         public record SaveParam(
             int StageNumber,
+            bool IsEndless,
             bool IsShopPending,
             bool IsRoundRewardPending,
             int Money,
@@ -32,6 +33,7 @@ namespace Pinball.Ingame.Save
         {
             SaveManager.SaveIngame(new IngamePlayData(
                 param.StageNumber,
+                param.IsEndless,
                 param.IsShopPending,
                 param.IsRoundRewardPending,
                 param.Money,
@@ -52,6 +54,16 @@ namespace Pinball.Ingame.Save
         public void UpdateBestStage(string flipperId, int stageNumber)
         {
             SaveManager.UpdateBestStage(flipperId, stageNumber);
+        }
+
+        public void UpdateBestClear(string flipperId)
+        {
+            SaveManager.UpdateBestClear(flipperId);
+        }
+
+        public void UpdateBestEndlessStage(string flipperId, int endlessStageNumber)
+        {
+            SaveManager.UpdateBestEndlessStage(flipperId, endlessStageNumber);
         }
 
         public void ClearPlayData()

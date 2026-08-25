@@ -27,6 +27,8 @@ namespace Pinball.UI
         const string SCORE_FORMAT = "N0";
         const string STAGE_FORMAT = "STAGE {0}";
         const string STAGE_KEY = "ui.result.stage";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS STAGE {0}";
+        const string ENDLESS_STAGE_KEY = "ui.result.endless_stage";
         const float APPEAR_DURATION = 0.35f;
         const float APPEAR_SLIDE_OFFSET = 120f;
 
@@ -40,6 +42,7 @@ namespace Pinball.UI
         [SerializeField] GameObject _clearDecorRoot = null;
         [SerializeField] Button _statsButton = null;
         [SerializeField] Button _lobbyButton = null;
+        [SerializeField] Button _endlessButton = null;
         [SerializeField] Image _statsButtonImage = null;
         [SerializeField] Sprite _clearPanelSprite = null;
         [SerializeField] Sprite _clearBannerSprite = null;
@@ -58,6 +61,7 @@ namespace Pinball.UI
             _panelBasePosition = _panel.anchoredPosition;
             _statsButton.onClick.AddListener(OnStatsClicked);
             _lobbyButton.onClick.AddListener(OnLobbyClicked);
+            _endlessButton.onClick.AddListener(OnEndlessClicked);
         }
 
         public override void OnTerminate()
@@ -65,6 +69,7 @@ namespace Pinball.UI
             KillAppear();
             _statsButton.onClick.RemoveListener(OnStatsClicked);
             _lobbyButton.onClick.RemoveListener(OnLobbyClicked);
+            _endlessButton.onClick.RemoveListener(OnEndlessClicked);
         }
 
         public override void Bind(UIViewArgs args)
@@ -98,12 +103,15 @@ namespace Pinball.UI
             _bannerImage.sprite = isClear ? _clearBannerSprite : _gameOverBannerSprite;
             _statsButtonImage.sprite = isClear ? _clearStatsButtonSprite : _gameOverStatsButtonSprite;
             _clearDecorRoot.SetActive(isClear);
+            _endlessButton.gameObject.SetActive(isClear);
 
             if (null == args.Stats)
                 return;
 
             _scoreLabel.text = args.Stats.Score.ToString(SCORE_FORMAT, CultureInfo.InvariantCulture);
-            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, args.Stats.StageNumber);
+            _stageLabel.text = args.Stats.IsEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, args.Stats.StageNumber)
+                : LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, args.Stats.StageNumber);
         }
 
         void PlayAppear()
@@ -150,6 +158,11 @@ namespace Pinball.UI
         void OnLobbyClicked()
         {
             UIManager.RaiseEvent(UIManager.EEvent.ExitToLobbyRequested);
+        }
+
+        void OnEndlessClicked()
+        {
+            UIManager.RaiseEvent(UIManager.EEvent.EndlessStartRequested);
         }
     }
 }

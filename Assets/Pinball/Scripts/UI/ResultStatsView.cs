@@ -14,6 +14,7 @@ namespace Pinball.UI
 
         public record Args(
             int StageNumber,
+            bool IsEndless,
             int Score,
             int Money,
             int UsedBallCount,
@@ -26,6 +27,8 @@ namespace Pinball.UI
 
         const string NUMBER_FORMAT = "N0";
         const string COUNT_FORMAT = "x{0}";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_STAGE_KEY = "ui.result_stats.endless_stage";
         const int STACKED_COUNT_MIN = 2;
         const int EMPTY_PLACEHOLDER_COUNT = 1;
         const float PASSIVE_SLOT_WIDTH = 112f;
@@ -82,7 +85,9 @@ namespace Pinball.UI
                 return;
 
             _args = viewArgs;
-            _stageLabel.text = viewArgs.StageNumber.ToString(CultureInfo.InvariantCulture);
+            _stageLabel.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, viewArgs.StageNumber)
+                : viewArgs.StageNumber.ToString(CultureInfo.InvariantCulture);
             _scoreLabel.text = viewArgs.Score.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);
             _moneyLabel.text = viewArgs.Money.ToString(CultureInfo.InvariantCulture);
             _ballLabel.text = viewArgs.UsedBallCount.ToString(CultureInfo.InvariantCulture);

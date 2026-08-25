@@ -9,6 +9,7 @@ namespace Pinball.Ingame.State
     {
         public record InitParam(
             StageCatalogData StageCatalog,
+            EndlessConfigData EndlessConfig,
             Func<int> StageNumberGetter,
             Func<int> MoneyGetter,
             Func<int, bool> MoneySpender,
@@ -20,6 +21,7 @@ namespace Pinball.Ingame.State
         public record EnterParam(bool IsAfterShop);
 
         StageCatalogData _stageCatalog = null;
+        EndlessConfigData _endlessConfig = null;
         Func<int> _stageNumberGetter = null;
         StageGimmickRoller _roller = null;
         StageGimmickResolver _resolver = null;
@@ -36,6 +38,7 @@ namespace Pinball.Ingame.State
         public StageSelectState(InitParam param, StageGimmickRoller roller, StageGimmickResolver resolver)
         {
             _stageCatalog = param.StageCatalog;
+            _endlessConfig = param.EndlessConfig;
             _stageNumberGetter = param.StageNumberGetter;
             _roller = roller;
             _resolver = resolver;
@@ -95,6 +98,7 @@ namespace Pinball.Ingame.State
         {
             int remainingBalls = null == _remainingBallGetter ? 0 : _remainingBallGetter();
             int currentStageIndex = _stageNumberGetter() - 1;
+            bool isEndless = _stageCatalog.IsEndlessStageIndex(currentStageIndex);
             int roundIndex = StageCatalogData.GetRoundIndex(currentStageIndex);
             int roundStartStageIndex = StageCatalogData.GetRoundStartStageIndex(roundIndex);
             StageSelectView.CardArgs[] cards = new StageSelectView.CardArgs[StageCatalogData.STAGES_PER_ROUND];
@@ -104,35 +108,44 @@ namespace Pinball.Ingame.State
             UIManager.Show(new StageSelectView.Args(
                 Money: _moneyGetter(),
                 RemainingBalls: remainingBalls,
-                RoundNumber: roundIndex + 1,
+                RoundNumber: isEndless ? roundIndex - _stageCatalog.RoundCount + 1 : roundIndex + 1,
                 RoundCount: _stageCatalog.RoundCount,
+                IsEndless: isEndless,
                 Cards: cards));
         }
 
         StageSelectView.CardArgs BuildCardArgs(int stageIndex, int currentStageIndex)
         {
-            if (stageIndex >= _stageCatalog.Count)
-                return BuildHiddenCardArgs();
-
             StageData stage = _stageCatalog.GetStage(stageIndex);
             if (null == stage)
                 return BuildHiddenCardArgs();
 
+            bool isEndless = _stageCatalog.IsEndlessStageIndex(stageIndex);
             StageCardView.EState state = GetCardState(stageIndex, currentStageIndex);
             bool isCurrent = state == StageCardView.EState.Current;
+            int baseTargetScore = GetBaseTargetScore(stage, stageIndex, isEndless);
 
             return new StageSelectView.CardArgs(
                 IsVisible: true,
-                StageNumber: stageIndex + 1,
+                StageNumber: isEndless ? _stageCatalog.GetEndlessStageNumber(stageIndex) : stageIndex + 1,
+                IsEndless: isEndless,
                 State: state,
-                IsFinal: stageIndex == _stageCatalog.Count - 1,
-                TargetScore: isCurrent ? _resolver.GetTargetScore(stage.TargetScore) : stage.TargetScore,
+                IsFinal: !isEndless && stageIndex == _stageCatalog.Count - 1,
+                TargetScore: isCurrent ? _resolver.GetTargetScore(baseTargetScore) : baseTargetScore,
                 TargetScoreMultiplier: isCurrent ? _resolver.GetTargetScoreMultiplier() : StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
                 RewardMoney: _stageClearBaseMoney,
                 Gimmicks: isCurrent ? BuildCurrentGimmicks() : null,
                 HiddenGimmickCount: isCurrent ? 0 : stage.GimmickRollCount,
                 RerollPrice: _roller.CurrentRerollPrice,
                 CanReroll: isCurrent && _roller.CanReroll && _moneyGetter() >= _roller.CurrentRerollPrice);
+        }
+
+        int GetBaseTargetScore(StageData stage, int stageIndex, bool isEndless)
+        {
+            if (!isEndless || null == _endlessConfig)
+                return stage.TargetScore;
+
+            return _endlessConfig.GetTargetScore(stage.TargetScore, _stageCatalog.GetEndlessStageNumber(stageIndex));
         }
 
         StageGimmickData[] BuildCurrentGimmicks()
@@ -160,6 +173,7 @@ namespace Pinball.Ingame.State
             return new StageSelectView.CardArgs(
                 IsVisible: false,
                 StageNumber: 0,
+                IsEndless: false,
                 State: StageCardView.EState.Upcoming,
                 IsFinal: false,
                 TargetScore: 0,

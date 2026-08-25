@@ -15,7 +15,9 @@ namespace Pinball.UI
             string DrawbackKey,
             bool IsUnlocked,
             int UnlockTier,
-            int BestStageNumber);
+            int BestStageNumber,
+            bool IsClearRecorded,
+            int BestEndlessStageNumber);
 
         public record Args(FlipperEntry[] Flippers) : UIViewArgs
         {
@@ -36,6 +38,10 @@ namespace Pinball.UI
         const string CLEAR_COUNT_HINT_KEY = "ui.lobby.unlock_hint_count";
         const string BEST_STAGE_FORMAT = "BEST STAGE {0}";
         const string BEST_STAGE_KEY = "ui.flipper_select.best_stage";
+        const string BEST_CLEAR_TEXT = "GAME CLEAR";
+        const string BEST_CLEAR_KEY = "ui.flipper_select.best_clear";
+        const string BEST_ENDLESS_FORMAT = "ENDLESS STAGE {0}";
+        const string BEST_ENDLESS_KEY = "ui.flipper_select.best_endless";
         const int FIRST_CLEAR_TIER = 0;
         const int DEFAULT_INDEX = 0;
         const int NO_BEST_STAGE = 0;
@@ -104,7 +110,7 @@ namespace Pinball.UI
             _abilityLabel.text = isUnlocked ? LocalizationTable.GetOrKey(flipper.AbilityKey) : LocalizationTable.Get(LOCKED_ABILITY_KEY, LOCKED_ABILITY);
             BindDrawback(isUnlocked ? LocalizationTable.GetOrKey(flipper.DrawbackKey) : string.Empty);
             _unlockLineLabel.text = GetUnlockLine(isUnlocked, hint);
-            BindBestStage(isUnlocked ? GetBestStageNumber(flipper) : NO_BEST_STAGE);
+            BindBestRecord(isUnlocked ? flipper : null);
             _playButton.interactable = isUnlocked;
 
             bool canCycle = GetFlipperCount() > 1;
@@ -112,17 +118,30 @@ namespace Pinball.UI
             _nextButton.interactable = canCycle;
         }
 
-        void BindBestStage(int bestStageNumber)
+        void BindBestRecord(FlipperEntry flipper)
         {
-            bool hasBest = bestStageNumber > NO_BEST_STAGE;
+            string recordText = GetBestRecordText(flipper);
+            bool hasBest = !string.IsNullOrEmpty(recordText);
             _bestStageLabel.gameObject.SetActive(hasBest);
             if (hasBest)
-                _bestStageLabel.text = LocalizationTable.Format(BEST_STAGE_KEY, BEST_STAGE_FORMAT, bestStageNumber);
+                _bestStageLabel.text = recordText;
         }
 
-        static int GetBestStageNumber(FlipperEntry flipper)
+        static string GetBestRecordText(FlipperEntry flipper)
         {
-            return null == flipper ? NO_BEST_STAGE : flipper.BestStageNumber;
+            if (null == flipper)
+                return string.Empty;
+
+            if (flipper.BestEndlessStageNumber > NO_BEST_STAGE)
+                return LocalizationTable.Format(BEST_ENDLESS_KEY, BEST_ENDLESS_FORMAT, flipper.BestEndlessStageNumber);
+
+            if (flipper.IsClearRecorded)
+                return LocalizationTable.Get(BEST_CLEAR_KEY, BEST_CLEAR_TEXT);
+
+            if (flipper.BestStageNumber > NO_BEST_STAGE)
+                return LocalizationTable.Format(BEST_STAGE_KEY, BEST_STAGE_FORMAT, flipper.BestStageNumber);
+
+            return string.Empty;
         }
 
         void BindDrawback(string drawback)

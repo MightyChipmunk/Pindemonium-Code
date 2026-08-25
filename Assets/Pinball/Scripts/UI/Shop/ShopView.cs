@@ -43,6 +43,7 @@ namespace Pinball.UI
             int TotalStageCount,
             int RoundNumber,
             int RoundCount,
+            bool IsEndless,
             bool PlaysRerollReveal) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.Shop;
@@ -57,6 +58,10 @@ namespace Pinball.UI
         const string ROUND_KEY = "ui.shop.round";
         const string STAGE_FORMAT = "STAGE {0} / {1}";
         const string STAGE_KEY = "ui.shop.stage";
+        const string ENDLESS_ROUND_FORMAT = "ENDLESS ROUND {0}";
+        const string ENDLESS_ROUND_KEY = "ui.shop.endless_round";
+        const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_STAGE_KEY = "ui.shop.endless_stage";
         const float OFFER_ROW_WIDTH = 1071f;
         const float OFFER_ROW_HEIGHT = 338f;
         const float OFFER_SLOT_WIDTH = 380f;
@@ -251,8 +256,12 @@ namespace Pinball.UI
 
             _moneyLabel.text = string.Format(MONEY_FORMAT, viewArgs.Money);
             _rerollLabel.text = LocalizationTable.Format(REROLL_KEY, REROLL_FORMAT, viewArgs.RerollPrice);
-            _roundLabel.text = LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, viewArgs.RoundNumber, viewArgs.RoundCount);
-            _stageLabel.text = LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
+            _roundLabel.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_ROUND_KEY, ENDLESS_ROUND_FORMAT, viewArgs.RoundNumber)
+                : LocalizationTable.Format(ROUND_KEY, ROUND_FORMAT, viewArgs.RoundNumber, viewArgs.RoundCount);
+            _stageLabel.text = viewArgs.IsEndless
+                ? LocalizationTable.Format(ENDLESS_STAGE_KEY, ENDLESS_STAGE_FORMAT, viewArgs.StageNumber)
+                : LocalizationTable.Format(STAGE_KEY, STAGE_FORMAT, viewArgs.StageNumber, viewArgs.TotalStageCount);
             BindOwned(viewArgs, sell);
             BindOfferSection(viewArgs.Offers, playsReveal, purchase);
             BindPackSection(viewArgs.Packs, playsReveal);

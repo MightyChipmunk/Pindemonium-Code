@@ -182,13 +182,11 @@ namespace Pinball.Ingame.State
                 return;
 
             AudioManager.Play(AudioStorage.EAudioClipType.RewardUnlock);
-            UIManager.Show(new RoundClearView.Args(RoundNumber: GetClearedRoundNumber()));
-        }
-
-        int GetClearedRoundNumber()
-        {
-            int upcomingStageIndex = _stageNumberGetter() - 1;
-            return StageCatalogData.GetRoundIndex(upcomingStageIndex - 1) + 1;
+            int clearedRoundIndex = StageCatalogData.GetRoundIndex(_stageNumberGetter() - 2);
+            bool isEndless = clearedRoundIndex >= _stageCatalog.RoundCount;
+            UIManager.Show(new RoundClearView.Args(
+                RoundNumber: isEndless ? clearedRoundIndex - _stageCatalog.RoundCount + 1 : clearedRoundIndex + 1,
+                IsEndless: isEndless));
         }
 
         void GrantRoundReward()
@@ -313,6 +311,7 @@ namespace Pinball.Ingame.State
                 return;
 
             int stageNumber = _stageNumberGetter();
+            bool isEndless = _stageCatalog.IsEndlessStageIndex(stageNumber - 1);
             UIManager.Show(new ShopView.Args(
                 Money: _moneyGetter(),
                 RerollPrice: GetRerollPrice(),
@@ -326,10 +325,11 @@ namespace Pinball.Ingame.State
                 Upgrades: BuildUpgradeEntries(),
                 Packs: BuildPackEntries(),
                 Voucher: BuildVoucherEntry(),
-                StageNumber: stageNumber,
+                StageNumber: isEndless ? _stageCatalog.GetEndlessStageNumber(stageNumber - 1) : stageNumber,
                 TotalStageCount: _stageCatalog.Count,
-                RoundNumber: GetRoundIndex() + 1,
+                RoundNumber: isEndless ? GetRoundIndex() - _stageCatalog.RoundCount + 1 : GetRoundIndex() + 1,
                 RoundCount: _stageCatalog.RoundCount,
+                IsEndless: isEndless,
                 PlaysRerollReveal: playsRerollReveal));
         }
 

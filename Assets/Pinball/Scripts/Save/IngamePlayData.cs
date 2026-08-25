@@ -24,6 +24,7 @@ namespace Pinball.Save
         }
 
         [SerializeField, FormerlySerializedAs("StageNumber")] int _stageNumber = 1;
+        [SerializeField] bool _isEndless = false;
         [SerializeField, FormerlySerializedAs("IsShopPending")] bool _isShopPending = false;
         [SerializeField] bool _isRoundRewardPending = false;
         [SerializeField, FormerlySerializedAs("Money")] int _money = 0;
@@ -41,6 +42,7 @@ namespace Pinball.Save
         [SerializeField] int[] _gimmickScores = null;
 
         public int StageNumber => _stageNumber;
+        public bool IsEndless => _isEndless;
         public bool IsShopPending => _isShopPending;
         public bool IsRoundRewardPending => _isRoundRewardPending;
         public string VoucherOfferId => _voucherOfferId;
@@ -53,9 +55,10 @@ namespace Pinball.Save
 
         public IngamePlayData() { }
 
-        public IngamePlayData(int stageNumber, bool isShopPending, bool isRoundRewardPending, int money, int totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, int slingshotHitCount, int[] gimmickScores)
+        public IngamePlayData(int stageNumber, bool isEndless, bool isShopPending, bool isRoundRewardPending, int money, int totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, int slingshotHitCount, int[] gimmickScores)
         {
             _stageNumber = stageNumber;
+            _isEndless = isEndless;
             _isShopPending = isShopPending;
             _isRoundRewardPending = isRoundRewardPending;
             _money = money;

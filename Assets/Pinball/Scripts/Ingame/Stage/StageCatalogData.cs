@@ -37,6 +37,19 @@ namespace Pinball.Ingame.Stage
             return (stageIndex + 1) % STAGES_PER_ROUND == 0;
         }
 
+        public bool IsEndlessStageIndex(int stageIndex)
+        {
+            return Count > 0 && stageIndex >= Count;
+        }
+
+        public int GetEndlessStageNumber(int stageIndex)
+        {
+            if (!IsEndlessStageIndex(stageIndex))
+                return 0;
+
+            return stageIndex - Count + 1;
+        }
+
         public StageData GetStage(int stageIndex)
         {
             if (Count <= 0)
@@ -45,7 +58,16 @@ namespace Pinball.Ingame.Stage
             if (stageIndex < 0)
                 return null;
 
-            return _stages[stageIndex % Count];
+            if (stageIndex < Count)
+                return _stages[stageIndex];
+
+            return _stages[GetEndlessCycleIndex(stageIndex)];
+        }
+
+        int GetEndlessCycleIndex(int stageIndex)
+        {
+            int cycleCount = Mathf.Min(STAGES_PER_ROUND, Count);
+            return Count - cycleCount + (stageIndex - Count) % cycleCount;
         }
 
 #if UNITY_EDITOR

@@ -203,10 +203,12 @@ namespace Pinball.Ingame.State
 
         void OnStageCleared(int stageNumber, StageData stage)
         {
+            bool isEndless = _stageTracker.IsEndless;
+            int displayStageNumber = isEndless ? _stageTracker.EndlessStageNumber : stageNumber;
             StopPlay();
             _director.PlayStageClear();
             _param.StageClearSettler?.Invoke();
-            UIManager.Show(new StageClearView.Args(stageNumber));
+            UIManager.Show(new StageClearView.Args(displayStageNumber, isEndless));
             ChangeState(EIngameState.Shop, new ShopState.EnterParam(OpensImmediately: false));
         }
 
@@ -215,7 +217,7 @@ namespace Pinball.Ingame.State
             StopPlay();
             _isGameClearPending = true;
             _director.PlayStageClear();
-            UIManager.Show(new StageClearView.Args(_stageTracker.StageNumber));
+            UIManager.Show(new StageClearView.Args(_stageTracker.StageNumber, IsEndless: false));
         }
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)

@@ -9,6 +9,7 @@ namespace Pinball.Ingame.Stage
 
         StageCatalogData _catalog = null;
         StageGimmickResolver _gimmickResolver = null;
+        EndlessConfigData _endlessConfig = null;
         int _stageIndex = 0;
         int _stageStartScore = 0;
         int _totalScore = 0;
@@ -16,11 +17,14 @@ namespace Pinball.Ingame.Stage
         float _remainingTime = NO_TIME_LIMIT;
         bool _isCleared = false;
         bool _isTimeExpired = false;
+        bool _isEndless = false;
 
         public int StageNumber => _stageIndex + 1;
         public int StageScore => _totalScore - _stageStartScore;
         public bool HasTimeLimit => _timeLimit > NO_TIME_LIMIT;
         public int RemainingSeconds => Mathf.CeilToInt(_remainingTime);
+        public bool IsEndless => _isEndless;
+        public int EndlessStageNumber => null == _catalog ? 0 : _catalog.GetEndlessStageNumber(_stageIndex);
 
         public int TargetScore
         {
@@ -30,7 +34,7 @@ namespace Pinball.Ingame.Stage
                 if (null == stage)
                     return 0;
 
-                return _gimmickResolver.GetTargetScore(stage.TargetScore);
+                return _gimmickResolver.GetTargetScore(GetBaseTargetScore(stage));
             }
         }
 
@@ -41,14 +45,21 @@ namespace Pinball.Ingame.Stage
         public event Action<int> OnRemainingSecondsChanged;
         public event Action OnTimeExpired;
 
-        public StageProgressTracker(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver)
+        public StageProgressTracker(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver, EndlessConfigData endlessConfig, bool isEndless)
         {
             _catalog = catalog;
             _gimmickResolver = gimmickResolver;
+            _endlessConfig = endlessConfig;
             _stageIndex = Mathf.Max(0, startStageNumber - 1);
             _stageStartScore = startTotalScore;
             _totalScore = startTotalScore;
+            _isEndless = isEndless;
             ResetStageState();
+        }
+
+        public void StartEndless()
+        {
+            _isEndless = true;
         }
 
         public StageData GetCurrentStage()
@@ -127,6 +138,14 @@ namespace Pinball.Ingame.Stage
             _remainingTime = NO_TIME_LIMIT;
         }
 
+        int GetBaseTargetScore(StageData stage)
+        {
+            if (!_isEndless || null == _endlessConfig)
+                return stage.TargetScore;
+
+            return _endlessConfig.GetTargetScore(stage.TargetScore, EndlessStageNumber);
+        }
+
         bool CanClearByScore()
         {
             int targetScore = TargetScore;
@@ -151,6 +170,9 @@ namespace Pinball.Ingame.Stage
 
         bool IsFinalStage()
         {
+            if (_isEndless)
+                return false;
+
             if (null == _catalog)
                 return false;
 
