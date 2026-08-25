@@ -359,6 +359,7 @@ namespace Pinball.Ingame
                 StageClearer: ClearCurrentStage,
                 RoundClearer: ClearCurrentRound,
                 GameClearer: ClearAllStages,
+                StageFailer: _playState.FailByCheat,
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
         }

@@ -24,6 +24,7 @@ namespace Pinball.Ingame.Cheat
             Action StageClearer,
             Action RoundClearer,
             Action GameClearer,
+            Action StageFailer,
             Action OnCheatApplied);
 
         const int MIN_APPLY_COUNT = 1;
@@ -35,6 +36,7 @@ namespace Pinball.Ingame.Cheat
         Action _stageClearer = null;
         Action _roundClearer = null;
         Action _gameClearer = null;
+        Action _stageFailer = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
@@ -46,6 +48,7 @@ namespace Pinball.Ingame.Cheat
             _stageClearer = param.StageClearer;
             _roundClearer = param.RoundClearer;
             _gameClearer = param.GameClearer;
+            _stageFailer = param.StageFailer;
             _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
@@ -54,6 +57,7 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
+            _stageFailer = null;
             _gameClearer = null;
             _roundClearer = null;
             _stageClearer = null;
@@ -65,7 +69,8 @@ namespace Pinball.Ingame.Cheat
         public bool IsReady()
         {
             return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter
-                && null != _stageClearer && null != _roundClearer && null != _gameClearer && null != _loadout;
+                && null != _stageClearer && null != _roundClearer && null != _gameClearer
+                && null != _stageFailer && null != _loadout;
         }
 
         public int GetMoney()
@@ -161,6 +166,18 @@ namespace Pinball.Ingame.Cheat
                 return EApplyResult.NotInStage;
 
             _gameClearer();
+            return EApplyResult.Success;
+        }
+
+        public EApplyResult FailStage()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            if (!IsStageClearable())
+                return EApplyResult.NotInStage;
+
+            _stageFailer();
             return EApplyResult.Success;
         }
 

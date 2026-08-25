@@ -137,6 +137,13 @@ namespace Pinball.Ingame.State
             UIManager.Show(new PausePopupView.Args());
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void FailByCheat()
+        {
+            EndGame();
+        }
+#endif
+
         public void Resume()
         {
             if (!_isPaused)
