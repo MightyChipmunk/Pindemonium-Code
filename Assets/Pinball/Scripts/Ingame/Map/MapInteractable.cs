@@ -46,6 +46,7 @@ namespace Pinball.Ingame.Map
         Action _gimmickHitPresenter = null;
         int _scoreGainLimit = NO_SCORE_GAIN_LIMIT;
         int _scoreGainCount = 0;
+        bool _isScoreGainBlocked = false;
         bool _isDeactivated = false;
 
         public abstract EGimmickType GimmickType { get; }
@@ -61,6 +62,7 @@ namespace Pinball.Ingame.Map
             _gimmickHitPresenter = param.GimmickHitPresenter;
             _scoreGainLimit = param.ScoreGainLimit;
             _scoreGainCount = 0;
+            _isScoreGainBlocked = false;
             _isDeactivated = false;
             OnInit();
         }
@@ -122,6 +124,9 @@ namespace Pinball.Ingame.Map
         protected void GainScore(int score, Vector2 worldPoint, EScoreSource scoreSource)
         {
             if (_isDeactivated)
+                return;
+
+            if (_isScoreGainBlocked)
                 return;
 
             if (score <= 0)
@@ -203,7 +208,7 @@ namespace Pinball.Ingame.Map
             if (_scoreGainCount < _scoreGainLimit)
                 return;
 
-            Deactivate();
+            _isScoreGainBlocked = true;
         }
     }
 }
