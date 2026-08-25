@@ -513,10 +513,10 @@ namespace Pinball.Ingame
             RefreshOwnedItems();
         }
 
-        void OnComboChanged(int comboCount, float multiplier, int pendingBonus)
+        void OnComboChanged(int comboCount, float multiplier)
         {
             _director.PlayComboUp();
-            _uiRoot.SetCombo(comboCount, multiplier, pendingBonus, GetComboStepProgress(comboCount));
+            _uiRoot.SetCombo(comboCount, multiplier, GetComboStepProgress(comboCount));
         }
 
         float GetComboStepProgress(int comboCount)
@@ -536,17 +536,10 @@ namespace Pinball.Ingame
             _director.PlaySurgeCharged();
         }
 
-        void OnComboEnded(int comboCount, float multiplier, int bonusScore)
+        void OnComboEnded()
         {
             _director.ResetComboPitch();
-
-            if (bonusScore <= 0)
-            {
-                _uiRoot.HideCombo();
-                return;
-            }
-
-            _uiRoot.ShowComboBonus(comboCount, multiplier, bonusScore);
+            _uiRoot.HideCombo();
         }
 
         void RefreshOwnedItems()

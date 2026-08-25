@@ -30,7 +30,7 @@ namespace Pinball.Ingame.Shop
         public enum EEffectType
         {
             PerfectTimingRelax = 0,
-            ComboMultiplierAdd = 1,
+            ComboBonusScale = 1,
             BallAttackPowerAdd = 2,
             FlipPowerAdd = 3,
             ComboTimeoutAdd = 4,

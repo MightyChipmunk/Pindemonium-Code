@@ -231,9 +231,12 @@ namespace Pinball.Ingame.Stat
             return GetEffectSum(ShopItemData.EEffectType.BallResupplyMoney) + _runSetup.BallResupplyMoneyAdd + voucherBonus;
         }
 
-        public static float GetComboMultiplierBonus()
+        public static float GetComboBonusScale()
         {
-            return GetEffectSum(ShopItemData.EEffectType.ComboMultiplierAdd);
+            if (!HasEffect(ShopItemData.EEffectType.ComboBonusScale))
+                return DEFAULT_SCALE;
+
+            return Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.ComboBonusScale, ShopItemData.MAIN_VALUE_INDEX));
         }
 
         public static float GetComboTimeoutBonus()

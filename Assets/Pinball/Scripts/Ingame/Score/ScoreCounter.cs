@@ -20,8 +20,8 @@ namespace Pinball.Ingame.Score
         public int Current => _current;
         public int ComboCount => null == _comboTracker ? 0 : _comboTracker.ComboCount;
         public event Action<int> OnChanged;
-        public event Action<int, float, int> OnComboChanged;
-        public event Action<int, float, int> OnComboEnded;
+        public event Action<int, float> OnComboChanged;
+        public event Action OnComboEnded;
 
         public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, Action<MapInteractable.EGimmickType, int> gimmickScoreReporter, SlingshotScoreGrowth slingshotGrowth)
         {
@@ -30,7 +30,7 @@ namespace Pinball.Ingame.Score
             _scorePopupPlayer = scorePopupPlayer;
             _stageGimmickScoreMultiplierGetter = stageGimmickScoreMultiplierGetter;
             _gimmickScoreReporter = gimmickScoreReporter;
-            _comboTracker = new ComboTracker(comboConfig, StatProvider.GetComboMultiplierBonus, StatProvider.GetComboTimeoutBonus, StatProvider.GetComboGainRate);
+            _comboTracker = new ComboTracker(comboConfig, StatProvider.GetComboBonusScale, StatProvider.GetComboTimeoutBonus, StatProvider.GetComboGainRate);
             _comboTracker.OnComboChanged += HandleComboChanged;
             _comboTracker.OnComboEnded += HandleComboEnded;
         }
@@ -53,7 +53,10 @@ namespace Pinball.Ingame.Score
             int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * GetStageGimmickScoreMultiplier(gimmickType));
 
             if (scoreSource != MapInteractable.EScoreSource.PassiveEffect)
-                _comboTracker.AddBounce(finalScore);
+            {
+                _comboTracker.AddBounce();
+                finalScore = Mathf.RoundToInt(finalScore * _comboTracker.GetCurrentMultiplier());
+            }
 
             Add(finalScore);
             _gimmickScoreReporter?.Invoke(gimmickType, finalScore);
@@ -134,15 +137,14 @@ namespace Pinball.Ingame.Score
         }
 #endif
 
-        void HandleComboChanged(int comboCount, float multiplier, int pendingBonus)
+        void HandleComboChanged(int comboCount, float multiplier)
         {
-            OnComboChanged?.Invoke(comboCount, multiplier, pendingBonus);
+            OnComboChanged?.Invoke(comboCount, multiplier);
         }
 
-        void HandleComboEnded(int comboCount, float multiplier, int bonusScore)
+        void HandleComboEnded()
         {
-            Add(bonusScore);
-            OnComboEnded?.Invoke(comboCount, multiplier, bonusScore);
+            OnComboEnded?.Invoke();
         }
 
         void Add(int amount)

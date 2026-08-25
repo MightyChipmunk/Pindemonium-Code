@@ -84,14 +84,9 @@ namespace Pinball.Ingame.UI
             _stageGimmickView.SetGimmicks(gimmicks);
         }
 
-        public void SetCombo(int comboCount, float multiplier, int pendingBonus, float stepProgress)
+        public void SetCombo(int comboCount, float multiplier, float stepProgress)
         {
-            _comboView.SetCombo(comboCount, multiplier, pendingBonus, stepProgress);
-        }
-
-        public void ShowComboBonus(int comboCount, float multiplier, int bonusScore)
-        {
-            _comboView.ShowBonus(comboCount, multiplier, bonusScore);
+            _comboView.SetCombo(comboCount, multiplier, stepProgress);
         }
 
         public void HideCombo()

@@ -6,40 +6,40 @@ namespace Pinball.Ingame.Score
     public class ComboTracker
     {
         const float DEFAULT_GAIN_RATE = 1f;
+        const float DEFAULT_BONUS_SCALE = 1f;
+        const float BASE_MULTIPLIER = 1f;
 
         ComboConfigData _config = null;
-        Func<float> _multiplierBonusGetter = null;
+        Func<float> _bonusScaleGetter = null;
         Func<float> _timeoutBonusGetter = null;
         Func<float> _gainRateGetter = null;
         int _comboCount = 0;
-        int _accumulatedScore = 0;
         float _gainProgress = 0f;
         float _timeoutRemaining = 0f;
 
         public int ComboCount => _comboCount;
 
-        public event Action<int, float, int> OnComboChanged;
-        public event Action<int, float, int> OnComboEnded;
+        public event Action<int, float> OnComboChanged;
+        public event Action OnComboEnded;
 
-        public ComboTracker(ComboConfigData config, Func<float> multiplierBonusGetter, Func<float> timeoutBonusGetter, Func<float> gainRateGetter)
+        public ComboTracker(ComboConfigData config, Func<float> bonusScaleGetter, Func<float> timeoutBonusGetter, Func<float> gainRateGetter)
         {
             _config = config;
-            _multiplierBonusGetter = multiplierBonusGetter;
+            _bonusScaleGetter = bonusScaleGetter;
             _timeoutBonusGetter = timeoutBonusGetter;
             _gainRateGetter = gainRateGetter;
             ResetCombo();
         }
 
-        public void AddBounce(int score)
+        public void AddBounce()
         {
             if (null == _config)
                 return;
 
             _gainProgress += GetGainRate();
             _comboCount = Mathf.FloorToInt(_gainProgress);
-            _accumulatedScore += Mathf.Max(0, score);
             _timeoutRemaining = _config.TimeoutSeconds + GetTimeoutBonus();
-            OnComboChanged?.Invoke(_comboCount, GetCurrentMultiplier(), CalculateBonusScore());
+            OnComboChanged?.Invoke(_comboCount, GetCurrentMultiplier());
         }
 
         public void Tick(float deltaTime)
@@ -59,43 +59,31 @@ namespace Pinball.Ingame.Score
             if (_comboCount <= 0)
                 return;
 
-            int comboCount = _comboCount;
-            float multiplier = GetCurrentMultiplier();
-            int bonusScore = CalculateBonusScore();
             ResetCombo();
-            OnComboEnded?.Invoke(comboCount, multiplier, bonusScore);
+            OnComboEnded?.Invoke();
         }
 
-        int CalculateBonusScore()
-        {
-            float multiplier = GetCurrentMultiplier();
-            if (multiplier <= 1f)
-                return 0;
-
-            return Mathf.RoundToInt(_accumulatedScore * (multiplier - 1f));
-        }
-
-        float GetCurrentMultiplier()
+        public float GetCurrentMultiplier()
         {
             if (null == _config)
-                return 1f;
+                return BASE_MULTIPLIER;
 
             if (_config.ComboCountPerStep <= 0)
-                return 1f;
+                return BASE_MULTIPLIER;
 
             int stepCount = _comboCount / _config.ComboCountPerStep;
             if (stepCount <= 0)
-                return 1f;
+                return BASE_MULTIPLIER;
 
-            return 1f + _config.StepMultiplierAdd * stepCount + GetMultiplierBonus();
+            return BASE_MULTIPLIER + _config.StepMultiplierAdd * stepCount * GetBonusScale();
         }
 
-        float GetMultiplierBonus()
+        float GetBonusScale()
         {
-            if (null == _multiplierBonusGetter)
-                return 0f;
+            if (null == _bonusScaleGetter)
+                return DEFAULT_BONUS_SCALE;
 
-            return _multiplierBonusGetter();
+            return _bonusScaleGetter();
         }
 
         float GetTimeoutBonus()
@@ -117,7 +105,6 @@ namespace Pinball.Ingame.Score
         void ResetCombo()
         {
             _comboCount = 0;
-            _accumulatedScore = 0;
             _gainProgress = 0f;
             _timeoutRemaining = 0f;
         }
