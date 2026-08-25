@@ -1,4 +1,5 @@
 ﻿using System;
+using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Player;
@@ -68,6 +69,7 @@ namespace Pinball.Ingame.State
             _isPlayStopped = false;
             _isBallInPlay = false;
             _isPaused = false;
+            BgmManager.Play(GetStageBgmType());
             _stageTracker.StartCurrentStage();
             LoadMap();
             _ballFlow.LoadBallOnSpring();
@@ -189,6 +191,14 @@ namespace Pinball.Ingame.State
                 GimmickHitPresenter: _director.PlayGimmickHit,
                 IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
                 ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit));
+        }
+
+        BgmStorage.EBgmType GetStageBgmType()
+        {
+            int stageIndex = _stageTracker.StageNumber - 1;
+            return StageCatalogData.IsRoundLastStage(stageIndex)
+                ? BgmStorage.EBgmType.PlayLate
+                : BgmStorage.EBgmType.PlayEarly;
         }
 
         void OnStageCleared(int stageNumber, StageData stage)

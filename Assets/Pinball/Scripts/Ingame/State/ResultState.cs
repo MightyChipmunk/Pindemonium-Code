@@ -1,4 +1,5 @@
 using System;
+using Pinball.Audio;
 using Pinball.Ingame.Presentation;
 using Pinball.UI;
 
@@ -30,6 +31,8 @@ namespace Pinball.Ingame.State
             EnterParam enterParam = param as EnterParam;
             if (null == enterParam)
                 return;
+
+            BgmManager.Stop();
 
             bool isClear = enterParam.Result == GameResultView.EResult.Clear;
             _param.PlayDataClearer?.Invoke();

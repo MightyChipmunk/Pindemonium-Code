@@ -38,6 +38,8 @@ namespace Pinball.Core
             UIManager.EnsureInit(config.ViewCatalog);
             Blocker.EnsureInit(config.BlockerPrefab);
             AudioStorage.Init(config.AudioStorage);
+            BgmStorage.Init(config.BgmStorage);
+            BgmManager.Init(config.GetBgmPlayerPrefab());
             _isInitialized = true;
             Application.quitting -= Release;
             Application.quitting += Release;
@@ -51,6 +53,8 @@ namespace Pinball.Core
                 return;
 
             _isInitialized = false;
+            BgmManager.Release();
+            BgmStorage.Release();
             AudioStorage.Release();
             Blocker.Release();
             UIManager.Release();

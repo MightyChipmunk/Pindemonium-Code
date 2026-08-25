@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Pinball.Audio;
 using Pinball.Core;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
@@ -26,6 +27,7 @@ namespace Pinball.Lobby
         void Awake()
         {
             GameBootStrap.EnsureInit(_bootStrapConfig);
+            BgmManager.Play(BgmStorage.EBgmType.Lobby);
             _runSetupController = new LobbyRunSetupController(new LobbyRunSetupController.InitParam(
                 FlipperCatalog: _flipperCatalog,
                 RewardCatalog: _rewardCatalog,

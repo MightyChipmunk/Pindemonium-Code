@@ -164,6 +164,7 @@ namespace Pinball.Ingame.State
 
         void Open()
         {
+            BgmManager.Play(BgmStorage.EBgmType.Shop);
             _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, _vouchers.Has(VoucherData.EEffect.ShopFirstRerollFree));
             _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferPackItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
             RefreshShopView(false);

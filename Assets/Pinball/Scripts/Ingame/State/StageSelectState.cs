@@ -1,4 +1,5 @@
 using System;
+using Pinball.Audio;
 using Pinball.Ingame.Stage;
 using Pinball.UI;
 
@@ -56,6 +57,7 @@ namespace Pinball.Ingame.State
                 _progressSaver?.Invoke(false);
             }
 
+            BgmManager.Play(BgmStorage.EBgmType.StageSelect);
             UIManager.OnEvent += HandleUIEvent;
             _isOpen = true;
             RefreshView();
