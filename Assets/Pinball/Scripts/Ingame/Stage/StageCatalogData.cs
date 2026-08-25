@@ -50,6 +50,12 @@ namespace Pinball.Ingame.Stage
             return stageIndex - Count + 1;
         }
 
+        public int GetLastStageTargetScore()
+        {
+            StageData stage = GetStage(Count - 1);
+            return null == stage ? 0 : stage.TargetScore;
+        }
+
         public StageData GetStage(int stageIndex)
         {
             if (Count <= 0)

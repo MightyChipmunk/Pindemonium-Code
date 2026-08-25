@@ -10,15 +10,19 @@ namespace Pinball.Lobby
 {
     public class LobbyRunSetupController : IDisposable
     {
+        const int ROUND_LAST_GIMMICK_COUNT = 1;
+
         public record InitParam(
             FlipperCatalogData FlipperCatalog,
             ClearRewardCatalogData RewardCatalog,
             StageCatalogData StageCatalog,
-            StageGimmickCatalogData GimmickCatalog);
+            StageGimmickCatalogData GimmickCatalog,
+            EndlessConfigData EndlessConfig);
 
         FlipperCatalogData _flipperCatalog = null;
         StageCatalogData _stageCatalog = null;
         StageGimmickCatalogData _gimmickCatalog = null;
+        EndlessConfigData _endlessConfig = null;
         UnlockProgress _unlockProgress = null;
 
         public event Action<int> OnPlayRequested;
@@ -29,6 +33,7 @@ namespace Pinball.Lobby
             _flipperCatalog = param.FlipperCatalog;
             _stageCatalog = param.StageCatalog;
             _gimmickCatalog = param.GimmickCatalog;
+            _endlessConfig = param.EndlessConfig;
             _unlockProgress = new UnlockProgress(param.RewardCatalog);
             UIManager.OnEvent += HandleUIEvent;
         }
@@ -110,14 +115,28 @@ namespace Pinball.Lobby
         StageGimmickData[] BuildGimmicks(IngamePlayData saved)
         {
             int[] gimmickIndices = saved.GetGimmickIndices();
-            if (null == gimmickIndices || gimmickIndices.Length <= 0)
+            StageGimmickData roundLastGimmick = GetRoundLastGimmick(saved);
+            int rolledCount = null == gimmickIndices ? 0 : gimmickIndices.Length;
+            int totalCount = rolledCount + (null == roundLastGimmick ? 0 : ROUND_LAST_GIMMICK_COUNT);
+            if (totalCount <= 0)
                 return null;
 
-            StageGimmickData[] rolledGimmicks = new StageGimmickData[gimmickIndices.Length];
-            for (int i = 0; i < rolledGimmicks.Length; ++i)
+            StageGimmickData[] rolledGimmicks = new StageGimmickData[totalCount];
+            for (int i = 0; i < rolledCount; ++i)
                 rolledGimmicks[i] = null == _gimmickCatalog ? null : _gimmickCatalog.GetGimmick(gimmickIndices[i]);
 
+            if (null != roundLastGimmick)
+                rolledGimmicks[totalCount - 1] = roundLastGimmick;
+
             return rolledGimmicks;
+        }
+
+        StageGimmickData GetRoundLastGimmick(IngamePlayData saved)
+        {
+            if (null == _endlessConfig || null == _stageCatalog || !saved.IsEndless)
+                return null;
+
+            return _endlessConfig.GetRoundLastGimmick(_stageCatalog.GetEndlessStageNumber(saved.StageNumber - 1));
         }
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)

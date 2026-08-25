@@ -6,9 +6,12 @@ namespace Pinball.Ingame.Stage
     public class StageGimmickRoller : IStageGimmickSource
     {
         const int INVALID_INDEX = -1;
+        const int NO_FIXED_SLOT_COUNT = 0;
+        const int FIXED_SLOT_COUNT = 1;
 
         StageGimmickCatalogData _catalog = null;
         List<StageGimmickData> _gimmicks = null;
+        StageGimmickData _fixedGimmick = null;
         int _rerollCount = 0;
         bool _isFirstRerollFree = false;
 
@@ -27,7 +30,7 @@ namespace Pinball.Ingame.Stage
                 return _catalog.RerollBasePrice + _catalog.RerollPriceIncrement * _rerollCount;
             }
         }
-        public bool CanReroll => GimmickCount > 0 && null != _catalog && _catalog.Count > 0;
+        public bool CanReroll => GetRerollableCount() > 0 && null != _catalog && _catalog.Count > 0;
 
         public StageGimmickRoller(StageGimmickCatalogData catalog)
         {
@@ -49,53 +52,65 @@ namespace Pinball.Ingame.Stage
             return _gimmicks[index];
         }
 
-        public void SetBaseGimmicks(StageData stage)
+        public void SetBaseGimmicks(StageData stage, StageGimmickData fixedGimmick)
         {
             _gimmicks.Clear();
             _rerollCount = 0;
+            _fixedGimmick = fixedGimmick;
 
             if (null == stage)
                 return;
 
+            if (null != _fixedGimmick)
+                _gimmicks.Add(_fixedGimmick);
+
             List<StageGimmickData> candidates = CollectStageCandidates(stage);
-            int rollCount = Mathf.Min(stage.GimmickRollCount, candidates.Count);
+            int rollCount = Mathf.Min(stage.GimmickRollCount - _gimmicks.Count, candidates.Count);
             for (int i = 0; i < rollCount; ++i)
             {
                 int pickIndex = PickCandidateIndex(candidates, INVALID_INDEX);
                 if (pickIndex == INVALID_INDEX)
-                    return;
+                    break;
 
                 _gimmicks.Add(candidates[pickIndex]);
                 candidates.RemoveAt(pickIndex);
             }
+
+            MoveFixedGimmickToLast();
         }
 
-        public void RestoreOrSetBase(int[] catalogIndices, StageData baseStage)
+        public void RestoreOrSetBase(int[] catalogIndices, StageData baseStage, StageGimmickData fixedGimmick)
         {
             if (null == catalogIndices || catalogIndices.Length <= 0)
             {
-                SetBaseGimmicks(baseStage);
+                SetBaseGimmicks(baseStage, fixedGimmick);
                 return;
             }
 
-            RestoreGimmicks(catalogIndices);
+            RestoreGimmicks(catalogIndices, fixedGimmick);
         }
 
-        void RestoreGimmicks(int[] catalogIndices)
+        void RestoreGimmicks(int[] catalogIndices, StageGimmickData fixedGimmick)
         {
             _gimmicks.Clear();
             _rerollCount = 0;
+            _fixedGimmick = fixedGimmick;
 
             if (null == catalogIndices || null == _catalog)
                 return;
 
+            if (null != _fixedGimmick)
+                _gimmicks.Add(_fixedGimmick);
+
             for (int i = 0; i < catalogIndices.Length; ++i)
                 AddGimmick(_catalog.GetGimmick(catalogIndices[i]));
+
+            MoveFixedGimmickToLast();
         }
 
         public int[] GetCatalogIndices()
         {
-            int[] indices = new int[GimmickCount];
+            int[] indices = new int[GetRerollableCount()];
             for (int i = 0; i < indices.Length; ++i)
                 indices[i] = null == _catalog ? StageGimmickCatalogData.INVALID_INDEX : _catalog.IndexOf(_gimmicks[i]);
 
@@ -110,7 +125,8 @@ namespace Pinball.Ingame.Stage
             ++_rerollCount;
 
             List<StageGimmickData> candidates = CollectCandidates();
-            for (int i = 0; i < _gimmicks.Count; ++i)
+            int rerollableCount = GetRerollableCount();
+            for (int i = 0; i < rerollableCount; ++i)
             {
                 if (candidates.Count <= 0)
                     return;
@@ -122,6 +138,20 @@ namespace Pinball.Ingame.Stage
                 _gimmicks[i] = candidates[pickIndex];
                 candidates.RemoveAt(pickIndex);
             }
+        }
+
+        int GetRerollableCount()
+        {
+            return Mathf.Max(0, GimmickCount - (null == _fixedGimmick ? NO_FIXED_SLOT_COUNT : FIXED_SLOT_COUNT));
+        }
+
+        void MoveFixedGimmickToLast()
+        {
+            if (null == _fixedGimmick)
+                return;
+
+            _gimmicks.Remove(_fixedGimmick);
+            _gimmicks.Add(_fixedGimmick);
         }
 
         int PickCandidateIndex(List<StageGimmickData> candidates, int slotIndex)

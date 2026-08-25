@@ -143,7 +143,7 @@ namespace Pinball.Ingame.Stage
             if (!_isEndless || null == _endlessConfig)
                 return stage.TargetScore;
 
-            return _endlessConfig.GetTargetScore(stage.TargetScore, EndlessStageNumber);
+            return _endlessConfig.GetTargetScore(_catalog.GetLastStageTargetScore(), EndlessStageNumber);
         }
 
         bool CanClearByScore()

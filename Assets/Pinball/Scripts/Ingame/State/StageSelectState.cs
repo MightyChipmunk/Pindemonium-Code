@@ -145,7 +145,7 @@ namespace Pinball.Ingame.State
             if (!isEndless || null == _endlessConfig)
                 return stage.TargetScore;
 
-            return _endlessConfig.GetTargetScore(stage.TargetScore, _stageCatalog.GetEndlessStageNumber(stageIndex));
+            return _endlessConfig.GetTargetScore(_stageCatalog.GetLastStageTargetScore(), _stageCatalog.GetEndlessStageNumber(stageIndex));
         }
 
         StageGimmickData[] BuildCurrentGimmicks()

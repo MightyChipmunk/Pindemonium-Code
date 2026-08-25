@@ -19,6 +19,7 @@ namespace Pinball.Lobby
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
         [SerializeField] StageCatalogData _stageCatalog = null;
         [SerializeField] StageGimmickCatalogData _gimmickCatalog = null;
+        [SerializeField] EndlessConfigData _endlessConfig = null;
         [SerializeField] LobbyUIRoot _uiRoot = null;
 
         LobbyRunSetupController _runSetupController = null;
@@ -32,7 +33,8 @@ namespace Pinball.Lobby
                 FlipperCatalog: _flipperCatalog,
                 RewardCatalog: _rewardCatalog,
                 StageCatalog: _stageCatalog,
-                GimmickCatalog: _gimmickCatalog));
+                GimmickCatalog: _gimmickCatalog,
+                EndlessConfig: _endlessConfig));
             _runSetupController.OnPlayRequested += OnPlayRequested;
             _runSetupController.OnContinueRequested += OnContinueConfirmed;
             _uiRoot.Init(OnContinueRequested, OnNewGameRequested, OnSettingsRequested);

@@ -220,7 +220,7 @@ namespace Pinball.Ingame
             _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver, _endlessConfig, start.IsEndless);
             _stageTracker.OnStageStarted += OnStageStarted;
             _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
-            _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage());
+            _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage(), GetEndlessRoundLastGimmick());
 
             _slingshotGrowth = new SlingshotScoreGrowth(start.SlingshotHitCount);
             _gimmickScoreTracker = new GimmickScoreTracker(start.GimmickScores);
@@ -412,6 +412,14 @@ namespace Pinball.Ingame
         }
 #endif
 
+        StageGimmickData GetEndlessRoundLastGimmick()
+        {
+            if (null == _endlessConfig || !_stageTracker.IsEndless)
+                return null;
+
+            return _endlessConfig.GetRoundLastGimmick(_stageTracker.EndlessStageNumber);
+        }
+
         void PrepareNextStage()
         {
             _breakMoneyGranter.ResetStage();
@@ -428,7 +436,7 @@ namespace Pinball.Ingame
                 _saveHandler.UpdateBestEndlessStage(GetFlipperId(), _stageTracker.EndlessStageNumber);
 
             _stageTracker.AdvanceToNextStage();
-            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage());
+            _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage(), GetEndlessRoundLastGimmick());
             SaveProgress(true);
         }
 
