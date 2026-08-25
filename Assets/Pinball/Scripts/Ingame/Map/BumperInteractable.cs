@@ -36,6 +36,7 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
         PoolableFX.EFXType _burnFX = PoolableFX.EFXType.NonePooling;
+        PoolableFX.EFXType _shatterFX = PoolableFX.EFXType.NonePooling;
         Tween _visualTween = null;
         BumperGradeData.GradeSpec _spec = default;
         Vector3 _visualBaseScale = Vector3.one;
@@ -290,23 +291,30 @@ namespace Pinball.Ingame.Map
 
             if (_isFrozen)
             {
-                PlayFX(shatterFX, transform.position);
-                AudioManager.Play(AudioStorage.EAudioClipType.EffectFrostShatter);
-                ClearFrozen();
+                ShatterFrozen();
                 return;
             }
 
             _isFrozen = true;
             _frozenDamageMultiplier = Mathf.Max(DEFAULT_DAMAGE_MULTIPLIER, shatterDamageMultiplier);
+            _shatterFX = shatterFX;
             PlayFX(freezeFX, transform.position);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectFreeze);
             RefreshVisualTint();
+        }
+
+        void ShatterFrozen()
+        {
+            PlayFX(_shatterFX, transform.position);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectFrostShatter);
+            ClearFrozen();
         }
 
         void ClearFrozen()
         {
             _isFrozen = false;
             _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
+            _shatterFX = PoolableFX.EFXType.NonePooling;
             RefreshVisualTint();
         }
 
@@ -394,7 +402,10 @@ namespace Pinball.Ingame.Map
         {
             _isBroken = true;
             StopBurning();
-            ClearFrozen();
+
+            if (_isFrozen)
+                ShatterFrozen();
+
             ClearSniperMark();
             _collider.enabled = false;
             GainScore(_spec.BreakScore, transform.position, EScoreSource.GimmickBreak);
