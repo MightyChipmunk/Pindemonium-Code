@@ -163,7 +163,7 @@ namespace Pinball.Ingame
         {
             _wallet = new MoneyWallet(start.Money);
             _loadout = new PlayerLoadout(start.BallPassiveSlotCount, start.MapPassiveSlotCount, start.CommonPassiveSlotCount);
-            _vouchers = new PlayerVouchers();
+            _vouchers = new PlayerVouchers(_runSetup.IsInterestDisabled);
             if (start.IsNewRun)
             {
                 _loadout.GrantRandomPassives(_shopCatalog, _unlockProgress.IsItemUnlocked, _runSetup.StartPassiveCount);

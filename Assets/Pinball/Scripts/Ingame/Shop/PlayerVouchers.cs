@@ -23,15 +23,17 @@ namespace Pinball.Ingame.Shop
         VoucherData _offer = null;
         int _offerRoundIndex = NO_ROUND;
         int _lastPurchasedRoundIndex = NO_ROUND;
+        bool _isInterestDisabled = false;
 
         public int OwnedCount => null == _owned ? 0 : _owned.Count;
         public int OfferRoundIndex => _offerRoundIndex;
         public int LastPurchasedRoundIndex => _lastPurchasedRoundIndex;
 
-        public PlayerVouchers()
+        public PlayerVouchers(bool isInterestDisabled)
         {
             _owned = new List<VoucherData>();
             _offered = new List<VoucherData>();
+            _isInterestDisabled = isInterestDisabled;
         }
 
         public VoucherData GetOwned(int index)
@@ -183,10 +185,21 @@ namespace Pinball.Ingame.Shop
                 if (null == voucher || _offered.Contains(voucher))
                     continue;
 
+                if (IsEffectDisabled(voucher.Effect))
+                    continue;
+
                 candidates.Add(voucher);
             }
 
             return RandomDraw.TakeOne(candidates);
+        }
+
+        bool IsEffectDisabled(VoucherData.EEffect effect)
+        {
+            if (!_isInterestDisabled)
+                return false;
+
+            return effect == VoucherData.EEffect.InterestRateBoost || effect == VoucherData.EEffect.InterestCapBoost;
         }
 
         static void Collect(string[] voucherIds, VoucherCatalogData catalog, List<VoucherData> destination)
