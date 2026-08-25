@@ -21,7 +21,7 @@ namespace Pinball.UI
 
         [SerializeField] Button _toggleButton = null;
         [SerializeField] TMP_Text _arrowLabel = null;
-        [SerializeField] GameObject _listRoot = null;
+        [SerializeField] RectTransform _listRoot = null;
         [SerializeField] GimmickRowView[] _rows = null;
         [SerializeField] Sprite _targetScoreIcon = null;
         [SerializeField] Sprite _timeLimitIcon = null;
@@ -44,7 +44,6 @@ namespace Pinball.UI
         {
             int gimmickCount = null == gimmicks ? 0 : gimmicks.Length;
             gameObject.SetActive(gimmickCount > 0);
-            SetExpanded(false);
 
             for (int i = 0; i < _rows.Length; ++i)
             {
@@ -56,17 +55,31 @@ namespace Pinball.UI
                 StageGimmickData gimmick = gimmicks[i];
                 _rows[i].Bind(GetIcon(gimmick), GetRingColor(gimmick), StageGimmickLabelFormatter.Format(gimmick));
             }
+
+            SetExpanded(false);
         }
 
         void OnToggleClicked()
         {
-            SetExpanded(!_listRoot.activeSelf);
+            SetExpanded(!_listRoot.gameObject.activeSelf);
         }
 
         void SetExpanded(bool isExpanded)
         {
-            _listRoot.SetActive(isExpanded);
+            _listRoot.gameObject.SetActive(isExpanded);
             _arrowLabel.text = isExpanded ? EXPANDED_ARROW : COLLAPSED_ARROW;
+            RebuildLayout();
+        }
+
+        void RebuildLayout()
+        {
+            if (!gameObject.activeInHierarchy)
+                return;
+
+            if (_listRoot.gameObject.activeSelf)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_listRoot);
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(transform as RectTransform);
         }
 
         Sprite GetIcon(StageGimmickData gimmick)
