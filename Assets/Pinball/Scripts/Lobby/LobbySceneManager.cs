@@ -58,7 +58,7 @@ namespace Pinball.Lobby
         void OnDestroy()
         {
             LocalizationManager.OnLanguageChanged -= RefreshLobbyLabels;
-            UIManager.Hide(UIViewCatalogData.EViewType.Settings);
+            UIManager.HideImmediate(UIViewCatalogData.EViewType.Settings);
 
             if (null != _runSetupController)
             {

@@ -41,9 +41,9 @@ namespace Pinball.Lobby
         public void Dispose()
         {
             UIManager.OnEvent -= HandleUIEvent;
-            UIManager.Hide(UIViewCatalogData.EViewType.FlipperSelect);
-            UIManager.Hide(UIViewCatalogData.EViewType.ContinueRun);
-            UIManager.Hide(UIViewCatalogData.EViewType.RewardUnlock);
+            UIManager.HideImmediate(UIViewCatalogData.EViewType.FlipperSelect);
+            UIManager.HideImmediate(UIViewCatalogData.EViewType.ContinueRun);
+            UIManager.HideImmediate(UIViewCatalogData.EViewType.RewardUnlock);
             OnPlayRequested = null;
             OnContinueRequested = null;
         }

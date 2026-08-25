@@ -241,7 +241,7 @@ namespace Pinball.UI
             HideSellButton();
             HideUpgradeListPanel();
             _lastRequestSource = null;
-            UIManager.Hide(UIViewCatalogData.EViewType.VoucherListPopup);
+            UIManager.HideImmediate(UIViewCatalogData.EViewType.VoucherListPopup);
             for (int i = 0; i < _passiveGrids.Length; ++i)
                 _passiveGrids[i].Clear();
             _upgradeGrid.Clear();
