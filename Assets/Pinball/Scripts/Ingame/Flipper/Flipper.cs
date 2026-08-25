@@ -24,6 +24,7 @@ namespace Pinball.Ingame
 
         const float NORMAL_MULTIPLIER = 1f;
         const float MIRRORED_DIRECTION = -1f;
+        const float TIMING_RELAX_SIDE_RATIO = 0.5f;
         const float MIN_FALLOFF_RANGE = 0.0001f;
         const float SWING_ANGLE_EPSILON = 0.01f;
         const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
@@ -205,7 +206,7 @@ namespace Pinball.Ingame
             if (!isSweetSpot)
                 return EHitGrade.Normal;
 
-            float timingRelax = StatProvider.GetPerfectTimingRelax();
+            float timingRelax = StatProvider.GetPerfectTimingRelax() * TIMING_RELAX_SIDE_RATIO;
             bool isPerfectTiming = _pressedElapsed >= _config.PerfectTimingMin - timingRelax && _pressedElapsed <= _config.PerfectTimingMax + timingRelax;
             return isPerfectTiming ? EHitGrade.Perfect : EHitGrade.SweetSpot;
         }
