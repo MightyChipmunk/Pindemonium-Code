@@ -166,6 +166,7 @@ namespace Pinball.Ingame.Score
 
         void HandleComboEnded(int comboCount, float multiplier, int bonusScore)
         {
+            _hitGradeScoreMultiplier = DEFAULT_SCORE_MULTIPLIER;
             Add(bonusScore);
             OnComboEnded?.Invoke(comboCount, multiplier, bonusScore);
         }
