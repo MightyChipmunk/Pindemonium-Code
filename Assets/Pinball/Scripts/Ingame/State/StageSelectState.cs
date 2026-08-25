@@ -16,7 +16,7 @@ namespace Pinball.Ingame.State
             Func<int> RemainingBallGetter,
             Action NextStagePreparer,
             Action<bool> ProgressSaver,
-            int StageClearBaseMoney);
+            int StageClearMoneyAdd);
 
         public record EnterParam(bool IsAfterShop);
 
@@ -30,7 +30,7 @@ namespace Pinball.Ingame.State
         Func<int> _remainingBallGetter = null;
         Action _nextStagePreparer = null;
         Action<bool> _progressSaver = null;
-        int _stageClearBaseMoney = 0;
+        int _stageClearMoneyAdd = 0;
         bool _isOpen = false;
 
         public override EIngameState Key => EIngameState.StageSelect;
@@ -47,7 +47,7 @@ namespace Pinball.Ingame.State
             _remainingBallGetter = param.RemainingBallGetter;
             _nextStagePreparer = param.NextStagePreparer;
             _progressSaver = param.ProgressSaver;
-            _stageClearBaseMoney = param.StageClearBaseMoney;
+            _stageClearMoneyAdd = param.StageClearMoneyAdd;
             _isOpen = false;
         }
 
@@ -133,7 +133,7 @@ namespace Pinball.Ingame.State
                 IsFinal: !isEndless && stageIndex == _stageCatalog.Count - 1,
                 TargetScore: isCurrent ? _resolver.GetTargetScore(baseTargetScore) : baseTargetScore,
                 TargetScoreMultiplier: isCurrent ? _resolver.GetTargetScoreMultiplier() : StageGimmickResolver.DEFAULT_TARGET_SCORE_MULTIPLIER,
-                RewardMoney: _stageClearBaseMoney,
+                RewardMoney: StageData.CalculateClearMoney(stage, _stageClearMoneyAdd),
                 Gimmicks: isCurrent ? BuildCurrentGimmicks() : null,
                 HiddenGimmickCount: isCurrent ? 0 : stage.GimmickRollCount,
                 RerollPrice: _roller.CurrentRerollPrice,

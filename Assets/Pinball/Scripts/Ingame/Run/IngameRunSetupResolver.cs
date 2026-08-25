@@ -13,8 +13,7 @@ namespace Pinball.Ingame.Run
             Func<FlipperData, bool> IsFlipperUnlockedGetter,
             int BaseBallPassiveSlotCount,
             int BaseMapPassiveSlotCount,
-            int BaseCommonPassiveSlotCount,
-            int BaseStageClearMoney);
+            int BaseCommonPassiveSlotCount);
 
         public record RunStart(
             FlipperData Flipper,
@@ -31,7 +30,6 @@ namespace Pinball.Ingame.Run
             int BallPassiveSlotCount,
             int MapPassiveSlotCount,
             int CommonPassiveSlotCount,
-            int StageClearMoney,
             int SlingshotHitCount,
             int[] GimmickScores);
 
@@ -61,7 +59,6 @@ namespace Pinball.Ingame.Run
                 BallPassiveSlotCount: param.BaseBallPassiveSlotCount,
                 MapPassiveSlotCount: param.BaseMapPassiveSlotCount,
                 CommonPassiveSlotCount: Mathf.Max(MIN_COMMON_PASSIVE_SLOT_COUNT, param.BaseCommonPassiveSlotCount + setup.PassiveSlotAdd),
-                StageClearMoney: Mathf.Max(0, param.BaseStageClearMoney + setup.StageClearMoneyAdd),
                 SlingshotHitCount: isNewRun ? 0 : saved.SlingshotHitCount,
                 GimmickScores: isNewRun ? null : saved.GetGimmickScores());
         }

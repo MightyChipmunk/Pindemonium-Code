@@ -30,7 +30,6 @@ namespace Pinball.Ingame
     public class IngameManager : BehaviourBase
     {
         const int DEFAULT_MAP_INDEX = 0;
-        const int STAGE_CLEAR_BASE_MONEY = 3;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
@@ -84,7 +83,6 @@ namespace Pinball.Ingame
         UnlockProgress _unlockProgress = null;
         FlipperData _selectedFlipper = null;
         FlipperData.RunSetup _runSetup = null;
-        int _stageClearMoney = STAGE_CLEAR_BASE_MONEY;
         bool _isRoundRewardPending = false;
         bool _isExitingToLobby = false;
 
@@ -97,7 +95,6 @@ namespace Pinball.Ingame
             IngameRunSetupResolver.RunStart start = ResolveRunStart();
             _selectedFlipper = start.Flipper;
             _runSetup = start.Setup;
-            _stageClearMoney = start.StageClearMoney;
             _isRoundRewardPending = start.IsRoundRewardPending;
 
             InitRunModel(start);
@@ -156,8 +153,7 @@ namespace Pinball.Ingame
                 IsFlipperUnlockedGetter: _unlockProgress.IsFlipperUnlocked,
                 BaseBallPassiveSlotCount: hasConfig ? _shopConfig.BallPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
                 BaseMapPassiveSlotCount: hasConfig ? _shopConfig.MapPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
-                BaseCommonPassiveSlotCount: hasConfig ? _shopConfig.CommonPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
-                BaseStageClearMoney: STAGE_CLEAR_BASE_MONEY));
+                BaseCommonPassiveSlotCount: hasConfig ? _shopConfig.CommonPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT));
         }
 
         void InitRunModel(IngameRunSetupResolver.RunStart start)
@@ -320,7 +316,7 @@ namespace Pinball.Ingame
                 RemainingBallGetter: GetRemainingBallCount,
                 NextStagePreparer: PrepareNextStage,
                 ProgressSaver: SaveProgress,
-                StageClearBaseMoney: _stageClearMoney), _gimmickRoller, _gimmickResolver);
+                StageClearMoneyAdd: _runSetup.StageClearMoneyAdd), _gimmickRoller, _gimmickResolver);
 
             _playState = new PlayState(new PlayState.InitParam(
                 MapLoader: _mapLoader.Load,
@@ -430,7 +426,8 @@ namespace Pinball.Ingame
         {
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * StatProvider.GetBallResupplyMoney());
-            _wallet.Add(remainingBalls + _stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
+            int stageClearMoney = StageData.CalculateClearMoney(_stageTracker.GetCurrentStage(), _runSetup.StageClearMoneyAdd);
+            _wallet.Add(remainingBalls + stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
             _isRoundRewardPending = StageCatalogData.IsRoundLastStage(_stageTracker.StageNumber - 1);
             if (_stageTracker.IsEndless && _stageTracker.EndlessStageNumber > 0)
                 _saveHandler.UpdateBestEndlessStage(GetFlipperId(), _stageTracker.EndlessStageNumber);
