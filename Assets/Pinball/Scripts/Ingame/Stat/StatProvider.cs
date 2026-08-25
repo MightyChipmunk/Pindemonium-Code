@@ -113,6 +113,14 @@ namespace Pinball.Ingame.Stat
             return _statData.NudgeAimSeconds;
         }
 
+        public static float GetNudgeVelocityKeepRatio()
+        {
+            if (!EnsureReady() || null == _statData)
+                return DEFAULT_SCALE;
+
+            return Mathf.Clamp01(_statData.NudgeVelocityKeepRatio);
+        }
+
         public static float GetBallAttackPower()
         {
             if (!EnsureReady() || null == _statData)

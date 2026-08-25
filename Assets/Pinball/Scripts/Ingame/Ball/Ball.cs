@@ -112,6 +112,11 @@ namespace Pinball.Ingame
             _auraController.ClearParticles();
         }
 
+        public void ScaleVelocity(float scale)
+        {
+            _rigidbody.linearVelocity *= scale;
+        }
+
         public void AddImpulse(Vector2 impulse)
         {
             _rigidbody.AddForce(impulse, ForceMode2D.Impulse);

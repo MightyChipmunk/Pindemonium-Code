@@ -12,6 +12,7 @@ namespace Pinball.Ingame.Stat
         [SerializeField] float _nudgeImpulsePower = 2.5f;
         [SerializeField] float _nudgeCooldownSeconds = 3f;
         [SerializeField] float _nudgeAimSeconds = 1f;
+        [SerializeField] float _nudgeVelocityKeepRatio = 0.2f;
 
         public int InitialBallCount => _initialBallCount;
         public float BallMass => _ballMass;
@@ -20,5 +21,6 @@ namespace Pinball.Ingame.Stat
         public float NudgeImpulsePower => _nudgeImpulsePower;
         public float NudgeCooldownSeconds => _nudgeCooldownSeconds;
         public float NudgeAimSeconds => _nudgeAimSeconds;
+        public float NudgeVelocityKeepRatio => _nudgeVelocityKeepRatio;
     }
 }
