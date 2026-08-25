@@ -171,11 +171,11 @@ namespace Pinball.Ingame.Stat
                 return 0f;
 
             int comboPerStep = Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.SUB_VALUE_INDEX));
-            int resetComboCount = Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.EXTRA_VALUE_INDEX));
-            if (comboPerStep <= 0 || resetComboCount <= 0)
+            int maxComboCount = Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.EXTRA_VALUE_INDEX));
+            if (comboPerStep <= 0 || maxComboCount <= 0)
                 return 0f;
 
-            int stepCount = _comboCountGetter() % resetComboCount / comboPerStep;
+            int stepCount = Mathf.Min(_comboCountGetter(), maxComboCount) / comboPerStep;
             return GetEffectValue(ShopItemData.EEffectType.ComboDigitDamage, ShopItemData.MAIN_VALUE_INDEX) * stepCount;
         }
 
