@@ -24,11 +24,13 @@ namespace Pinball.Ingame.Map
         int[] _order = null;
         int _droppedCount = 0;
         bool _isOrderKept = true;
+        bool _isReleased = false;
 
         public override EGimmickType GimmickType => EGimmickType.DropTarget;
 
         protected override void OnInit()
         {
+            _isReleased = false;
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
 
             if (null == _targets)
@@ -45,6 +47,8 @@ namespace Pinball.Ingame.Map
 
         protected override void OnRelease()
         {
+            _isReleased = true;
+
             if (null != _cancellationTokenSource)
             {
                 _cancellationTokenSource.Cancel();
@@ -113,20 +117,28 @@ namespace Pinball.Ingame.Map
 
         void OnTargetDropped(int targetIndex, Collider2D ballCollider)
         {
-            NotifyBallHit(ballCollider);
-            PlayDropSound(targetIndex);
-            GainScore(_dropScoreReward);
+            if (_isReleased)
+                return;
 
-            if (targetIndex != _order[_droppedCount])
+            bool isOrderMatched = targetIndex == _order[_droppedCount];
+            bool isOrderStep = _isOrderKept && isOrderMatched && StatProvider.HasDropTargetOrder();
+
+            if (!isOrderMatched)
                 _isOrderKept = false;
 
             ++_droppedCount;
+            bool isBankCleared = _droppedCount >= _targets.Length;
+            int clearScore = isBankCleared ? Mathf.RoundToInt(_clearScoreReward * GetClearScoreMultiplier()) : 0;
             RefreshOrderHighlight();
 
-            if (_droppedCount < _targets.Length)
+            NotifyBallHit(ballCollider);
+            PlayDropSound(isOrderStep);
+            GainScore(_dropScoreReward);
+
+            if (!isBankCleared || _isReleased)
                 return;
 
-            GainScore(Mathf.RoundToInt(_clearScoreReward * GetClearScoreMultiplier()));
+            GainScore(clearScore);
             PlayBankClearedSound();
             PlayClearShake();
 
@@ -134,9 +146,9 @@ namespace Pinball.Ingame.Map
                 ResetBankAsync(_cancellationTokenSource.Token).Forget();
         }
 
-        void PlayDropSound(int targetIndex)
+        void PlayDropSound(bool isOrderStep)
         {
-            if (null == _orderPitchController || !_isOrderKept || !StatProvider.HasDropTargetOrder() || targetIndex != _order[_droppedCount])
+            if (!isOrderStep || null == _orderPitchController)
             {
                 PlayGimmickHit();
                 return;
