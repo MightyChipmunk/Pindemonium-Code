@@ -55,6 +55,9 @@ namespace Pinball.UI
         [SerializeField] Button _sfxVolumePrevButton = null;
         [SerializeField] Button _sfxVolumeNextButton = null;
         [SerializeField] TMP_Text _sfxVolumeLabel = null;
+        [SerializeField] Button _bgmVolumePrevButton = null;
+        [SerializeField] Button _bgmVolumeNextButton = null;
+        [SerializeField] TMP_Text _bgmVolumeLabel = null;
         [SerializeField] Button _languagePrevButton = null;
         [SerializeField] Button _languageNextButton = null;
         [SerializeField] TMP_Text _languageLabel = null;
@@ -85,6 +88,8 @@ namespace Pinball.UI
             _masterVolumeNextButton.onClick.AddListener(OnMasterVolumeNextClicked);
             _sfxVolumePrevButton.onClick.AddListener(OnSfxVolumePrevClicked);
             _sfxVolumeNextButton.onClick.AddListener(OnSfxVolumeNextClicked);
+            _bgmVolumePrevButton.onClick.AddListener(OnBgmVolumePrevClicked);
+            _bgmVolumeNextButton.onClick.AddListener(OnBgmVolumeNextClicked);
             _languagePrevButton.onClick.AddListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.AddListener(OnLanguageNextClicked);
             _closeButton.onClick.AddListener(OnCloseClicked);
@@ -108,6 +113,8 @@ namespace Pinball.UI
             _masterVolumeNextButton.onClick.RemoveListener(OnMasterVolumeNextClicked);
             _sfxVolumePrevButton.onClick.RemoveListener(OnSfxVolumePrevClicked);
             _sfxVolumeNextButton.onClick.RemoveListener(OnSfxVolumeNextClicked);
+            _bgmVolumePrevButton.onClick.RemoveListener(OnBgmVolumePrevClicked);
+            _bgmVolumeNextButton.onClick.RemoveListener(OnBgmVolumeNextClicked);
             _languagePrevButton.onClick.RemoveListener(OnLanguagePrevClicked);
             _languageNextButton.onClick.RemoveListener(OnLanguageNextClicked);
             _closeButton.onClick.RemoveListener(OnCloseClicked);
@@ -155,6 +162,7 @@ namespace Pinball.UI
             SetRefreshRateInteractable(!GameSettings.IsVSyncEnabled);
             _masterVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.MasterVolume);
             _sfxVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.SfxVolume);
+            _bgmVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.BgmVolume);
             _fullscreenLabel.text = GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
         }
 
@@ -262,6 +270,18 @@ namespace Pinball.UI
         void OnSfxVolumeNextClicked()
         {
             GameSettings.ShiftSfxVolume(NEXT_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnBgmVolumePrevClicked()
+        {
+            GameSettings.ShiftBgmVolume(PREV_DIRECTION);
+            RefreshLabels();
+        }
+
+        void OnBgmVolumeNextClicked()
+        {
+            GameSettings.ShiftBgmVolume(NEXT_DIRECTION);
             RefreshLabels();
         }
 
