@@ -89,6 +89,30 @@ namespace Pinball.Ingame.Stat
             return _statData.BallMass;
         }
 
+        public static float GetNudgeImpulsePower()
+        {
+            if (!EnsureReady() || null == _statData)
+                return 0f;
+
+            return _statData.NudgeImpulsePower;
+        }
+
+        public static float GetNudgeCooldownSeconds()
+        {
+            if (!EnsureReady() || null == _statData)
+                return 0f;
+
+            return _statData.NudgeCooldownSeconds;
+        }
+
+        public static float GetNudgeAimSeconds()
+        {
+            if (!EnsureReady() || null == _statData)
+                return 0f;
+
+            return _statData.NudgeAimSeconds;
+        }
+
         public static float GetBallAttackPower()
         {
             if (!EnsureReady() || null == _statData)

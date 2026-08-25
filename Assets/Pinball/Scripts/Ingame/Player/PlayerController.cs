@@ -1,6 +1,7 @@
 using System;
 using Pinball.Ingame.Input;
 using Pinball.Ingame.Map;
+using Pinball.Ingame.Stat;
 using UnityEngine;
 
 namespace Pinball.Ingame.Player
@@ -11,11 +12,9 @@ namespace Pinball.Ingame.Player
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
             Func<Vector2, bool> NudgeImpulseApplier,
-            Action NudgePresenter);
-
-        const float NUDGE_COOLDOWN_SECONDS = 3f;
-        const float NUDGE_IMPULSE_POWER = 2.5f;
-        const float FULL_CIRCLE_RADIAN = Mathf.PI * 2f;
+            Action NudgePresenter,
+            Action<bool> NudgeAimPresenter,
+            Action<Vector2> NudgeAimDirectionPresenter);
 
         IngameInputRouter _inputRouter = null;
         MapRoot _map = null;
@@ -23,7 +22,12 @@ namespace Pinball.Ingame.Player
         Func<bool> _isPlayingGetter = null;
         Func<Vector2, bool> _nudgeImpulseApplier = null;
         Action _nudgePresenter = null;
+        Action<bool> _nudgeAimPresenter = null;
+        Action<Vector2> _nudgeAimDirectionPresenter = null;
         float _remainingNudgeCooldown = 0f;
+        bool _isNudgeAiming = false;
+        Vector2 _nudgeAimDirection = Vector2.up;
+        float _nudgeAimElapsed = 0f;
 
         public event Action<float> OnLaunched;
 
@@ -34,22 +38,26 @@ namespace Pinball.Ingame.Player
             _isPlayingGetter = param.IsPlayingGetter;
             _nudgeImpulseApplier = param.NudgeImpulseApplier;
             _nudgePresenter = param.NudgePresenter;
+            _nudgeAimPresenter = param.NudgeAimPresenter;
+            _nudgeAimDirectionPresenter = param.NudgeAimDirectionPresenter;
             _remainingNudgeCooldown = 0f;
             _inputRouter.OnFlipperLeftChanged += HandleFlipperLeftChanged;
             _inputRouter.OnFlipperRightChanged += HandleFlipperRightChanged;
             _inputRouter.OnLaunchChanged += HandleLaunchChanged;
-            _inputRouter.OnNudgePressed += HandleNudgePressed;
+            _inputRouter.OnNudgeChanged += HandleNudgeChanged;
         }
 
         public void Dispose()
         {
+            CancelNudgeAim();
+
             if (null == _inputRouter)
                 return;
 
             _inputRouter.OnFlipperLeftChanged -= HandleFlipperLeftChanged;
             _inputRouter.OnFlipperRightChanged -= HandleFlipperRightChanged;
             _inputRouter.OnLaunchChanged -= HandleLaunchChanged;
-            _inputRouter.OnNudgePressed -= HandleNudgePressed;
+            _inputRouter.OnNudgeChanged -= HandleNudgeChanged;
             _inputRouter = null;
         }
 
@@ -60,12 +68,8 @@ namespace Pinball.Ingame.Player
 
         public void Tick(float deltaTime)
         {
-            if (_remainingNudgeCooldown <= 0f)
-                return;
-
-            _remainingNudgeCooldown -= deltaTime;
-            if (_remainingNudgeCooldown < 0f)
-                _remainingNudgeCooldown = 0f;
+            TickNudgeAim();
+            TickNudgeCooldown(deltaTime);
         }
 
         public void ResetNudgeCooldown()
@@ -75,12 +79,49 @@ namespace Pinball.Ingame.Player
 
         public void ResetControlStates()
         {
+            CancelNudgeAim();
+
             if (null == _map)
                 return;
 
             _map.SetFlipperPressed(Flipper.ESide.Left, false);
             _map.SetFlipperPressed(Flipper.ESide.Right, false);
             _map.SetSpringCharging(false);
+        }
+
+        void TickNudgeCooldown(float deltaTime)
+        {
+            if (_remainingNudgeCooldown <= 0f)
+                return;
+
+            _remainingNudgeCooldown -= deltaTime;
+            if (_remainingNudgeCooldown < 0f)
+                _remainingNudgeCooldown = 0f;
+        }
+
+        void TickNudgeAim()
+        {
+            if (!_isNudgeAiming)
+                return;
+
+            UpdateNudgeAimDirection();
+
+            _nudgeAimElapsed += Time.unscaledDeltaTime;
+            if (_nudgeAimElapsed >= StatProvider.GetNudgeAimSeconds())
+                FireNudge();
+        }
+
+        void UpdateNudgeAimDirection()
+        {
+            if (null == _inputRouter)
+                return;
+
+            Vector2 input = _inputRouter.ReadNudgeAimInput();
+            if (input.sqrMagnitude <= 0f)
+                return;
+
+            _nudgeAimDirection = input.normalized;
+            _nudgeAimDirectionPresenter?.Invoke(_nudgeAimDirection);
         }
 
         void HandleFlipperLeftChanged(bool isPressed)
@@ -95,6 +136,9 @@ namespace Pinball.Ingame.Player
 
         void SetFlipperPressed(Flipper.ESide side, bool isPressed)
         {
+            if (_isNudgeAiming)
+                return;
+
             if (IsControlBlocked())
                 return;
 
@@ -106,6 +150,9 @@ namespace Pinball.Ingame.Player
 
         void HandleLaunchChanged(bool isPressed)
         {
+            if (_isNudgeAiming)
+                return;
+
             if (IsControlBlocked())
                 return;
 
@@ -122,8 +169,23 @@ namespace Pinball.Ingame.Player
                 OnLaunched?.Invoke(launchPowerRatio);
         }
 
-        void HandleNudgePressed()
+        void HandleNudgeChanged(bool isPressed)
         {
+            if (isPressed)
+            {
+                BeginNudgeAim();
+                return;
+            }
+
+            if (_isNudgeAiming)
+                FireNudge();
+        }
+
+        void BeginNudgeAim()
+        {
+            if (_isNudgeAiming)
+                return;
+
             if (_remainingNudgeCooldown > 0f)
                 return;
 
@@ -133,20 +195,34 @@ namespace Pinball.Ingame.Player
             if (!IsPlaying())
                 return;
 
+            _isNudgeAiming = true;
+            _nudgeAimElapsed = 0f;
+            _nudgeAimDirection = Vector2.up;
+            _nudgeAimPresenter?.Invoke(true);
+            _nudgeAimDirectionPresenter?.Invoke(_nudgeAimDirection);
+        }
+
+        void FireNudge()
+        {
+            CancelNudgeAim();
+
             if (null == _nudgeImpulseApplier)
                 return;
 
-            if (!_nudgeImpulseApplier(CreateRandomNudgeImpulse()))
+            if (!_nudgeImpulseApplier(_nudgeAimDirection * StatProvider.GetNudgeImpulsePower()))
                 return;
 
-            _remainingNudgeCooldown = NUDGE_COOLDOWN_SECONDS;
+            _remainingNudgeCooldown = StatProvider.GetNudgeCooldownSeconds();
             _nudgePresenter?.Invoke();
         }
 
-        static Vector2 CreateRandomNudgeImpulse()
+        void CancelNudgeAim()
         {
-            float angle = UnityEngine.Random.Range(0f, FULL_CIRCLE_RADIAN);
-            return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * NUDGE_IMPULSE_POWER;
+            if (!_isNudgeAiming)
+                return;
+
+            _isNudgeAiming = false;
+            _nudgeAimPresenter?.Invoke(false);
         }
 
         bool IsControlBlocked()

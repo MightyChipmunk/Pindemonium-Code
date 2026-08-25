@@ -11,7 +11,7 @@ namespace Pinball.Ingame.Input
         public event Action<bool> OnFlipperLeftChanged;
         public event Action<bool> OnFlipperRightChanged;
         public event Action<bool> OnLaunchChanged;
-        public event Action OnNudgePressed;
+        public event Action<bool> OnNudgeChanged;
         public event Action OnEscapePressed;
 
         bool _isInited = false;
@@ -26,7 +26,7 @@ namespace Pinball.Ingame.Input
             OnFlipperLeftChanged = null;
             OnFlipperRightChanged = null;
             OnLaunchChanged = null;
-            OnNudgePressed = null;
+            OnNudgeChanged = null;
             OnEscapePressed = null;
             _isInited = false;
         }
@@ -46,10 +46,28 @@ namespace Pinball.Ingame.Input
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperLeft), OnFlipperLeftChanged);
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperRight), OnFlipperRightChanged);
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Launch), OnLaunchChanged);
-            CheckKeyPressed(keyboard, GameSettings.GetKey(EKeyAction.Nudge), OnNudgePressed);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Nudge), OnNudgeChanged);
 
             if (keyboard.escapeKey.wasPressedThisFrame)
                 OnEscapePressed?.Invoke();
+        }
+
+        public Vector2 ReadNudgeAimInput()
+        {
+            Keyboard keyboard = Keyboard.current;
+            if (null == keyboard)
+                return Vector2.zero;
+
+            Vector2 input = Vector2.zero;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                input.y += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                input.y -= 1f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                input.x -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                input.x += 1f;
+            return input;
         }
 
         static void CheckKey(Keyboard keyboard, Key key, Action<bool> callback)
@@ -62,15 +80,6 @@ namespace Pinball.Ingame.Input
 
             if (keyboard[key].wasReleasedThisFrame)
                 callback?.Invoke(false);
-        }
-
-        static void CheckKeyPressed(Keyboard keyboard, Key key, Action callback)
-        {
-            if (key == Key.None)
-                return;
-
-            if (keyboard[key].wasPressedThisFrame)
-                callback?.Invoke();
         }
     }
 }

@@ -96,6 +96,22 @@ namespace Pinball.Ingame
             DespawnCloneBalls();
         }
 
+        public void SetNudgeAimActive(bool isActive)
+        {
+            if (null == _activeBall)
+                return;
+
+            _activeBall.SetNudgeAimActive(isActive);
+        }
+
+        public void SetNudgeAimDirection(Vector2 direction)
+        {
+            if (null == _activeBall)
+                return;
+
+            _activeBall.SetNudgeAimDirection(direction);
+        }
+
         public bool TryApplyImpulseToActiveBall(Vector2 impulse)
         {
             if (null == _activeBall)

@@ -268,7 +268,9 @@ namespace Pinball.Ingame
                 IsControlBlockedGetter: GetIsControlBlocked,
                 IsPlayingGetter: GetIsPlaying,
                 NudgeImpulseApplier: _ballFlow.TryApplyImpulseToActiveBall,
-                NudgePresenter: _director.PlayNudge), _inputRouter);
+                NudgePresenter: _director.PlayNudge,
+                NudgeAimPresenter: SetNudgeAiming,
+                NudgeAimDirectionPresenter: _ballFlow.SetNudgeAimDirection), _inputRouter);
             Track(_playerController.Dispose);
         }
 
@@ -521,6 +523,12 @@ namespace Pinball.Ingame
                 Money: _wallet.Current,
                 UsedBallCount: _ballFlow.UsedBallCount,
                 GimmickScores: _gimmickScoreTracker.CollectScores());
+        }
+
+        void SetNudgeAiming(bool isAiming)
+        {
+            _director.SetNudgeAiming(isAiming);
+            _ballFlow.SetNudgeAimActive(isAiming);
         }
 
         bool GetIsControlBlocked()

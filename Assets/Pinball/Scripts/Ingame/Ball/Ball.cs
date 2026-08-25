@@ -9,6 +9,7 @@ namespace Pinball.Ingame
     public class Ball : MonoBehaviour, IPoolObject
     {
         const float OPAQUE_ALPHA = 1f;
+        const float AIM_ARROW_UP_ANGLE_OFFSET = 90f;
         const float MIN_HIT_SPEED = 2.5f;
         const float MAX_HIT_SPEED = 12f;
         const float MIN_HIT_VOLUME_RATIO = 0.4f;
@@ -25,6 +26,7 @@ namespace Pinball.Ingame
         [SerializeField] BallAuraController _auraController = null;
         [SerializeField] SpriteRenderer _spikeRenderer = null;
         [SerializeField] SpriteRenderer _scopeRenderer = null;
+        [SerializeField] Transform _nudgeAimPivot = null;
         [SerializeField] LayerMask _hitSoundLayerMask = 0;
 
         Action<PoolableFX.EFXType, Vector2> _hitFXPlayer = null;
@@ -62,6 +64,17 @@ namespace Pinball.Ingame
         public void SetScopeActive(bool isActive)
         {
             _scopeRenderer.enabled = isActive;
+        }
+
+        public void SetNudgeAimActive(bool isActive)
+        {
+            _nudgeAimPivot.gameObject.SetActive(isActive);
+        }
+
+        public void SetNudgeAimDirection(Vector2 direction)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - AIM_ARROW_UP_ANGLE_OFFSET;
+            _nudgeAimPivot.rotation = Quaternion.Euler(0f, 0f, angle);
         }
 
         public void SetStoneActive(bool isActive)
@@ -112,6 +125,7 @@ namespace Pinball.Ingame
             SetAlpha(OPAQUE_ALPHA);
             SetSpikesActive(false);
             SetScopeActive(false);
+            SetNudgeAimActive(false);
             SetStoneActive(false);
             _trail.Init();
             _auraController.Init();

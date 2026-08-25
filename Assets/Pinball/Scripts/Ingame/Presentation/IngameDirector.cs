@@ -113,6 +113,14 @@ namespace Pinball.Ingame.Presentation
             return AudioStorage.EAudioClipType.SpringChargeCancel;
         }
 
+        public void SetNudgeAiming(bool isAiming)
+        {
+            if (null == _hitStopPlayer)
+                return;
+
+            _hitStopPlayer.SetNudgeAiming(isAiming);
+        }
+
         public void PlayNudge()
         {
             _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);

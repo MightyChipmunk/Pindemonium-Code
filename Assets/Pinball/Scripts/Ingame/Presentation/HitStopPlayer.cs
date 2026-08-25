@@ -14,6 +14,7 @@ namespace Pinball.Ingame.Presentation
 
         bool _isActive = true;
         bool _isPaused = false;
+        bool _isNudgeAiming = false;
         CancellationTokenSource _playTokenSource = null;
 
         public void Dispose()
@@ -21,6 +22,7 @@ namespace Pinball.Ingame.Presentation
             CancelPlaying();
             _isActive = false;
             _isPaused = false;
+            _isNudgeAiming = false;
             Time.timeScale = DEFAULT_TIME_SCALE;
         }
 
@@ -31,7 +33,20 @@ namespace Pinball.Ingame.Presentation
 
             _isPaused = isPaused;
             CancelPlaying();
-            Time.timeScale = isPaused ? PAUSED_TIME_SCALE : DEFAULT_TIME_SCALE;
+            Time.timeScale = _isPaused || _isNudgeAiming ? PAUSED_TIME_SCALE : DEFAULT_TIME_SCALE;
+        }
+
+        public void SetNudgeAiming(bool isAiming)
+        {
+            if (!_isActive)
+                return;
+
+            _isNudgeAiming = isAiming;
+            if (_isPaused)
+                return;
+
+            CancelPlaying();
+            Time.timeScale = _isNudgeAiming ? PAUSED_TIME_SCALE : DEFAULT_TIME_SCALE;
         }
 
         public void Play(HitPresentationData presentation)
@@ -40,6 +55,9 @@ namespace Pinball.Ingame.Presentation
                 return;
 
             if (_isPaused)
+                return;
+
+            if (_isNudgeAiming)
                 return;
 
             if (!presentation.IsHitStopEnabled)
