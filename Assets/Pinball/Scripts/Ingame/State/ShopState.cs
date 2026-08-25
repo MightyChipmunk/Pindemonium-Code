@@ -410,10 +410,15 @@ namespace Pinball.Ingame.State
 
         void ApplyVoucherImmediateEffect(VoucherData voucher)
         {
-            if (voucher.Effect != VoucherData.EEffect.PassiveSlotAdd)
-                return;
-
-            _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
+            switch (voucher.Effect)
+            {
+                case VoucherData.EEffect.PassiveSlotAdd:
+                    _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
+                    break;
+                case VoucherData.EEffect.ShopFirstRerollFree:
+                    _session.SetFirstRerollFree();
+                    break;
+            }
         }
 
         void TryPickPackItem(int cardIndex)

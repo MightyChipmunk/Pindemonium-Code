@@ -78,6 +78,11 @@ namespace Pinball.Ingame.Shop
             _offers[slotIndex] = null;
         }
 
+        public void SetFirstRerollFree()
+        {
+            _isFirstRerollFree = true;
+        }
+
         public void Reroll()
         {
             ++_rerollCount;
