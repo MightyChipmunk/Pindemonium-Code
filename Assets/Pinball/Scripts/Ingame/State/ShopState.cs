@@ -595,6 +595,9 @@ namespace Pinball.Ingame.State
             if (!isTopUpgrade)
                 return;
 
+            if (IsPurchaseLimitReached(item))
+                return;
+
             if (!_vouchers.TryRollChance(VoucherData.EEffect.TopUpgradeDoubleBuy))
                 return;
 
@@ -623,6 +626,9 @@ namespace Pinball.Ingame.State
                     continue;
 
                 if (null != _isItemUnlockedGetter && !_isItemUnlockedGetter(item))
+                    continue;
+
+                if (IsPurchaseLimitReached(item))
                     continue;
 
                 candidates.Add(item);
@@ -668,9 +674,17 @@ namespace Pinball.Ingame.State
                 return false;
 
             if (item.Kind != ShopItemData.EItemKind.Passive)
-                return true;
+                return !IsPurchaseLimitReached(item);
 
             return _loadout.CanAddPassive(item);
+        }
+
+        bool IsPurchaseLimitReached(ShopItemData item)
+        {
+            if (item.MaxPurchaseCount <= ShopItemData.NO_PURCHASE_LIMIT)
+                return false;
+
+            return GetOwnedUpgradeCount(item) >= item.MaxPurchaseCount;
         }
 
         bool CanApplyItem(ShopItemData item)

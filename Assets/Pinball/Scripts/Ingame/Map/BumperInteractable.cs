@@ -19,7 +19,7 @@ namespace Pinball.Ingame.Map
         const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
         const float MIN_BURN_INTERVAL = 0.05f;
-        const float MIN_RESPAWN_DELAY_SCALE = 0.3f;
+        const float MIN_RESPAWN_DELAY_SCALE = 0.1f;
         const float NO_OVERKILL_SCORE_RATIO = 0f;
         const float SNIPER_MARK_SPIN_SPEED = 90f;
 

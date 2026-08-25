@@ -12,6 +12,7 @@ namespace Pinball.Ingame.Shop
         public const int SUB_VALUE_INDEX = 1;
         public const int EXTRA_VALUE_INDEX = 2;
         public const int BONUS_VALUE_INDEX = 3;
+        public const int NO_PURCHASE_LIMIT = 0;
 
         public enum EItemKind
         {
@@ -70,6 +71,7 @@ namespace Pinball.Ingame.Shop
         [SerializeField] string _descriptionKey = string.Empty;
         [SerializeField] Sprite _icon = null;
         [SerializeField] int _price = 1;
+        [SerializeField] int _maxPurchaseCount = 0;
         [SerializeField] EItemKind _kind = EItemKind.Upgrade;
         [SerializeField] EPassiveCategory _passiveCategory = EPassiveCategory.Common;
         [SerializeField] EEffectType _effectType = EEffectType.BallAttackPowerAdd;
@@ -81,6 +83,7 @@ namespace Pinball.Ingame.Shop
         bool ShowsGimmickType() => _passiveCategory == EPassiveCategory.Map || _effectType == EEffectType.GimmickScoreRatioAdd;
 
         public int Price => _price;
+        public int MaxPurchaseCount => _maxPurchaseCount;
         public EItemKind Kind => _kind;
         public EPassiveCategory PassiveCategory => _passiveCategory;
         public EEffectType EffectType => _effectType;
