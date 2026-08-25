@@ -265,6 +265,7 @@ namespace Pinball.Ingame
             _playerController = new PlayerController(new PlayerController.InitParam(
                 IsControlBlockedGetter: GetIsControlBlocked,
                 IsPlayingGetter: GetIsPlaying,
+                IsNudgeTargetReadyGetter: _ballFlow.CanNudgeActiveBall,
                 NudgeImpulseApplier: _ballFlow.TryApplyNudgeToActiveBall,
                 NudgePresenter: _director.PlayNudge,
                 NudgeAimPresenter: SetNudgeAiming,

@@ -11,6 +11,7 @@ namespace Pinball.Ingame.Player
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
+            Func<bool> IsNudgeTargetReadyGetter,
             Func<Vector2, bool> NudgeImpulseApplier,
             Action NudgePresenter,
             Action<bool> NudgeAimPresenter,
@@ -20,6 +21,7 @@ namespace Pinball.Ingame.Player
         MapRoot _map = null;
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
+        Func<bool> _isNudgeTargetReadyGetter = null;
         Func<Vector2, bool> _nudgeImpulseApplier = null;
         Action _nudgePresenter = null;
         Action<bool> _nudgeAimPresenter = null;
@@ -36,6 +38,7 @@ namespace Pinball.Ingame.Player
             _inputRouter = inputRouter;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
+            _isNudgeTargetReadyGetter = param.IsNudgeTargetReadyGetter;
             _nudgeImpulseApplier = param.NudgeImpulseApplier;
             _nudgePresenter = param.NudgePresenter;
             _nudgeAimPresenter = param.NudgeAimPresenter;
@@ -103,6 +106,12 @@ namespace Pinball.Ingame.Player
         {
             if (!_isNudgeAiming)
                 return;
+
+            if (!IsNudgeTargetReady())
+            {
+                CancelNudgeAim();
+                return;
+            }
 
             UpdateNudgeAimDirection();
 
@@ -195,6 +204,9 @@ namespace Pinball.Ingame.Player
             if (!IsPlaying())
                 return;
 
+            if (!IsNudgeTargetReady())
+                return;
+
             _isNudgeAiming = true;
             _nudgeAimElapsed = 0f;
             _nudgeAimDirection = Vector2.up;
@@ -239,6 +251,14 @@ namespace Pinball.Ingame.Player
                 return false;
 
             return _isPlayingGetter();
+        }
+
+        bool IsNudgeTargetReady()
+        {
+            if (null == _isNudgeTargetReadyGetter)
+                return true;
+
+            return _isNudgeTargetReadyGetter();
         }
     }
 }

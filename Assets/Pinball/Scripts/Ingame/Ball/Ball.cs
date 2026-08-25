@@ -51,6 +51,11 @@ namespace Pinball.Ingame
             return _rigidbody.linearVelocity;
         }
 
+        public bool IsSimulated()
+        {
+            return _rigidbody.bodyType == RigidbodyType2D.Dynamic;
+        }
+
         public void SetHitFXPlayer(Action<PoolableFX.EFXType, Vector2> hitFXPlayer)
         {
             _hitFXPlayer = hitFXPlayer;

@@ -112,9 +112,17 @@ namespace Pinball.Ingame
             _activeBall.SetNudgeAimDirection(direction);
         }
 
-        public bool TryApplyNudgeToActiveBall(Vector2 impulse)
+        public bool CanNudgeActiveBall()
         {
             if (null == _activeBall)
+                return false;
+
+            return _activeBall.IsSimulated();
+        }
+
+        public bool TryApplyNudgeToActiveBall(Vector2 impulse)
+        {
+            if (!CanNudgeActiveBall())
                 return false;
 
             _activeBall.ScaleVelocity(StatProvider.GetNudgeVelocityKeepRatio());
