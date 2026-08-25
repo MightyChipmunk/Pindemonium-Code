@@ -458,6 +458,7 @@ namespace Pinball.Ingame
 
             SaveProgress(false);
             ShowStageInfo();
+            ShowStageGimmicks();
         }
 
         void OnAllStagesCleared()
@@ -490,6 +491,15 @@ namespace Pinball.Ingame
 
             int remainingSeconds = _stageTracker.HasTimeLimit ? _stageTracker.RemainingSeconds : StageInfoView.NO_TIME_LIMIT;
             _uiRoot.SetStageInfo(GetDisplayStageNumber(), _stageTracker.IsEndless, _stageTracker.TargetScore, remainingSeconds);
+        }
+
+        void ShowStageGimmicks()
+        {
+            StageGimmickData[] gimmicks = new StageGimmickData[_gimmickRoller.GimmickCount];
+            for (int i = 0; i < gimmicks.Length; ++i)
+                gimmicks[i] = _gimmickRoller.GetGimmick(i);
+
+            _uiRoot.SetStageGimmicks(gimmicks);
         }
 
         int GetDisplayStageNumber()

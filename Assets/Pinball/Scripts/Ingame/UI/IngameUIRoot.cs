@@ -1,4 +1,5 @@
 using System;
+using Pinball.Ingame.Stage;
 using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,7 @@ namespace Pinball.Ingame.UI
         [SerializeField] BallCountView _ballCountView = null;
         [SerializeField] OwnedItemsView _ownedItemsView = null;
         [SerializeField] Pinball.UI.StageInfoView _stageInfoView = null;
+        [SerializeField] Pinball.UI.StageGimmickView _stageGimmickView = null;
         [SerializeField] Pinball.UI.ComboView _comboView = null;
         [SerializeField] ScorePopupSpawner _scorePopupSpawner = null;
         [SerializeField] Button _pauseButton = null;
@@ -25,6 +27,7 @@ namespace Pinball.Ingame.UI
         bool _isEndlessStage = false;
         int _stageTargetScore = 0;
         int _stageRemainingSeconds = Pinball.UI.StageInfoView.NO_TIME_LIMIT;
+        StageGimmickData[] _stageGimmicks = null;
 
         public void Init()
         {
@@ -75,6 +78,12 @@ namespace Pinball.Ingame.UI
             _stageInfoView.SetInfo(stageNumber, isEndless, targetScore, remainingSeconds);
         }
 
+        public void SetStageGimmicks(StageGimmickData[] gimmicks)
+        {
+            _stageGimmicks = gimmicks;
+            _stageGimmickView.SetGimmicks(gimmicks);
+        }
+
         public void SetCombo(int comboCount, float multiplier, int pendingBonus, float stepProgress)
         {
             _comboView.SetCombo(comboCount, multiplier, pendingBonus, stepProgress);
@@ -99,6 +108,7 @@ namespace Pinball.Ingame.UI
                 return;
 
             _stageInfoView.SetInfo(_stageNumber, _isEndlessStage, _stageTargetScore, _stageRemainingSeconds);
+            _stageGimmickView.SetGimmicks(_stageGimmicks);
         }
 
         public void PlayScorePopup(int score, Vector2 worldPoint)
