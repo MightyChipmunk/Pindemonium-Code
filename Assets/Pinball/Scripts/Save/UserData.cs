@@ -43,6 +43,7 @@ namespace Pinball.Save
         [SerializeField, FormerlySerializedAs("UnlockedFlipperIds")] List<string> _unlockedFlipperIds = new List<string>();
         [SerializeField, FormerlySerializedAs("UnlockedItemIds")] List<string> _unlockedItemIds = new List<string>();
         [SerializeField] int _pendingRewardTierNumber = PENDING_REWARD_EMPTY;
+        [SerializeField] List<string> _completedTutorialIds = new List<string>();
 
         public int ClearCount => _clearCount;
         public bool HasPendingReward => _pendingRewardTierNumber > PENDING_REWARD_EMPTY;
@@ -56,6 +57,35 @@ namespace Pinball.Save
         public bool IsItemUnlocked(string itemId)
         {
             return Contains(_unlockedItemIds, itemId);
+        }
+
+        public bool IsTutorialCompleted(string tutorialId)
+        {
+            return Contains(_completedTutorialIds, tutorialId);
+        }
+
+        public bool TryCompleteTutorial(string tutorialId)
+        {
+            if (string.IsNullOrEmpty(tutorialId))
+                return false;
+
+            if (null == _completedTutorialIds)
+                _completedTutorialIds = new List<string>();
+
+            if (_completedTutorialIds.Contains(tutorialId))
+                return false;
+
+            _completedTutorialIds.Add(tutorialId);
+            return true;
+        }
+
+        public bool TryResetTutorials()
+        {
+            if (null == _completedTutorialIds || _completedTutorialIds.Count <= 0)
+                return false;
+
+            _completedTutorialIds.Clear();
+            return true;
         }
 
         public FlipperBestEntry GetFlipperBest(string flipperId)
