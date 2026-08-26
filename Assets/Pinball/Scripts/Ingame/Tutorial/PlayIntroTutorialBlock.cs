@@ -85,6 +85,7 @@ namespace Pinball.Ingame.Tutorial
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
         {
+            await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
             await RunStageSelectIntroAsync(cancellationToken);
 
             await UniTask.WaitUntil(GetIsPlayReady, cancellationToken: cancellationToken);
@@ -130,6 +131,8 @@ namespace Pinball.Ingame.Tutorial
             StageSelectView view = UIManager.GetActive(UIViewCatalogData.EViewType.StageSelect) as StageSelectView;
             if (null == view)
                 return;
+
+            await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
             FocusUI(view.GetCurrentCardAnchor());
             await _dialog.ShowAndWaitClickAsync(STAGE_SELECT_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);

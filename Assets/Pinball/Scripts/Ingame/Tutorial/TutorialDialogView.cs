@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Localization;
+using Pinball.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -55,6 +56,7 @@ namespace Pinball.Ingame.Tutorial
 
         public async UniTask ShowAndWaitClickAsync(LocalizedTextRef body, EPlacement placement, CancellationToken cancellationToken)
         {
+            await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
             Show(body, placement, true);
             await UniTask.WaitUntil(GetIsClicked, cancellationToken: cancellationToken);
         }

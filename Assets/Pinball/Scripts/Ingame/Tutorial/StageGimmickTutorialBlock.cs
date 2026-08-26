@@ -23,9 +23,13 @@ namespace Pinball.Ingame.Tutorial
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
         {
+            await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
+
             StageSelectView view = UIManager.GetActive(UIViewCatalogData.EViewType.StageSelect) as StageSelectView;
             if (null == view)
                 return false;
+
+            await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
             FocusUI(view.GetCurrentGimmickAnchor());
             await _dialog.ShowAndWaitClickAsync(GIMMICK_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);

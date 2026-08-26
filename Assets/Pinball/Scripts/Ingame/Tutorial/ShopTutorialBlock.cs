@@ -35,9 +35,13 @@ namespace Pinball.Ingame.Tutorial
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
         {
+            await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
+
             ShopView view = UIManager.GetActive(UIViewCatalogData.EViewType.Shop) as ShopView;
             if (null == view)
                 return false;
+
+            await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
             FocusUI(view.GetOfferRowAnchor());
             await _dialog.ShowAndWaitClickAsync(OFFERS_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
