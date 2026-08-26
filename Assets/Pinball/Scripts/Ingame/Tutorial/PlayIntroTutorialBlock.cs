@@ -102,7 +102,7 @@ namespace Pinball.Ingame.Tutorial
 
             _dimmer.ShowFull();
             LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Center, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
             _param.ModalSetter(false);
 
             _dimmer.Hide();
@@ -117,7 +117,7 @@ namespace Pinball.Ingame.Tutorial
                 return;
 
             _dimmer.FocusUI(view.GetCurrentCardAnchor(), UI_FOCUS_PADDING);
-            await _dialog.ShowAndWaitClickAsync(STAGE_SELECT_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(STAGE_SELECT_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
             _dimmer.Hide();
             _dialog.Hide();
         }
@@ -141,7 +141,14 @@ namespace Pinball.Ingame.Tutorial
                     continue;
 
                 _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
-                await _dialog.ShowAndWaitClickAsync(GetGimmickKey(gimmickType), TutorialDialogView.EPlacement.Bottom, cancellationToken);
+
+                TutorialDialogView.EPlacement placement;
+                if (gimmickType == MapInteractable.EGimmickType.Slingshot)
+                    placement = TutorialDialogView.EPlacement.Top;
+                else
+                    placement = TutorialDialogView.EPlacement.Bottom;
+
+                await _dialog.ShowAndWaitClickAsync(GetGimmickKey(gimmickType), placement, cancellationToken);
             }
         }
 

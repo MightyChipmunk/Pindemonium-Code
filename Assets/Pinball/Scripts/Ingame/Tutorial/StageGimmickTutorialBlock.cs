@@ -26,10 +26,10 @@ namespace Pinball.Ingame.Tutorial
                 return false;
 
             _dimmer.FocusUI(view.GetCurrentGimmickAnchor(), UI_FOCUS_PADDING);
-            await _dialog.ShowAndWaitClickAsync(GIMMICK_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(GIMMICK_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
 
             _dimmer.FocusUI(view.GetCurrentRerollAnchor(), UI_FOCUS_PADDING);
-            await _dialog.ShowAndWaitClickAsync(REROLL_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(REROLL_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
 
             _dimmer.Hide();
             _dialog.Hide();
