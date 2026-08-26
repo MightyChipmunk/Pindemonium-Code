@@ -30,7 +30,8 @@ namespace Pinball.Ingame.Map
             Action<Collider2D> OnGimmickBallHit,
             Action GimmickHitPresenter,
             Func<MapInteractable.EGimmickType, bool> IsGimmickAbsentGetter,
-            Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter);
+            Func<MapInteractable.EGimmickType, int> ScoreGainLimitGetter,
+            float BumperHealthMultiplier);
 
         [SerializeField] MapInteractable[] _interactables = null;
         [SerializeField] Flipper _leftFlipper = null;
@@ -64,6 +65,11 @@ namespace Pinball.Ingame.Map
                 {
                     MapInteractable interactable = _interactables[i];
                     int scoreGainLimit = interactable.IsDeactivatable ? param.ScoreGainLimitGetter(interactable.GimmickType) : MapInteractable.NO_SCORE_GAIN_LIMIT;
+                    BumperInteractable bumper = interactable as BumperInteractable;
+
+                    if (null != bumper)
+                        bumper.SetHealthMultiplier(param.BumperHealthMultiplier);
+
                     interactable.Init(new MapInteractable.InitParam(
                         OnScoreGained: param.OnScoreGained,
                         DamageEvaluator: param.DamageEvaluator,
@@ -75,7 +81,6 @@ namespace Pinball.Ingame.Map
                     if (interactable.IsDeactivatable && param.IsGimmickAbsentGetter(interactable.GimmickType))
                         interactable.Deactivate();
 
-                    BumperInteractable bumper = interactable as BumperInteractable;
                     if (null == bumper)
                         continue;
 

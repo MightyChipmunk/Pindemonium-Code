@@ -26,6 +26,18 @@ namespace Pinball.Ingame.Stage
         public bool IsEndless => _isEndless;
         public int EndlessStageNumber => null == _catalog ? 0 : _catalog.GetEndlessStageNumber(_stageIndex);
 
+        public float BumperHealthMultiplier
+        {
+            get
+            {
+                StageData stage = GetCurrentStage();
+                if (null == stage)
+                    return StageData.DEFAULT_BUMPER_HEALTH_MULTIPLIER;
+
+                return stage.BumperHealthMultiplier;
+            }
+        }
+
         public int TargetScore
         {
             get

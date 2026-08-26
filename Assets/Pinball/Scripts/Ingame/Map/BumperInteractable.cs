@@ -22,6 +22,8 @@ namespace Pinball.Ingame.Map
         const float MIN_RESPAWN_DELAY_SCALE = 0.1f;
         const float NO_OVERKILL_SCORE_RATIO = 0f;
         const float SNIPER_MARK_SPIN_SPEED = 90f;
+        const float DEFAULT_HEALTH_MULTIPLIER = 1f;
+        const float MIN_HEALTH_MULTIPLIER = 0.1f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
         static readonly Color FROZEN_TINT = new Color(0.5f, 0.85f, 1f, 1f);
@@ -42,6 +44,7 @@ namespace Pinball.Ingame.Map
         Vector3 _visualBaseScale = Vector3.one;
         Color _visualBaseColor = Color.white;
         float _currentHealth = 0f;
+        float _healthMultiplier = DEFAULT_HEALTH_MULTIPLIER;
         float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
         float _sniperMarkRemain = 0f;
         float _radius = 0f;
@@ -71,7 +74,7 @@ namespace Pinball.Ingame.Map
 
             ApplyGradeVisual();
 
-            _currentHealth = _spec.MaxHealth;
+            _currentHealth = GetMaxHealth();
             _isBroken = false;
             ClearFrozen();
             ClearSniperMark();
@@ -160,9 +163,19 @@ namespace Pinball.Ingame.Map
             OnBallDamaged?.Invoke(this, damage);
         }
 
+        public void SetHealthMultiplier(float multiplier)
+        {
+            _healthMultiplier = Mathf.Max(MIN_HEALTH_MULTIPLIER, multiplier);
+        }
+
         public float GetRadius()
         {
             return _radius;
+        }
+
+        float GetMaxHealth()
+        {
+            return _spec.MaxHealth * _healthMultiplier;
         }
 
         float CalculateRadius()
@@ -432,7 +445,7 @@ namespace Pinball.Ingame.Map
         {
             await UniTask.Delay(TimeSpan.FromSeconds(GetRespawnDelay()), cancellationToken: cancellationToken);
 
-            _currentHealth = _spec.MaxHealth;
+            _currentHealth = GetMaxHealth();
             _isBroken = false;
             _collider.enabled = true;
 

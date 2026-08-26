@@ -197,7 +197,8 @@ namespace Pinball.Ingame.State
                 OnGimmickBallHit: _ballFlow.CountGimmickHit,
                 GimmickHitPresenter: _director.PlayGimmickHit,
                 IsGimmickAbsentGetter: _gimmickResolver.IsGimmickAbsent,
-                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit));
+                ScoreGainLimitGetter: _gimmickResolver.GetGimmickScoreGainLimit,
+                BumperHealthMultiplier: _stageTracker.BumperHealthMultiplier));
         }
 
         BgmStorage.EBgmType GetStageBgmType()

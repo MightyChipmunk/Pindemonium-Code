@@ -65,6 +65,7 @@ namespace Pinball.Ingame.Shop
             DropTargetOrderBonus = 33,
             ComboGainRate = 34,
             ComboDigitDamage = 35,
+            TopUpgradeScoreRatio = 36,
         }
 
         [SerializeField] string _nameKey = string.Empty;

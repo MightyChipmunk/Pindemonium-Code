@@ -95,6 +95,19 @@ namespace Pinball.Ingame.Shop
             _passiveSlotCounts[(int)ShopItemData.EPassiveCategory.Common] += count;
         }
 
+        public int GetMaxUpgradeCount()
+        {
+            if (null == _upgradeCounts)
+                return 0;
+
+            int maxCount = 0;
+            for (int i = 0; i < _upgradeCounts.Count; ++i)
+                if (_upgradeCounts[i] > maxCount)
+                    maxCount = _upgradeCounts[i];
+
+            return maxCount;
+        }
+
         public bool IsMostUpgraded(ShopItemData item)
         {
             if (null == _upgrades || null == item)

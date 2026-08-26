@@ -254,10 +254,23 @@ namespace Pinball.Ingame.Stat
 
         static float GetPassiveGimmickScoreRatio(MapInteractable.EGimmickType gimmickType)
         {
-            if (gimmickType == MapInteractable.EGimmickType.Bumper)
-                return GetEffectSum(ShopItemData.EEffectType.BumperFortify);
+            float ratio = GetTopUpgradeScoreRatio();
 
-            return GetEffectSum(ShopItemData.EEffectType.NonBumperScoreRatio);
+            if (gimmickType == MapInteractable.EGimmickType.Bumper)
+                return ratio + GetEffectSum(ShopItemData.EEffectType.BumperFortify);
+
+            return ratio + GetEffectSum(ShopItemData.EEffectType.NonBumperScoreRatio);
+        }
+
+        static float GetTopUpgradeScoreRatio()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.TopUpgradeScoreRatio))
+                return 0f;
+
+            if (null == _loadout)
+                return 0f;
+
+            return GetEffectValue(ShopItemData.EEffectType.TopUpgradeScoreRatio, ShopItemData.MAIN_VALUE_INDEX) * _loadout.GetMaxUpgradeCount();
         }
 
         public static float GetSpinnerScoreGrowth()

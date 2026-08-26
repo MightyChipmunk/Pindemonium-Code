@@ -23,6 +23,7 @@ namespace Pinball.UI
             bool IsFinal,
             int TargetScore,
             float TargetScoreMultiplier,
+            float BumperHealthMultiplier,
             int RewardMoney,
             StageGimmickData[] Gimmicks,
             int HiddenGimmickCount,
@@ -35,6 +36,8 @@ namespace Pinball.UI
         const string ENDLESS_STAGE_KEY = "ui.stage_card.endless_stage";
         const string TARGET_SCORE_FORMAT = "N0";
         const string MULTIPLIER_FORMAT = "x{0:0.#}";
+        const string BUMPER_HEALTH_FORMAT = "BUMPER HP x{0:0.#}";
+        const string BUMPER_HEALTH_KEY = "ui.stage_card.bumper_health";
         const string REWARD_FORMAT = "${0}";
         const string REROLL_FORMAT = "REROLL ${0}";
         const string REROLL_KEY = "ui.stage_card.reroll";
@@ -50,6 +53,7 @@ namespace Pinball.UI
         const float UPCOMING_ALPHA = 0.7f;
         const float CLEARED_ALPHA = 0.3f;
         const float DEFAULT_TARGET_SCORE_MULTIPLIER = 1f;
+        const float DEFAULT_BUMPER_HEALTH_MULTIPLIER = 1f;
         const float CURRENT_RAISE_OFFSET = 40f;
         const string UNKNOWN_GIMMICK_TEXT = "???";
 
@@ -60,6 +64,7 @@ namespace Pinball.UI
         [SerializeField] TMP_Text _tagLabel = null;
         [SerializeField] TMP_Text _targetScoreLabel = null;
         [SerializeField] TMP_Text _multiplierLabel = null;
+        [SerializeField] TMP_Text _bumperHealthLabel = null;
         [SerializeField] TMP_Text _rewardLabel = null;
         [SerializeField] GameObject _gimmickPanel = null;
         [SerializeField] TMP_Text[] _gimmickLabels = null;
@@ -110,6 +115,7 @@ namespace Pinball.UI
             _canvasGroup.blocksRaycasts = isCurrent;
             _targetScoreLabel.text = param.TargetScore.ToString(TARGET_SCORE_FORMAT);
             BindMultiplier(param.TargetScoreMultiplier);
+            BindBumperHealth(param.BumperHealthMultiplier);
             _rewardLabel.text = string.Format(REWARD_FORMAT, param.RewardMoney);
             BindGimmicks(param.Gimmicks, param.HiddenGimmickCount);
             BindActions(param);
@@ -128,6 +134,16 @@ namespace Pinball.UI
                 return;
 
             _multiplierLabel.text = string.Format(MULTIPLIER_FORMAT, multiplier);
+        }
+
+        void BindBumperHealth(float multiplier)
+        {
+            bool hasMultiplier = !Mathf.Approximately(multiplier, DEFAULT_BUMPER_HEALTH_MULTIPLIER);
+            _bumperHealthLabel.gameObject.SetActive(hasMultiplier);
+            if (!hasMultiplier)
+                return;
+
+            _bumperHealthLabel.text = LocalizationTable.Format(BUMPER_HEALTH_KEY, BUMPER_HEALTH_FORMAT, multiplier);
         }
 
         void BindGimmicks(StageGimmickData[] gimmicks, int hiddenCount)
