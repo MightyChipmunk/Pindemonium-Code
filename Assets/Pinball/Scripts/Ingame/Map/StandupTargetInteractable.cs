@@ -102,6 +102,7 @@ namespace Pinball.Ingame.Map
 #if UNITY_EDITOR
         protected override void OnBindSerializedField()
         {
+            base.OnBindSerializedField();
             _collider = GetComponent<Collider2D>();
             _visualRenderer = GetComponentInChildren<SpriteRenderer>(true);
 

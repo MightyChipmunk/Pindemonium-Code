@@ -25,6 +25,8 @@ namespace Pinball.Ingame.Cheat
             Action RoundClearer,
             Action GameClearer,
             Action StageFailer,
+            Action TutorialSkipper,
+            Action TutorialResetter,
             Action OnCheatApplied);
 
         const int MIN_APPLY_COUNT = 1;
@@ -37,6 +39,8 @@ namespace Pinball.Ingame.Cheat
         Action _roundClearer = null;
         Action _gameClearer = null;
         Action _stageFailer = null;
+        Action _tutorialSkipper = null;
+        Action _tutorialResetter = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
@@ -49,6 +53,8 @@ namespace Pinball.Ingame.Cheat
             _roundClearer = param.RoundClearer;
             _gameClearer = param.GameClearer;
             _stageFailer = param.StageFailer;
+            _tutorialSkipper = param.TutorialSkipper;
+            _tutorialResetter = param.TutorialResetter;
             _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
@@ -57,6 +63,8 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
+            _tutorialResetter = null;
+            _tutorialSkipper = null;
             _stageFailer = null;
             _gameClearer = null;
             _roundClearer = null;
@@ -70,7 +78,8 @@ namespace Pinball.Ingame.Cheat
         {
             return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter
                 && null != _stageClearer && null != _roundClearer && null != _gameClearer
-                && null != _stageFailer && null != _loadout;
+                && null != _stageFailer && null != _tutorialSkipper && null != _tutorialResetter
+                && null != _loadout;
         }
 
         public int GetMoney()
@@ -178,6 +187,24 @@ namespace Pinball.Ingame.Cheat
                 return EApplyResult.NotInStage;
 
             _stageFailer();
+            return EApplyResult.Success;
+        }
+
+        public EApplyResult SkipTutorial()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            _tutorialSkipper();
+            return EApplyResult.Success;
+        }
+
+        public EApplyResult ResetTutorial()
+        {
+            if (!IsReady())
+                return EApplyResult.NotReady;
+
+            _tutorialResetter();
             return EApplyResult.Success;
         }
 

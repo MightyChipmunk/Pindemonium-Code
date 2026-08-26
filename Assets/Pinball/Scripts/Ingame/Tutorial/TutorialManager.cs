@@ -1,0 +1,275 @@
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Pinball.Ingame.Map;
+using Pinball.Ingame.Stage;
+using Pinball.UI;
+using UnityEngine;
+
+namespace Pinball.Ingame.Tutorial
+{
+    public class TutorialManager : MonoBehaviour
+    {
+        public record InitParam(
+            bool IsNewRun,
+            int InterestPerAmount,
+            int InterestMax,
+            Func<int> StageNumberGetter,
+            Func<bool> IsEndlessGetter,
+            Func<bool> IsPlayStateGetter,
+            Action<bool> TimeFreezer,
+            Func<RectTransform> ScoreAnchorGetter,
+            Func<RectTransform> ComboAnchorGetter);
+
+        const int COMBO_TRIGGER_COUNT = 10;
+        const float SHOP_OPEN_WAIT_SECONDS = 1f;
+
+        [SerializeField] TutorialDimmer _dimmer = null;
+        [SerializeField] TutorialDialogView _dialog = null;
+
+        InitParam _param = null;
+        TutorialProgress _progress = null;
+        PlayIntroTutorialBlock _playIntroBlock = null;
+        ShopTutorialBlock _shopBlock = null;
+        StageGimmickTutorialBlock _stageGimmickBlock = null;
+        CancellationTokenSource _cancellationTokenSource = null;
+        MapRoot _currentMap = null;
+        bool _hasStageStarted = false;
+        bool _hasLaunched = false;
+        bool _isComboTriggerReached = false;
+        bool _hasBallLost = false;
+        bool _isStageClearIntercepted = false;
+        bool _isPlayIntroRunning = false;
+        bool _isModalActive = false;
+
+        public void Init(InitParam param)
+        {
+            _param = param;
+            _progress = new TutorialProgress();
+            _dialog.Init();
+
+            _playIntroBlock = new PlayIntroTutorialBlock(new PlayIntroTutorialBlock.InitParam(
+                MapGetter: GetCurrentMap,
+                ModalSetter: SetModal,
+                IsPlayReadyGetter: GetIsPlayIntroReady,
+                IsPlayStateGetter: param.IsPlayStateGetter,
+                HasLaunchedGetter: GetHasLaunched,
+                IsComboTriggerReachedGetter: GetIsComboTriggerReached,
+                HasBallLostGetter: GetHasBallLost,
+                IsStageClearInterceptedGetter: GetIsStageClearIntercepted,
+                ScoreAnchorGetter: param.ScoreAnchorGetter,
+                ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog);
+            _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax), _dimmer, _dialog);
+            _stageGimmickBlock = new StageGimmickTutorialBlock(_dimmer, _dialog);
+
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+            WatchPlayIntroAsync(_cancellationTokenSource.Token).Forget();
+            WatchShopAsync(_cancellationTokenSource.Token).Forget();
+            WatchStageGimmickAsync(_cancellationTokenSource.Token).Forget();
+        }
+
+        public void Release()
+        {
+            CancelWatchers();
+            ClearOverlay();
+            _dialog.Release();
+            _isPlayIntroRunning = false;
+            _stageGimmickBlock = null;
+            _shopBlock = null;
+            _playIntroBlock = null;
+            _progress = null;
+            _currentMap = null;
+            _param = null;
+        }
+
+        public void NotifyStageStarted(int stageNumber)
+        {
+            if (stageNumber <= 0)
+                return;
+
+            _hasStageStarted = true;
+        }
+
+        public void NotifyMapLoaded(MapRoot map)
+        {
+            _currentMap = map;
+        }
+
+        public void NotifyBallLaunched()
+        {
+            _hasLaunched = true;
+        }
+
+        public void NotifyComboChanged(int comboCount)
+        {
+            if (comboCount < COMBO_TRIGGER_COUNT)
+                return;
+
+            _isComboTriggerReached = true;
+        }
+
+        public void NotifyBallLost()
+        {
+            _hasBallLost = true;
+        }
+
+        public bool IsOverlayActive()
+        {
+            return _dimmer.IsShowing() || _dialog.IsShowing();
+        }
+
+        public async UniTask RunPendingPlayStepsAsync()
+        {
+            if (!_isPlayIntroRunning)
+                return;
+
+            _isStageClearIntercepted = true;
+            if (null == _cancellationTokenSource)
+                return;
+
+            await UniTask.WaitUntil(GetIsPlayIntroFinished, cancellationToken: _cancellationTokenSource.Token).SuppressCancellationThrow();
+        }
+
+        public void SkipAll()
+        {
+            CancelWatchers();
+            ClearOverlay();
+            _isPlayIntroRunning = false;
+            if (null == _progress)
+                return;
+
+            _progress.CompleteAll();
+        }
+
+        public void ResetProgress()
+        {
+            if (null == _progress)
+                return;
+
+            _progress.ResetAll();
+        }
+
+        async UniTaskVoid WatchPlayIntroAsync(CancellationToken cancellationToken)
+        {
+            if (!_param.IsNewRun || _progress.IsCompleted(TutorialProgress.EBlock.PlayIntro))
+                return;
+
+            await UniTask.WaitUntil(GetIsStageSelectOpen, cancellationToken: cancellationToken);
+            _isPlayIntroRunning = true;
+            bool isCompleted = await _playIntroBlock.RunAsync(cancellationToken);
+            _isPlayIntroRunning = false;
+            if (isCompleted)
+                _progress.Complete(TutorialProgress.EBlock.PlayIntro);
+        }
+
+        async UniTaskVoid WatchShopAsync(CancellationToken cancellationToken)
+        {
+            if (_progress.IsCompleted(TutorialProgress.EBlock.Shop))
+                return;
+
+            await UniTask.WaitUntil(GetIsShopOpen, cancellationToken: cancellationToken);
+            await UniTask.Delay(TimeSpan.FromSeconds(SHOP_OPEN_WAIT_SECONDS), DelayType.UnscaledDeltaTime, cancellationToken: cancellationToken);
+            bool isCompleted = await _shopBlock.RunAsync(cancellationToken);
+            if (isCompleted)
+                _progress.Complete(TutorialProgress.EBlock.Shop);
+        }
+
+        async UniTaskVoid WatchStageGimmickAsync(CancellationToken cancellationToken)
+        {
+            if (_progress.IsCompleted(TutorialProgress.EBlock.StageGimmick))
+                return;
+
+            await UniTask.WaitUntil(GetIsStageGimmickReady, cancellationToken: cancellationToken);
+            bool isCompleted = await _stageGimmickBlock.RunAsync(cancellationToken);
+            if (isCompleted)
+                _progress.Complete(TutorialProgress.EBlock.StageGimmick);
+        }
+
+        bool GetIsPlayIntroReady()
+        {
+            return _hasStageStarted && null != _currentMap && _param.IsPlayStateGetter();
+        }
+
+        static bool GetIsShopOpen()
+        {
+            return UIManager.IsOpen(UIViewCatalogData.EViewType.Shop);
+        }
+
+        static bool GetIsStageSelectOpen()
+        {
+            return UIManager.IsOpen(UIViewCatalogData.EViewType.StageSelect);
+        }
+
+        bool GetIsStageGimmickReady()
+        {
+            if (!UIManager.IsOpen(UIViewCatalogData.EViewType.StageSelect))
+                return false;
+
+            if (_param.IsEndlessGetter())
+                return false;
+
+            return StageCatalogData.IsRoundLastStage(_param.StageNumberGetter() - 1);
+        }
+
+        bool GetIsPlayIntroFinished()
+        {
+            return !_isPlayIntroRunning;
+        }
+
+        MapRoot GetCurrentMap()
+        {
+            return _currentMap;
+        }
+
+        bool GetHasLaunched()
+        {
+            return _hasLaunched;
+        }
+
+        bool GetIsComboTriggerReached()
+        {
+            return _isComboTriggerReached;
+        }
+
+        bool GetHasBallLost()
+        {
+            return _hasBallLost;
+        }
+
+        bool GetIsStageClearIntercepted()
+        {
+            return _isStageClearIntercepted;
+        }
+
+        void SetModal(bool isModal)
+        {
+            if (_isModalActive == isModal)
+                return;
+
+            _isModalActive = isModal;
+            if (isModal)
+                Blocker.Block();
+            else
+                Blocker.Unblock();
+
+            _param.TimeFreezer(isModal);
+        }
+
+        void CancelWatchers()
+        {
+            if (null == _cancellationTokenSource)
+                return;
+
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = null;
+        }
+
+        void ClearOverlay()
+        {
+            SetModal(false);
+            _dimmer.Hide();
+            _dialog.Hide();
+        }
+    }
+}

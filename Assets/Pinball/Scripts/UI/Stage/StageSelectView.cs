@@ -41,10 +41,14 @@ namespace Pinball.UI
         const string ENDLESS_ROUND_FORMAT = "ENDLESS ROUND {0}";
         const string ENDLESS_ROUND_KEY = "ui.stage_select.endless_round";
 
+        const int NO_CARD_INDEX = -1;
+
         [SerializeField] TMP_Text _progressLabel = null;
         [SerializeField] TMP_Text _moneyLabel = null;
         [SerializeField] TMP_Text _ballsLabel = null;
         [SerializeField] StageCardView[] _cards = null;
+
+        int _currentCardIndex = NO_CARD_INDEX;
 
         public override void OnGenerate()
         {
@@ -79,14 +83,45 @@ namespace Pinball.UI
 
         void BindCards(CardArgs[] cards)
         {
+            _currentCardIndex = NO_CARD_INDEX;
             int cardCount = null == cards ? 0 : cards.Length;
             for (int i = 0; i < _cards.Length; ++i)
             {
-                if (i < cardCount && null != cards[i])
-                    BindCard(_cards[i], cards[i]);
-                else
+                if (i >= cardCount || null == cards[i])
+                {
                     _cards[i].Hide();
+                    continue;
+                }
+
+                if (cards[i].State == StageCardView.EState.Current && cards[i].IsVisible)
+                    _currentCardIndex = i;
+
+                BindCard(_cards[i], cards[i]);
             }
+        }
+
+        public RectTransform GetCurrentCardAnchor()
+        {
+            if (_currentCardIndex == NO_CARD_INDEX)
+                return null;
+
+            return (RectTransform)_cards[_currentCardIndex].transform;
+        }
+
+        public RectTransform GetCurrentGimmickAnchor()
+        {
+            if (_currentCardIndex == NO_CARD_INDEX)
+                return null;
+
+            return _cards[_currentCardIndex].GetGimmickAnchor();
+        }
+
+        public RectTransform GetCurrentRerollAnchor()
+        {
+            if (_currentCardIndex == NO_CARD_INDEX)
+                return null;
+
+            return _cards[_currentCardIndex].GetRerollAnchor();
         }
 
         void BindCard(StageCardView card, CardArgs args)

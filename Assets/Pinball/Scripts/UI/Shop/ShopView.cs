@@ -278,6 +278,44 @@ namespace Pinball.UI
             BindOwnedVouchers(viewArgs.OwnedVouchers);
         }
 
+        public RectTransform GetOfferRowAnchor()
+        {
+            return (RectTransform)_offerRow.transform;
+        }
+
+        public int GetPackSlotCount()
+        {
+            return null == _packSlots ? 0 : _packSlots.Length;
+        }
+
+        public RectTransform GetPackSlotAnchor(int index)
+        {
+            if (null == _packSlots || index < 0 || index >= _packSlots.Length)
+                return null;
+
+            return (RectTransform)_packSlots[index].transform;
+        }
+
+        public RectTransform GetVoucherAnchor()
+        {
+            return (RectTransform)_voucherSlot.transform;
+        }
+
+        public RectTransform GetRerollAnchor()
+        {
+            return (RectTransform)_rerollButton.transform;
+        }
+
+        public RectTransform GetStartAnchor()
+        {
+            return (RectTransform)_startButton.transform;
+        }
+
+        public RectTransform GetMoneyAnchor()
+        {
+            return _moneyPlaque;
+        }
+
         public bool TryBeginPurchaseFly(bool isPassive, int ownedIndex, int previousCount, out Vector3 position, out float width)
         {
             position = Vector3.zero;

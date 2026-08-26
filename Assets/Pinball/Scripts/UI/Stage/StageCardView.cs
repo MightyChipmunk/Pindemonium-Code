@@ -100,6 +100,16 @@ namespace Pinball.UI
             _rerollCallback = null;
         }
 
+        public RectTransform GetGimmickAnchor()
+        {
+            return (RectTransform)_gimmickPanel.transform;
+        }
+
+        public RectTransform GetRerollAnchor()
+        {
+            return (RectTransform)_rerollButton.transform;
+        }
+
         public void Bind(BindParam param)
         {
             bool isCurrent = param.State == EState.Current;

@@ -176,6 +176,7 @@ namespace Pinball.Ingame.Map
 #if UNITY_EDITOR
         protected override void OnBindSerializedField()
         {
+            base.OnBindSerializedField();
             _lamps = GetComponentsInChildren<Lamp>(true);
         }
 #endif // UNITY_EDITOR

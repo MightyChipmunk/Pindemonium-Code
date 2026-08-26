@@ -106,6 +106,16 @@ namespace Pinball.Ingame.UI
             _stageGimmickView.SetGimmicks(_stageGimmicks);
         }
 
+        public RectTransform GetScoreAnchor()
+        {
+            return (RectTransform)_scoreView.transform;
+        }
+
+        public RectTransform GetComboAnchor()
+        {
+            return (RectTransform)_comboView.transform;
+        }
+
         public void PlayScorePopup(int score, Vector2 worldPoint)
         {
             _scorePopupSpawner.Play(score, worldPoint);

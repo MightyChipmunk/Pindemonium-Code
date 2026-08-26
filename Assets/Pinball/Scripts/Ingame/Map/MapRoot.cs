@@ -37,6 +37,9 @@ namespace Pinball.Ingame.Map
         [SerializeField] Flipper _leftFlipper = null;
         [SerializeField] Flipper _rightFlipper = null;
         [SerializeField] Spring _spring = null;
+        [SerializeField] Renderer[] _leftFlipperRenderers = null;
+        [SerializeField] Renderer[] _rightFlipperRenderers = null;
+        [SerializeField] Renderer[] _springRenderers = null;
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
         Action<BumperInteractable, float> _onBumperDamaged = null;
@@ -292,6 +295,76 @@ namespace Pinball.Ingame.Map
             _onBumperBroken?.Invoke();
         }
 
+        public int GetInteractableCount()
+        {
+            return null == _interactables ? 0 : _interactables.Length;
+        }
+
+        public MapInteractable GetInteractable(int index)
+        {
+            if (null == _interactables || index < 0 || index >= _interactables.Length)
+                return null;
+
+            return _interactables[index];
+        }
+
+        public Vector2 GetSpringPosition()
+        {
+            return _spring.transform.position;
+        }
+
+        public bool TryGetLeftFlipperBounds(out Bounds worldBounds)
+        {
+            return TryUnionRendererBounds(_leftFlipperRenderers, out worldBounds);
+        }
+
+        public bool TryGetRightFlipperBounds(out Bounds worldBounds)
+        {
+            return TryUnionRendererBounds(_rightFlipperRenderers, out worldBounds);
+        }
+
+        public bool TryGetSpringBounds(out Bounds worldBounds)
+        {
+            return TryUnionRendererBounds(_springRenderers, out worldBounds);
+        }
+
+        static bool TryUnionRendererBounds(Renderer[] renderers, out Bounds worldBounds)
+        {
+            worldBounds = default;
+            if (null == renderers)
+                return false;
+
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; ++i)
+            {
+                Renderer boundsRenderer = renderers[i];
+                if (null == boundsRenderer || !boundsRenderer.enabled || !boundsRenderer.gameObject.activeInHierarchy)
+                    continue;
+
+                if (hasBounds)
+                {
+                    worldBounds.Encapsulate(boundsRenderer.bounds);
+                }
+                else
+                {
+                    worldBounds = boundsRenderer.bounds;
+                    hasBounds = true;
+                }
+            }
+
+            return hasBounds;
+        }
+
+        public Vector2 GetLeftFlipperPosition()
+        {
+            return _leftFlipper.transform.position;
+        }
+
+        public Vector2 GetRightFlipperPosition()
+        {
+            return _rightFlipper.transform.position;
+        }
+
         public void SetFlipperPressed(Flipper.ESide side, bool isPressed)
         {
             if (side == Flipper.ESide.Left)
@@ -334,6 +407,10 @@ namespace Pinball.Ingame.Map
                 else
                     _rightFlipper = flippers[i];
             }
+
+            _leftFlipperRenderers = null == _leftFlipper ? null : _leftFlipper.GetComponentsInChildren<Renderer>(true);
+            _rightFlipperRenderers = null == _rightFlipper ? null : _rightFlipper.GetComponentsInChildren<Renderer>(true);
+            _springRenderers = null == _spring ? null : _spring.GetComponentsInChildren<Renderer>(true);
 
             for (int i = 0; i < _interactables.Length; ++i)
             {

@@ -19,6 +19,7 @@ using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.Ingame.State;
+using Pinball.Ingame.Tutorial;
 using Pinball.Ingame.UI;
 using Pinball.Save;
 using Pinball.UI;
@@ -38,6 +39,7 @@ namespace Pinball.Ingame
         [SerializeField] MapLoader _mapLoader = null;
         [SerializeField] IngameUIRoot _uiRoot = null;
         [SerializeField] CameraController _cameraController = null;
+        [SerializeField] TutorialManager _tutorialManager = null;
         [SerializeField] PinballStatData _statData = null;
         [SerializeField] PresentationConfigData _presentationConfig = null;
         [SerializeField] FXPoolData _fxPoolData = null;
@@ -103,6 +105,7 @@ namespace Pinball.Ingame
             InitPlay();
             InitPresentation();
             InitStates();
+            InitTutorial(start);
 
             UIManager.OnEvent += OnUIEvent;
             _scoreCounter.OnChanged += _stageTracker.SetTotalScore;
@@ -320,11 +323,12 @@ namespace Pinball.Ingame
                 StageClearMoneyAdd: _runSetup.StageClearMoneyAdd), _gimmickRoller, _gimmickResolver);
 
             _playState = new PlayState(new PlayState.InitParam(
-                MapLoader: _mapLoader.Load,
+                MapLoader: LoadMapForPlay,
                 DamageEvaluator: _damageCalculator.Calculate,
                 SurgeTicker: _powerSurgeCharger.Tick,
                 OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
                 StageClearSettler: SettleStageClear,
+                StageClearInterceptorAsync: _tutorialManager.RunPendingPlayStepsAsync,
                 MapIndex: DEFAULT_MAP_INDEX), _stageTracker, _ballFlow, _playerController, _scoreCounter, _director, _gimmickResolver);
 
             _resultState = new ResultState(new ResultState.InitParam(
@@ -357,6 +361,8 @@ namespace Pinball.Ingame
                 RoundClearer: ClearCurrentRound,
                 GameClearer: ClearAllStages,
                 StageFailer: _playState.FailByCheat,
+                TutorialSkipper: _tutorialManager.SkipAll,
+                TutorialResetter: _tutorialManager.ResetProgress,
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
         }
@@ -409,6 +415,61 @@ namespace Pinball.Ingame
         }
 #endif
 
+        void InitTutorial(IngameRunSetupResolver.RunStart start)
+        {
+            bool hasShopConfig = null != _shopConfig;
+            _tutorialManager.Init(new TutorialManager.InitParam(
+                IsNewRun: start.IsNewRun,
+                InterestPerAmount: hasShopConfig ? _shopConfig.InterestPerAmount : 0,
+                InterestMax: hasShopConfig ? _shopConfig.InterestMax : 0,
+                StageNumberGetter: GetStageNumber,
+                IsEndlessGetter: GetIsEndless,
+                IsPlayStateGetter: GetIsPlayState,
+                TimeFreezer: _director.SetPaused,
+                ScoreAnchorGetter: _uiRoot.GetScoreAnchor,
+                ComboAnchorGetter: _uiRoot.GetComboAnchor));
+            Track(_tutorialManager.Release);
+
+            _ballFlow.OnBallLost += _tutorialManager.NotifyBallLost;
+            _playerController.OnLaunched += NotifyTutorialLaunched;
+            _scoreCounter.OnComboChanged += NotifyTutorialComboChanged;
+            Track(ReleaseTutorialSubscriptions);
+        }
+
+        void ReleaseTutorialSubscriptions()
+        {
+            _scoreCounter.OnComboChanged -= NotifyTutorialComboChanged;
+            _playerController.OnLaunched -= NotifyTutorialLaunched;
+            _ballFlow.OnBallLost -= _tutorialManager.NotifyBallLost;
+        }
+
+        void NotifyTutorialLaunched(float launchPowerRatio)
+        {
+            _tutorialManager.NotifyBallLaunched();
+        }
+
+        void NotifyTutorialComboChanged(int comboCount, float multiplier)
+        {
+            _tutorialManager.NotifyComboChanged(comboCount);
+        }
+
+        MapRoot LoadMapForPlay(int mapIndex)
+        {
+            MapRoot map = _mapLoader.Load(mapIndex);
+            _tutorialManager.NotifyMapLoaded(map);
+            return map;
+        }
+
+        bool GetIsEndless()
+        {
+            return null != _stageTracker && _stageTracker.IsEndless;
+        }
+
+        bool GetIsPlayState()
+        {
+            return null != _stateMachine && _stateMachine.IsCurrent(EIngameState.Play);
+        }
+
         StageGimmickData GetEndlessRoundLastGimmick()
         {
             if (null == _endlessConfig || !_stageTracker.IsEndless)
@@ -451,6 +512,7 @@ namespace Pinball.Ingame
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
+            _tutorialManager.NotifyStageStarted(stageNumber);
             if (!_stageTracker.IsEndless)
                 _saveHandler.UpdateBestStage(GetFlipperId(), stageNumber);
 
@@ -667,6 +729,9 @@ namespace Pinball.Ingame
 
         void OnPauseToggleRequested()
         {
+            if (_tutorialManager.IsOverlayActive())
+                return;
+
             if (!_stateMachine.IsCurrent(EIngameState.Play))
                 return;
 
@@ -675,6 +740,9 @@ namespace Pinball.Ingame
 
         void OnPauseResumeRequested()
         {
+            if (_tutorialManager.IsOverlayActive())
+                return;
+
             if (!_stateMachine.IsCurrent(EIngameState.Play))
                 return;
 

@@ -198,6 +198,7 @@ namespace Pinball.Ingame.Map
 
         protected override void OnBindSerializedField()
         {
+            base.OnBindSerializedField();
             BakePath();
             BindEntrances();
         }

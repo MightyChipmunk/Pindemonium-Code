@@ -1,4 +1,5 @@
 ﻿using System;
+using Cysharp.Threading.Tasks;
 using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Ingame.Map;
@@ -23,6 +24,7 @@ namespace Pinball.Ingame.State
             Action<float> SurgeTicker,
             Action OnGimmickBroken,
             Action StageClearSettler,
+            Func<UniTask> StageClearInterceptorAsync,
             int MapIndex);
 
         InitParam _param = null;
@@ -211,6 +213,14 @@ namespace Pinball.Ingame.State
 
         void OnStageCleared(int stageNumber, StageData stage)
         {
+            HandleStageClearedAsync(stageNumber).Forget();
+        }
+
+        async UniTaskVoid HandleStageClearedAsync(int stageNumber)
+        {
+            if (null != _param.StageClearInterceptorAsync)
+                await _param.StageClearInterceptorAsync();
+
             bool isEndless = _stageTracker.IsEndless;
             int displayStageNumber = isEndless ? _stageTracker.EndlessStageNumber : stageNumber;
             StopPlay();

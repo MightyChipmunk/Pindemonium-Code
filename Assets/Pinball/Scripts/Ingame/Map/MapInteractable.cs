@@ -38,6 +38,7 @@ namespace Pinball.Ingame.Map
         public const int NO_SCORE_GAIN_LIMIT = 0;
 
         [SerializeField] LayerMask _ballLayerMask = default;
+        [SerializeField] Renderer[] _boundsRenderers = null;
 
         Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
         Func<Collider2D, float, float> _damageEvaluator = null;
@@ -75,6 +76,33 @@ namespace Pinball.Ingame.Map
             _fxPlayer = null;
             _onBallHit = null;
             _gimmickHitPresenter = null;
+        }
+
+        public bool TryGetWorldBounds(out Bounds worldBounds)
+        {
+            worldBounds = default;
+            if (null == _boundsRenderers)
+                return false;
+
+            bool hasBounds = false;
+            for (int i = 0; i < _boundsRenderers.Length; ++i)
+            {
+                Renderer boundsRenderer = _boundsRenderers[i];
+                if (null == boundsRenderer || !boundsRenderer.enabled || !boundsRenderer.gameObject.activeInHierarchy)
+                    continue;
+
+                if (hasBounds)
+                {
+                    worldBounds.Encapsulate(boundsRenderer.bounds);
+                }
+                else
+                {
+                    worldBounds = boundsRenderer.bounds;
+                    hasBounds = true;
+                }
+            }
+
+            return hasBounds;
         }
 
         public void Deactivate()
@@ -210,5 +238,12 @@ namespace Pinball.Ingame.Map
 
             _isScoreGainBlocked = true;
         }
+
+#if UNITY_EDITOR
+        protected override void OnBindSerializedField()
+        {
+            _boundsRenderers = GetComponentsInChildren<Renderer>(true);
+        }
+#endif // UNITY_EDITOR
     }
 }
