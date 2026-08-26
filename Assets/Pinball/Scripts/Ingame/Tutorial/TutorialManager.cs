@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Ingame.Map;
@@ -145,23 +145,11 @@ namespace Pinball.Ingame.Tutorial
             await UniTask.WaitUntil(GetIsPlayIntroFinished, cancellationToken: _cancellationTokenSource.Token).SuppressCancellationThrow();
         }
 
-        public void SkipAll()
+        public void StopRunning()
         {
             CancelWatchers();
             ClearOverlay();
             _isPlayIntroRunning = false;
-            if (null == _progress)
-                return;
-
-            _progress.CompleteAll();
-        }
-
-        public void ResetProgress()
-        {
-            if (null == _progress)
-                return;
-
-            _progress.ResetAll();
         }
 
         async UniTaskVoid WatchPlayIntroAsync(CancellationToken cancellationToken)

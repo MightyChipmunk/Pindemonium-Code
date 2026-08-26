@@ -1,8 +1,10 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System.Collections.Generic;
 using Alchemy.Editor;
 using Alchemy.Inspector;
 using Pinball.Ingame.Shop;
+using Pinball.Ingame.Tutorial;
+using Pinball.Save;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -45,7 +47,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const string ITEM_ASSET_FILTER = "t:ShopItemData";
         const string CATALOG_ASSET_FILTER = "t:ShopCatalogData";
         const string READY_STATUS_FORMAT = "MONEY {0}      PASSIVE {1}/{2}      UPGRADE {3}종";
-        const string IDLE_STATUS = "플레이 중이 아닙니다. Ingame 씬을 실행하면 활성화됩니다.";
+        const string IDLE_STATUS = "플레이 중이 아닙니다. Ingame 씬을 실행하면 돈·스테이지·아이템 치트가 활성화됩니다.";
         const string OWNED_FORMAT = "보유 {0}";
         const string PRICE_FORMAT = "COST {0}";
         const string PASSIVE_LABEL = "PASSIVE";
@@ -56,6 +58,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const string UNREGISTERED_LABEL = "미등록";
         const string UNREGISTERED_TOOLTIP = "ShopCatalogData에 등록되지 않아 상점 목록에는 뜨지 않는 아이템입니다.";
         const string APPLY_LABEL = "적용";
+        const string STACK_APPLY_TOOLTIP = "누를 때마다 1개씩 중첩 적용됩니다.";
         const string REMOVE_LABEL = "제거";
         const string OWNED_SECTION_FORMAT = "■ 보유 중 ({0})";
         const string UNOWNED_SECTION_FORMAT = "□ 미보유 ({0})";
@@ -71,12 +74,12 @@ namespace Pinball.Ingame.Cheat.Editor
         const string STAGE_FAIL_LOG = "[IngameCheat] 현재 스테이지 패배";
         const string TUTORIAL_SKIP_LOG = "[IngameCheat] 튜토리얼 스킵(전체 완료 처리)";
         const string TUTORIAL_RESET_LOG = "[IngameCheat] 튜토리얼 진행도 초기화 (다음 인게임 진입부터 적용)";
+        const string SAVE_NOT_READY_WARNING = "[IngameCheat] 세이브가 초기화되지 않았습니다. 로비 또는 인게임 씬을 실행하세요.";
         const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
         const string SLOT_FULL_WARNING_FORMAT = "[IngameCheat] 패시브 슬롯이 가득 찼거나 이미 보유한 아이템입니다: {0}";
         const string INVALID_INPUT_WARNING = "[IngameCheat] 입력값이 올바르지 않습니다.";
         const string FILTER_KEY_FORMAT = "{0}|{1}|{2}";
         const int DEFAULT_MONEY_AMOUNT = 100;
-        const int MIN_APPLY_COUNT = 1;
         const int INVALID_OWNED_COUNT = -1;
         const long REFRESH_INTERVAL_MS = 400;
         const float WINDOW_MIN_WIDTH = 420f;
@@ -114,7 +117,6 @@ namespace Pinball.Ingame.Cheat.Editor
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("종류")] EKindFilter _kindFilter = EKindFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("패시브 분류"), ShowIf(nameof(ShowsPassiveCategoryFilter))] EPassiveCategoryFilter _passiveCategoryFilter = EPassiveCategoryFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("이름 검색")] string _searchText = string.Empty;
-        [SerializeField, BoxGroup(ITEM_GROUP), LabelText("업그레이드 적용/제거 횟수")] int _applyCount = MIN_APPLY_COUNT;
 
         Label _statusLabel = null;
         Label _ownedHeaderLabel = null;
@@ -126,6 +128,7 @@ namespace Pinball.Ingame.Cheat.Editor
         List<ItemRow> _rows = null;
         ShopCatalogData _catalog = null;
         IngameCheatHandler _handler = null;
+        TutorialProgress _tutorialProgress = null;
 
         bool ShowsPassiveCategoryFilter() => _kindFilter != EKindFilter.Upgrade;
 
@@ -142,6 +145,7 @@ namespace Pinball.Ingame.Cheat.Editor
             base.CreateGUI();
 
             _rows = new List<ItemRow>();
+            _tutorialProgress = new TutorialProgress();
             _statusLabel = CreateStatusLabel();
             rootVisualElement.Insert(0, _statusLabel);
 
@@ -185,6 +189,7 @@ namespace Pinball.Ingame.Cheat.Editor
             _statusLabel = null;
             _catalog = null;
             _handler = null;
+            _tutorialProgress = null;
         }
 
         [Button, BoxGroup(MONEY_GROUP), LabelText("돈 추가")]
@@ -290,41 +295,40 @@ namespace Pinball.Ingame.Cheat.Editor
         [Button, BoxGroup(TUTORIAL_GROUP), LabelText("튜토리얼 스킵(전체 완료)")]
         void SkipTutorial()
         {
-            IngameCheatHandler handler = GetHandler();
-            if (null == handler)
-            {
-                Debug.LogWarning(NOT_PLAYING_WARNING);
+            if (!IsSaveReady())
                 return;
-            }
 
-            IngameCheatHandler.EApplyResult result = handler.SkipTutorial();
-            if (result != IngameCheatHandler.EApplyResult.Success)
-            {
-                LogFailure(result, string.Empty);
-                return;
-            }
-
+            _tutorialProgress.CompleteAll();
+            StopRunningTutorial();
             Debug.Log(TUTORIAL_SKIP_LOG);
         }
 
         [Button, BoxGroup(TUTORIAL_GROUP), LabelText("튜토리얼 진행도 초기화")]
         void ResetTutorial()
         {
+            if (!IsSaveReady())
+                return;
+
+            _tutorialProgress.ResetAll();
+            Debug.Log(TUTORIAL_RESET_LOG);
+        }
+
+        bool IsSaveReady()
+        {
+            if (null != _tutorialProgress && SaveManager.IsInitialized)
+                return true;
+
+            Debug.LogWarning(SAVE_NOT_READY_WARNING);
+            return false;
+        }
+
+        void StopRunningTutorial()
+        {
             IngameCheatHandler handler = GetHandler();
             if (null == handler)
-            {
-                Debug.LogWarning(NOT_PLAYING_WARNING);
                 return;
-            }
 
-            IngameCheatHandler.EApplyResult result = handler.ResetTutorial();
-            if (result != IngameCheatHandler.EApplyResult.Success)
-            {
-                LogFailure(result, string.Empty);
-                return;
-            }
-
-            Debug.Log(TUTORIAL_RESET_LOG);
+            handler.StopTutorial();
         }
 
         [Button, BoxGroup(ITEM_GROUP), LabelText("목록 새로고침")]
@@ -458,6 +462,9 @@ namespace Pinball.Ingame.Cheat.Editor
             Button applyButton = new Button(() => ApplyItem(item));
             applyButton.text = APPLY_LABEL;
             applyButton.style.width = APPLY_BUTTON_WIDTH;
+            if (!isPassive)
+                applyButton.tooltip = STACK_APPLY_TOOLTIP;
+
             row.Add(applyButton);
 
             Button removeButton = new Button(() => RemoveItem(item));
@@ -479,7 +486,8 @@ namespace Pinball.Ingame.Cheat.Editor
         void AttachRowToSection(ItemRow row)
         {
             bool isOwned = row.OwnedCount > 0;
-            row.ApplyButton.style.display = isOwned ? DisplayStyle.None : DisplayStyle.Flex;
+            bool isStackable = row.Item.Kind == ShopItemData.EItemKind.Upgrade;
+            row.ApplyButton.style.display = !isOwned || isStackable ? DisplayStyle.Flex : DisplayStyle.None;
             row.RemoveButton.style.display = isOwned ? DisplayStyle.Flex : DisplayStyle.None;
 
             row.Root.RemoveFromHierarchy();
@@ -555,7 +563,7 @@ namespace Pinball.Ingame.Cheat.Editor
                 return;
             }
 
-            IngameCheatHandler.EApplyResult result = handler.ApplyItem(item, _applyCount);
+            IngameCheatHandler.EApplyResult result = handler.ApplyItem(item);
             if (result != IngameCheatHandler.EApplyResult.Success)
             {
                 LogFailure(result, item.GetDisplayName());
@@ -574,7 +582,7 @@ namespace Pinball.Ingame.Cheat.Editor
                 return;
             }
 
-            IngameCheatHandler.EApplyResult result = handler.RemoveItem(item, _applyCount);
+            IngameCheatHandler.EApplyResult result = handler.RemoveItem(item);
             if (result != IngameCheatHandler.EApplyResult.Success)
             {
                 LogFailure(result, item.GetDisplayName());

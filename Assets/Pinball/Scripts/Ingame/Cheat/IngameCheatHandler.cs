@@ -1,4 +1,4 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+﻿#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using Pinball.Ingame.Shop;
 using UnityEngine;
@@ -25,11 +25,9 @@ namespace Pinball.Ingame.Cheat
             Action RoundClearer,
             Action GameClearer,
             Action StageFailer,
-            Action TutorialSkipper,
-            Action TutorialResetter,
+            Action TutorialStopper,
             Action OnCheatApplied);
 
-        const int MIN_APPLY_COUNT = 1;
         const int PASSIVE_OWNED_COUNT = 1;
 
         Func<int> _moneyGetter = null;
@@ -39,8 +37,7 @@ namespace Pinball.Ingame.Cheat
         Action _roundClearer = null;
         Action _gameClearer = null;
         Action _stageFailer = null;
-        Action _tutorialSkipper = null;
-        Action _tutorialResetter = null;
+        Action _tutorialStopper = null;
         PlayerLoadout _loadout = null;
         Action _onCheatApplied = null;
 
@@ -53,8 +50,7 @@ namespace Pinball.Ingame.Cheat
             _roundClearer = param.RoundClearer;
             _gameClearer = param.GameClearer;
             _stageFailer = param.StageFailer;
-            _tutorialSkipper = param.TutorialSkipper;
-            _tutorialResetter = param.TutorialResetter;
+            _tutorialStopper = param.TutorialStopper;
             _loadout = loadout;
             _onCheatApplied = param.OnCheatApplied;
         }
@@ -63,8 +59,7 @@ namespace Pinball.Ingame.Cheat
         {
             _onCheatApplied = null;
             _loadout = null;
-            _tutorialResetter = null;
-            _tutorialSkipper = null;
+            _tutorialStopper = null;
             _stageFailer = null;
             _gameClearer = null;
             _roundClearer = null;
@@ -78,8 +73,7 @@ namespace Pinball.Ingame.Cheat
         {
             return null != _moneyGetter && null != _moneyAdder && null != _isStageClearableGetter
                 && null != _stageClearer && null != _roundClearer && null != _gameClearer
-                && null != _stageFailer && null != _tutorialSkipper && null != _tutorialResetter
-                && null != _loadout;
+                && null != _stageFailer && null != _tutorialStopper && null != _loadout;
         }
 
         public int GetMoney()
@@ -190,25 +184,16 @@ namespace Pinball.Ingame.Cheat
             return EApplyResult.Success;
         }
 
-        public EApplyResult SkipTutorial()
+        public EApplyResult StopTutorial()
         {
             if (!IsReady())
                 return EApplyResult.NotReady;
 
-            _tutorialSkipper();
+            _tutorialStopper();
             return EApplyResult.Success;
         }
 
-        public EApplyResult ResetTutorial()
-        {
-            if (!IsReady())
-                return EApplyResult.NotReady;
-
-            _tutorialResetter();
-            return EApplyResult.Success;
-        }
-
-        public EApplyResult ApplyItem(ShopItemData item, int count)
+        public EApplyResult ApplyItem(ShopItemData item)
         {
             if (!IsReady())
                 return EApplyResult.NotReady;
@@ -219,10 +204,10 @@ namespace Pinball.Ingame.Cheat
             if (item.Kind == ShopItemData.EItemKind.Passive)
                 return ApplyPassive(item);
 
-            return ApplyUpgrade(item, count);
+            return ApplyUpgrade(item);
         }
 
-        public EApplyResult RemoveItem(ShopItemData item, int count)
+        public EApplyResult RemoveItem(ShopItemData item)
         {
             if (!IsReady())
                 return EApplyResult.NotReady;
@@ -233,7 +218,7 @@ namespace Pinball.Ingame.Cheat
             if (item.Kind == ShopItemData.EItemKind.Passive)
                 return RemovePassive(item);
 
-            return RemoveUpgrade(item, count);
+            return RemoveUpgrade(item);
         }
 
         bool IsStageClearable()
@@ -253,12 +238,9 @@ namespace Pinball.Ingame.Cheat
             return EApplyResult.Success;
         }
 
-        EApplyResult ApplyUpgrade(ShopItemData item, int count)
+        EApplyResult ApplyUpgrade(ShopItemData item)
         {
-            int applyCount = Mathf.Max(count, MIN_APPLY_COUNT);
-            for (int i = 0; i < applyCount; ++i)
-                _loadout.AddUpgrade(item);
-
+            _loadout.AddUpgrade(item);
             _onCheatApplied?.Invoke();
             return EApplyResult.Success;
         }
@@ -272,15 +254,9 @@ namespace Pinball.Ingame.Cheat
             return EApplyResult.Success;
         }
 
-        EApplyResult RemoveUpgrade(ShopItemData item, int count)
+        EApplyResult RemoveUpgrade(ShopItemData item)
         {
-            int removeCount = Mathf.Max(count, MIN_APPLY_COUNT);
-            int removedCount = 0;
-            for (int i = 0; i < removeCount; ++i)
-                if (_loadout.TryRemoveUpgrade(item))
-                    ++removedCount;
-
-            if (removedCount <= 0)
+            if (!_loadout.TryRemoveUpgrade(item))
                 return EApplyResult.NotOwned;
 
             _onCheatApplied?.Invoke();

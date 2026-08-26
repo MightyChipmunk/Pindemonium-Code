@@ -361,8 +361,7 @@ namespace Pinball.Ingame
                 RoundClearer: ClearCurrentRound,
                 GameClearer: ClearAllStages,
                 StageFailer: _playState.FailByCheat,
-                TutorialSkipper: _tutorialManager.SkipAll,
-                TutorialResetter: _tutorialManager.ResetProgress,
+                TutorialStopper: _tutorialManager.StopRunning,
                 OnCheatApplied: OnCheatApplied), _loadout);
             Track(_cheatHandler.Release);
         }
