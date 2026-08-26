@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -34,9 +34,11 @@ namespace Pinball.Ingame.Map
         const int NO_BONUS_INDEX = -1;
         const int MIN_BONUS_INDICATOR_COUNT = 3;
         const float NO_BONUS_MULTIPLIER = 1f;
+        const float STRONG_TARGET_DIM_ALPHA_RATIO = 3f;
+        const float WEAK_TARGET_DIM_ALPHA_RATIO = 2f;
 
-        static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 0.75f, 1f, 1f);
-        static readonly Color WEAK_TARGET_TINT = new Color(0.3f, 0.47f, 0.66f, 1f);
+        static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 1f, 0.5f, 1f);
+        static readonly Color WEAK_TARGET_TINT = new Color(0.42f, 0.78f, 0.45f, 1f);
 
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
@@ -242,13 +244,13 @@ namespace Pinball.Ingame.Map
             {
                 if (i == _bonusCenterIndex)
                 {
-                    _indicators[i].SetTint(STRONG_TARGET_TINT);
+                    _indicators[i].SetTint(STRONG_TARGET_TINT, STRONG_TARGET_DIM_ALPHA_RATIO);
                     continue;
                 }
 
                 if (IsWeakTargetIndex(i))
                 {
-                    _indicators[i].SetTint(WEAK_TARGET_TINT);
+                    _indicators[i].SetTint(WEAK_TARGET_TINT, WEAK_TARGET_DIM_ALPHA_RATIO);
                     continue;
                 }
 
