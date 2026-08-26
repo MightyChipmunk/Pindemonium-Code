@@ -27,6 +27,8 @@ namespace Pinball.UI
         const string ON_KEY = "ui.settings.on";
         const string OFF_LABEL = "OFF";
         const string OFF_KEY = "ui.settings.off";
+        const float ROW_ENABLED_ALPHA = 1f;
+        const float ROW_DISABLED_ALPHA = 0.35f;
 
         [SerializeField] Button _flipperLeftButton = null;
         [SerializeField] TMP_Text _flipperLeftLabel = null;
@@ -39,6 +41,7 @@ namespace Pinball.UI
         [SerializeField] Button _resolutionPrevButton = null;
         [SerializeField] Button _resolutionNextButton = null;
         [SerializeField] TMP_Text _resolutionLabel = null;
+        [SerializeField] CanvasGroup _refreshRateGroup = null;
         [SerializeField] Button _refreshRatePrevButton = null;
         [SerializeField] Button _refreshRateNextButton = null;
         [SerializeField] TMP_Text _refreshRateLabel = null;
@@ -162,6 +165,7 @@ namespace Pinball.UI
         {
             _refreshRatePrevButton.interactable = isInteractable;
             _refreshRateNextButton.interactable = isInteractable;
+            _refreshRateGroup.alpha = isInteractable ? ROW_ENABLED_ALPHA : ROW_DISABLED_ALPHA;
         }
 
         static void SetKeyLabel(TMP_Text label, Key key)
