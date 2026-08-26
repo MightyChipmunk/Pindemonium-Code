@@ -8,6 +8,17 @@ namespace Pinball.Ingame.Tutorial
 {
     public class TutorialHighlightLayer : MonoBehaviour
     {
+        const int RECT_CORNER_COUNT = 4;
+        const int BOTTOM_LEFT_CORNER = 0;
+        const int TOP_LEFT_CORNER = 1;
+        const int TOP_RIGHT_CORNER = 2;
+        const int BOTTOM_RIGHT_CORNER = 3;
+        const float HALF_RATIO = 0.5f;
+        const float DEFAULT_SCALE = 1f;
+        const float FULL_ALPHA = 1f;
+
+        static readonly Vector2 CENTER_ANCHOR = new Vector2(0.5f, 0.5f);
+
         [SerializeField] Image _template = null;
         [SerializeField] TutorialHighlightPolyline _lineTemplate = null;
         [SerializeField] RectTransform _cloneRoot = null;
@@ -15,7 +26,11 @@ namespace Pinball.Ingame.Tutorial
         readonly List<Image> _images = new List<Image>();
         readonly List<TutorialHighlightPolyline> _lines = new List<TutorialHighlightPolyline>();
         readonly List<RectTransform> _clones = new List<RectTransform>();
+        readonly List<RectTransform> _cloneTargets = new List<RectTransform>();
         readonly List<Vector2> _localPointBuffer = new List<Vector2>();
+        readonly Vector3[] _worldCornerBuffer = new Vector3[RECT_CORNER_COUNT];
+        readonly List<Behaviour> _behaviourBuffer = new List<Behaviour>();
+        readonly List<Graphic> _graphicBuffer = new List<Graphic>();
 
         public void ShowWorldTargets(List<MapInteractable.SpriteSnapshot> spriteSnapshots, List<MapInteractable.LineSnapshot> lineSnapshots)
         {
@@ -92,6 +107,7 @@ namespace Pinball.Ingame.Tutorial
                     Destroy(_clones[i].gameObject);
 
             _clones.Clear();
+            _cloneTargets.Clear();
         }
 
         void AddUIClone(RectTransform target)
@@ -99,20 +115,82 @@ namespace Pinball.Ingame.Tutorial
             if (null == target || !target.gameObject.activeInHierarchy)
                 return;
 
-            Vector2 targetSize = target.rect.size;
             RectTransform clone = Instantiate(target, _cloneRoot);
-            clone.anchorMin = new Vector2(0.5f, 0.5f);
-            clone.anchorMax = new Vector2(0.5f, 0.5f);
-            clone.sizeDelta = targetSize;
-            clone.position = target.position;
-            clone.rotation = target.rotation;
-            Vector3 parentScale = _cloneRoot.lossyScale;
-            Vector3 targetScale = target.lossyScale;
-            clone.localScale = new Vector3(
-                GetScaleRatio(targetScale.x, parentScale.x),
-                GetScaleRatio(targetScale.y, parentScale.y),
-                GetScaleRatio(targetScale.z, parentScale.z));
+            PrepareCloneVisual(clone);
+            clone.anchorMin = CENTER_ANCHOR;
+            clone.anchorMax = CENTER_ANCHOR;
+            clone.pivot = CENTER_ANCHOR;
+            ApplyCloneGeometry(clone, target);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(clone);
             _clones.Add(clone);
+            _cloneTargets.Add(target);
+        }
+
+        void PrepareCloneVisual(RectTransform clone)
+        {
+            clone.GetComponentsInChildren(true, _behaviourBuffer);
+            for (int i = 0; i < _behaviourBuffer.Count; ++i)
+            {
+                Behaviour behaviour = _behaviourBuffer[i];
+                if (IsKeptBehaviour(behaviour))
+                    continue;
+
+                if (behaviour is CanvasGroup canvasGroup)
+                    canvasGroup.alpha = FULL_ALPHA;
+
+                behaviour.enabled = false;
+            }
+
+            _behaviourBuffer.Clear();
+
+            clone.GetComponentsInChildren(true, _graphicBuffer);
+            for (int i = 0; i < _graphicBuffer.Count; ++i)
+            {
+                _graphicBuffer[i].canvasRenderer.SetColor(Color.white);
+                _graphicBuffer[i].canvasRenderer.SetAlpha(FULL_ALPHA);
+            }
+
+            _graphicBuffer.Clear();
+        }
+
+        static bool IsKeptBehaviour(Behaviour behaviour)
+        {
+            return behaviour is Graphic
+                || behaviour is Mask
+                || behaviour is RectMask2D
+                || behaviour is ILayoutElement
+                || behaviour is ILayoutController;
+        }
+
+        void ApplyCloneGeometry(RectTransform clone, RectTransform target)
+        {
+            target.GetWorldCorners(_worldCornerBuffer);
+            Vector2 bottomLeft = WorldToLocal(_worldCornerBuffer[BOTTOM_LEFT_CORNER]);
+            Vector2 topLeft = WorldToLocal(_worldCornerBuffer[TOP_LEFT_CORNER]);
+            Vector2 topRight = WorldToLocal(_worldCornerBuffer[TOP_RIGHT_CORNER]);
+            Vector2 bottomRight = WorldToLocal(_worldCornerBuffer[BOTTOM_RIGHT_CORNER]);
+            Vector2 widthAxis = bottomRight - bottomLeft;
+            Vector2 heightAxis = topLeft - bottomLeft;
+
+            Vector2 targetSize = target.rect.size;
+            clone.sizeDelta = targetSize;
+            clone.anchoredPosition = (bottomLeft + topRight) * HALF_RATIO;
+            clone.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(widthAxis.y, widthAxis.x) * Mathf.Rad2Deg);
+            clone.localScale = new Vector3(
+                GetScaleRatio(widthAxis.magnitude, targetSize.x),
+                GetScaleRatio(heightAxis.magnitude, targetSize.y),
+                DEFAULT_SCALE);
+        }
+
+        void LateUpdate()
+        {
+            for (int i = 0; i < _clones.Count; ++i)
+            {
+                if (null == _clones[i] || null == _cloneTargets[i])
+                    continue;
+
+                ApplyCloneGeometry(_clones[i], _cloneTargets[i]);
+            }
         }
 
         void BindSprite(Image image, MapInteractable.SpriteSnapshot snapshot)
@@ -162,9 +240,9 @@ namespace Pinball.Ingame.Tutorial
             return localPoint;
         }
 
-        static float GetScaleRatio(float targetScale, float parentScale)
+        static float GetScaleRatio(float measuredLength, float sourceLength)
         {
-            return Mathf.Approximately(parentScale, 0f) ? targetScale : targetScale / parentScale;
+            return Mathf.Approximately(sourceLength, 0f) ? DEFAULT_SCALE : measuredLength / sourceLength;
         }
     }
 }
