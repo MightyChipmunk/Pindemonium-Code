@@ -124,6 +124,14 @@ namespace Pinball.UI
             return _cards[_currentCardIndex].GetRerollAnchor();
         }
 
+        public RectTransform GetCurrentStartAnchor()
+        {
+            if (_currentCardIndex == NO_CARD_INDEX)
+                return null;
+
+            return _cards[_currentCardIndex].GetStartAnchor();
+        }
+
         void BindCard(StageCardView card, CardArgs args)
         {
             if (!args.IsVisible)

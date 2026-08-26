@@ -422,16 +422,20 @@ namespace Pinball.Ingame
                 IsNewRun: start.IsNewRun,
                 InterestPerAmount: hasShopConfig ? _shopConfig.InterestPerAmount : 0,
                 InterestMax: hasShopConfig ? _shopConfig.InterestMax : 0,
+                PassiveSlotCount: hasShopConfig ? _shopConfig.CommonPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
                 StageNumberGetter: GetStageNumber,
                 IsEndlessGetter: GetIsEndless,
                 IsPlayStateGetter: GetIsPlayState,
                 TimeFreezer: _director.SetPaused,
+                CanNudgeGetter: _ballFlow.CanNudgeActiveBall,
+                NudgeCooldownResetter: _playerController.ResetNudgeCooldown,
                 ScoreAnchorGetter: _uiRoot.GetScoreAnchor,
                 ComboAnchorGetter: _uiRoot.GetComboAnchor));
             Track(_tutorialManager.Release);
 
             _ballFlow.OnBallLost += _tutorialManager.NotifyBallLost;
             _playerController.OnLaunched += NotifyTutorialLaunched;
+            _playerController.OnNudged += _tutorialManager.NotifyNudged;
             _scoreCounter.OnComboChanged += NotifyTutorialComboChanged;
             Track(ReleaseTutorialSubscriptions);
         }
@@ -439,6 +443,7 @@ namespace Pinball.Ingame
         void ReleaseTutorialSubscriptions()
         {
             _scoreCounter.OnComboChanged -= NotifyTutorialComboChanged;
+            _playerController.OnNudged -= _tutorialManager.NotifyNudged;
             _playerController.OnLaunched -= NotifyTutorialLaunched;
             _ballFlow.OnBallLost -= _tutorialManager.NotifyBallLost;
         }

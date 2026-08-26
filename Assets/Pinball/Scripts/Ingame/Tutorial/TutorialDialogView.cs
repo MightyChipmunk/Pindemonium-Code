@@ -18,6 +18,7 @@ namespace Pinball.Ingame.Tutorial
 
         const string CONTINUE_HINT_TEXT = "CLICK TO CONTINUE";
         const string CONTINUE_HINT_KEY = "ui.tutorial.continue";
+        const float REVEAL_CHARS_PER_SECOND = 40f;
 
         static readonly Vector2 BOTTOM_POSITION = new Vector2(0f, -340f);
         static readonly Vector2 TOP_POSITION = new Vector2(0f, 340f);
@@ -30,6 +31,10 @@ namespace Pinball.Ingame.Tutorial
 
         LocalizedTextRef _currentBody = default;
         bool _isClicked = false;
+        bool _waitsClick = false;
+        bool _isRevealing = false;
+        float _revealProgress = 0f;
+        int _revealTotalCount = 0;
 
         public void Init()
         {
@@ -61,6 +66,7 @@ namespace Pinball.Ingame.Tutorial
 
         public void Hide()
         {
+            _isRevealing = false;
             gameObject.SetActive(false);
         }
 
@@ -69,10 +75,21 @@ namespace Pinball.Ingame.Tutorial
             gameObject.SetActive(true);
             _currentBody = body;
             _isClicked = false;
+            _waitsClick = waitsClick;
             _panel.anchoredPosition = GetPlacementPosition(placement);
             _clickCatcher.gameObject.SetActive(waitsClick);
-            _continueHintLabel.gameObject.SetActive(waitsClick);
             RefreshTexts();
+        }
+
+        void Update()
+        {
+            if (!_isRevealing)
+                return;
+
+            _revealProgress += Time.unscaledDeltaTime * REVEAL_CHARS_PER_SECOND;
+            _bodyLabel.maxVisibleCharacters = Mathf.Min(_revealTotalCount, Mathf.FloorToInt(_revealProgress));
+            if (_revealProgress >= _revealTotalCount)
+                CompleteReveal();
         }
 
         bool GetIsClicked()
@@ -82,6 +99,12 @@ namespace Pinball.Ingame.Tutorial
 
         void OnClicked()
         {
+            if (_isRevealing)
+            {
+                CompleteReveal();
+                return;
+            }
+
             _isClicked = true;
         }
 
@@ -92,6 +115,30 @@ namespace Pinball.Ingame.Tutorial
 
             _bodyLabel.text = _currentBody.IsEmpty() ? string.Empty : _currentBody.Resolve();
             _continueHintLabel.text = LocalizationTable.Get(CONTINUE_HINT_KEY, CONTINUE_HINT_TEXT);
+            BeginReveal();
+        }
+
+        void BeginReveal()
+        {
+            _bodyLabel.ForceMeshUpdate();
+            _revealTotalCount = _bodyLabel.textInfo.characterCount;
+            _revealProgress = 0f;
+            _continueHintLabel.gameObject.SetActive(false);
+            if (_revealTotalCount <= 0)
+            {
+                CompleteReveal();
+                return;
+            }
+
+            _bodyLabel.maxVisibleCharacters = 0;
+            _isRevealing = true;
+        }
+
+        void CompleteReveal()
+        {
+            _isRevealing = false;
+            _bodyLabel.maxVisibleCharacters = int.MaxValue;
+            _continueHintLabel.gameObject.SetActive(_waitsClick);
         }
 
         static Vector2 GetPlacementPosition(EPlacement placement)

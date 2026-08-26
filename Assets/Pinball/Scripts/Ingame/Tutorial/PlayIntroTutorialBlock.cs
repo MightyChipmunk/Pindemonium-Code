@@ -15,18 +15,24 @@ namespace Pinball.Ingame.Tutorial
         public record InitParam(
             Func<MapRoot> MapGetter,
             Action<bool> ModalSetter,
+            Action<bool> TimeFreezeSetter,
             Func<bool> IsPlayReadyGetter,
             Func<bool> IsPlayStateGetter,
             Func<bool> HasLaunchedGetter,
             Func<bool> IsComboTriggerReachedGetter,
             Func<bool> HasBallLostGetter,
             Func<bool> IsStageClearInterceptedGetter,
+            Func<bool> HasNudgedGetter,
+            Func<bool> CanNudgeGetter,
+            Action NudgeWaitPreparer,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
-        const float UI_FOCUS_PADDING = 12f;
         const float WORLD_FOCUS_PADDING = 14f;
+        const float NUDGE_SETTLE_SECONDS = 1f;
+        const string SECOND_PAGE_SUFFIX = ".2";
         const string STAGE_SELECT_KEY = "ui.tutorial.play.stage_select";
+        const string STAGE_START_KEY = "ui.tutorial.play.stage_start";
         const string SCORE_KEY = "ui.tutorial.play.score";
         const string FLIPPER_KEY = "ui.tutorial.play.flipper";
         const string PARRY_KEY = "ui.tutorial.play.parry";
@@ -34,6 +40,8 @@ namespace Pinball.Ingame.Tutorial
         const string LAUNCH_GUIDE_KEY = "ui.tutorial.play.launch_guide";
         const string COMBO_KEY = "ui.tutorial.play.combo";
         const string NUDGE_KEY = "ui.tutorial.play.nudge";
+        const string NUDGE_TRY_KEY = "ui.tutorial.play.nudge_try";
+        const string FREE_PLAY_KEY = "ui.tutorial.play.free_play";
         const string GIMMICK_BUMPER_KEY = "ui.tutorial.play.gimmick.bumper";
         const string GIMMICK_SLINGSHOT_KEY = "ui.tutorial.play.gimmick.slingshot";
         const string GIMMICK_SPINNER_KEY = "ui.tutorial.play.gimmick.spinner";
@@ -62,13 +70,17 @@ namespace Pinball.Ingame.Tutorial
         readonly InitParam _param;
         readonly TutorialDimmer _dimmer;
         readonly TutorialDialogView _dialog;
+        readonly TutorialHighlightLayer _highlightLayer;
         readonly List<Bounds> _worldBoundsBuffer = new List<Bounds>();
+        readonly List<MapInteractable.SpriteSnapshot> _spriteBuffer = new List<MapInteractable.SpriteSnapshot>();
+        readonly List<MapInteractable.LineSnapshot> _lineBuffer = new List<MapInteractable.LineSnapshot>();
 
-        public PlayIntroTutorialBlock(InitParam param, TutorialDimmer dimmer, TutorialDialogView dialog)
+        public PlayIntroTutorialBlock(InitParam param, TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
         {
             _param = param;
             _dimmer = dimmer;
             _dialog = dialog;
+            _highlightLayer = highlightLayer;
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -79,7 +91,7 @@ namespace Pinball.Ingame.Tutorial
             await UniTask.NextFrame(cancellationToken);
 
             _param.ModalSetter(true);
-            _dimmer.FocusUI(_param.ScoreAnchorGetter(), UI_FOCUS_PADDING);
+            FocusUI(_param.ScoreAnchorGetter());
             await _dialog.ShowAndWaitClickAsync(SCORE_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
 
             await RunGimmickTourAsync(cancellationToken);
@@ -94,18 +106,21 @@ namespace Pinball.Ingame.Tutorial
 
             _param.ModalSetter(true);
             if (_param.IsComboTriggerReachedGetter())
-                _dimmer.FocusUI(_param.ComboAnchorGetter(), UI_FOCUS_PADDING);
+                FocusUI(_param.ComboAnchorGetter());
             else
-                _dimmer.ShowFull();
+                ShowFullDim();
 
             await _dialog.ShowAndWaitClickAsync(COMBO_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
-
-            _dimmer.ShowFull();
-            LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
+            HideOverlay();
             _param.ModalSetter(false);
 
-            _dimmer.Hide();
+            await RunNudgeGuideAsync(cancellationToken);
+
+            _param.ModalSetter(true);
+            await _dialog.ShowAndWaitClickAsync(FREE_PLAY_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+            _param.ModalSetter(false);
+
+            HideOverlay();
             _dialog.Hide();
             return true;
         }
@@ -116,9 +131,13 @@ namespace Pinball.Ingame.Tutorial
             if (null == view)
                 return;
 
-            _dimmer.FocusUI(view.GetCurrentCardAnchor(), UI_FOCUS_PADDING);
+            FocusUI(view.GetCurrentCardAnchor());
             await _dialog.ShowAndWaitClickAsync(STAGE_SELECT_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-            _dimmer.Hide();
+
+            FocusUI(view.GetCurrentStartAnchor());
+            await _dialog.ShowAndWaitClickAsync(STAGE_START_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
+
+            HideOverlay();
             _dialog.Hide();
         }
 
@@ -136,11 +155,11 @@ namespace Pinball.Ingame.Tutorial
             for (int i = 0; i < TOUR_ORDER.Length; ++i)
             {
                 MapInteractable.EGimmickType gimmickType = TOUR_ORDER[i];
-                CollectGimmickBounds(map, gimmickType);
-                if (_worldBoundsBuffer.Count <= 0)
+                CollectGimmickTargets(map, gimmickType);
+                if (_worldBoundsBuffer.Count <= 0 && _spriteBuffer.Count <= 0)
                     continue;
 
-                _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
+                FocusWorldTargets();
 
                 TutorialDialogView.EPlacement placement;
                 if (gimmickType == MapInteractable.EGimmickType.Slingshot)
@@ -148,7 +167,12 @@ namespace Pinball.Ingame.Tutorial
                 else
                     placement = TutorialDialogView.EPlacement.Bottom;
 
-                await _dialog.ShowAndWaitClickAsync(GetGimmickKey(gimmickType), placement, cancellationToken);
+                string gimmickKey = GetGimmickKey(gimmickType);
+                await _dialog.ShowAndWaitClickAsync(gimmickKey, placement, cancellationToken);
+
+                string secondPageKey = gimmickKey + SECOND_PAGE_SUFFIX;
+                if (!string.IsNullOrEmpty(LocalizationTable.Get(secondPageKey, string.Empty)))
+                    await _dialog.ShowAndWaitClickAsync(secondPageKey, placement, cancellationToken);
             }
         }
 
@@ -161,7 +185,11 @@ namespace Pinball.Ingame.Tutorial
             _worldBoundsBuffer.Clear();
             _worldBoundsBuffer.Add(GetFlipperBounds(map, true));
             _worldBoundsBuffer.Add(GetFlipperBounds(map, false));
-            _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
+            _spriteBuffer.Clear();
+            _lineBuffer.Clear();
+            map.CollectLeftFlipperSprites(_spriteBuffer);
+            map.CollectRightFlipperSprites(_spriteBuffer);
+            FocusWorldTargets();
             LocalizedTextRef flipperText = new LocalizedTextRef(FLIPPER_KEY, new object[] { GetKeyName(EKeyAction.FlipperLeft), GetKeyName(EKeyAction.FlipperRight) });
             await _dialog.ShowAndWaitClickAsync(flipperText, TutorialDialogView.EPlacement.Top, cancellationToken);
 
@@ -181,8 +209,32 @@ namespace Pinball.Ingame.Tutorial
             LocalizedTextRef guideText = new LocalizedTextRef(LAUNCH_GUIDE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
             _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top);
             await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
-            _dimmer.Hide();
+            HideOverlay();
             _dialog.Hide();
+        }
+
+        async UniTask RunNudgeGuideAsync(CancellationToken cancellationToken)
+        {
+            if (!_param.CanNudgeGetter() || !_param.IsPlayStateGetter())
+            {
+                _param.ModalSetter(true);
+                LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
+                await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
+                _param.ModalSetter(false);
+                _dialog.Hide();
+                return;
+            }
+
+            _param.NudgeWaitPreparer();
+            _param.TimeFreezeSetter(true);
+            LocalizedTextRef tryText = new LocalizedTextRef(NUDGE_TRY_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
+            _dialog.ShowGuide(tryText, TutorialDialogView.EPlacement.Top);
+            await UniTask.WaitUntil(GetIsNudgeWaitFinished, cancellationToken: cancellationToken);
+            _param.TimeFreezeSetter(false);
+            _dialog.Hide();
+
+            if (_param.HasNudgedGetter() && _param.IsPlayStateGetter())
+                await UniTask.Delay(TimeSpan.FromSeconds(NUDGE_SETTLE_SECONDS), cancellationToken: cancellationToken);
         }
 
         void FocusSpring(MapRoot map)
@@ -193,12 +245,17 @@ namespace Pinball.Ingame.Tutorial
             else
                 _worldBoundsBuffer.Add(CreateFallbackBounds(map.GetSpringPosition(), FALLBACK_SPRING_EXTENTS));
 
-            _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
+            _spriteBuffer.Clear();
+            _lineBuffer.Clear();
+            map.CollectSpringSprites(_spriteBuffer);
+            FocusWorldTargets();
         }
 
-        void CollectGimmickBounds(MapRoot map, MapInteractable.EGimmickType gimmickType)
+        void CollectGimmickTargets(MapRoot map, MapInteractable.EGimmickType gimmickType)
         {
             _worldBoundsBuffer.Clear();
+            _spriteBuffer.Clear();
+            _lineBuffer.Clear();
             for (int i = 0, count = map.GetInteractableCount(); i < count; ++i)
             {
                 MapInteractable interactable = map.GetInteractable(i);
@@ -208,11 +265,47 @@ namespace Pinball.Ingame.Tutorial
                 if (interactable.IsDeactivated)
                     continue;
 
+                if (gimmickType == MapInteractable.EGimmickType.Lane)
+                    interactable.CollectHighlightLines(_lineBuffer);
+                else
+                    interactable.CollectHighlightSprites(_spriteBuffer);
+
                 if (interactable.TryGetWorldBounds(out Bounds worldBounds))
                     _worldBoundsBuffer.Add(worldBounds);
                 else
                     _worldBoundsBuffer.Add(CreateFallbackBounds(interactable.transform.position, FALLBACK_GIMMICK_EXTENTS));
             }
+        }
+
+        void FocusWorldTargets()
+        {
+            if (_spriteBuffer.Count > 0 || _lineBuffer.Count > 0)
+            {
+                _dimmer.ShowFull();
+                _highlightLayer.ShowWorldTargets(_spriteBuffer, _lineBuffer);
+                return;
+            }
+
+            _highlightLayer.Clear();
+            _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
+        }
+
+        void FocusUI(RectTransform target)
+        {
+            _dimmer.ShowFull();
+            _highlightLayer.ShowUITarget(target);
+        }
+
+        void ShowFullDim()
+        {
+            _highlightLayer.Clear();
+            _dimmer.ShowFull();
+        }
+
+        void HideOverlay()
+        {
+            _highlightLayer.Clear();
+            _dimmer.Hide();
         }
 
         static Bounds GetFlipperBounds(MapRoot map, bool isLeft)
@@ -246,6 +339,11 @@ namespace Pinball.Ingame.Tutorial
         bool GetIsLaunchWaitFinished()
         {
             return _param.HasLaunchedGetter() || GetIsFreePlayInterrupted();
+        }
+
+        bool GetIsNudgeWaitFinished()
+        {
+            return _param.HasNudgedGetter() || !_param.IsPlayStateGetter();
         }
 
         static string GetKeyName(EKeyAction action)

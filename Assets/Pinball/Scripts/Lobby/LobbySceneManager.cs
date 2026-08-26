@@ -4,6 +4,7 @@ using Pinball.Core;
 using Pinball.Ingame;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
+using Pinball.Ingame.Tutorial;
 using Pinball.Localization;
 using Pinball.Save;
 using Pinball.UI;
@@ -23,11 +24,13 @@ namespace Pinball.Lobby
         [SerializeField] LobbyUIRoot _uiRoot = null;
 
         LobbyRunSetupController _runSetupController = null;
+        TutorialProgress _tutorialProgress = null;
         bool _isLoadingIngame = false;
 
         void Awake()
         {
             GameBootStrap.EnsureInit(_bootStrapConfig);
+            _tutorialProgress = new TutorialProgress();
             BgmManager.Play(BgmStorage.EBgmType.Lobby);
             _runSetupController = new LobbyRunSetupController(new LobbyRunSetupController.InitParam(
                 FlipperCatalog: _flipperCatalog,
@@ -68,6 +71,8 @@ namespace Pinball.Lobby
 
             if (null != _uiRoot)
                 _uiRoot.Release();
+
+            _tutorialProgress = null;
         }
 
         void OnContinueRequested()
@@ -85,6 +90,12 @@ namespace Pinball.Lobby
         {
             if (_isLoadingIngame)
                 return;
+
+            if (!_tutorialProgress.IsCompleted(TutorialProgress.EBlock.PlayIntro))
+            {
+                OnPlayRequested(SceneFlow.DEFAULT_FLIPPER_INDEX);
+                return;
+            }
 
             _runSetupController.OpenFlipperSelect();
         }

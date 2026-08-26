@@ -10,21 +10,18 @@ namespace Pinball.Ingame.Tutorial
         enum EFocusMode
         {
             Full = 0,
-            UITargets = 1,
-            WorldBounds = 2,
+            WorldBounds = 1,
         }
 
         const int RECT_CORNER_COUNT = 4;
         const float EDGE_EPSILON = 0.01f;
         const float HOLE_CHANGE_EPSILON = 0.5f;
 
-        readonly List<RectTransform> _uiTargets = new List<RectTransform>();
         readonly List<Bounds> _worldBoundsList = new List<Bounds>();
         readonly List<Rect> _holes = new List<Rect>();
         readonly List<Rect> _holeBuffer = new List<Rect>();
         readonly List<float> _stripEdges = new List<float>();
         readonly List<Vector2> _yIntervals = new List<Vector2>();
-        readonly Vector3[] _cornerBuffer = new Vector3[RECT_CORNER_COUNT];
 
         EFocusMode _mode = EFocusMode.Full;
         float _padding = 0f;
@@ -37,30 +34,9 @@ namespace Pinball.Ingame.Tutorial
         public void ShowFull()
         {
             _mode = EFocusMode.Full;
-            _uiTargets.Clear();
             _worldBoundsList.Clear();
             gameObject.SetActive(true);
             Refresh();
-        }
-
-        public void FocusUI(RectTransform target, float padding)
-        {
-            _uiTargets.Clear();
-            if (null != target)
-                _uiTargets.Add(target);
-
-            BeginUIFocus(padding);
-        }
-
-        public void FocusUITargets(List<RectTransform> targets, float padding)
-        {
-            _uiTargets.Clear();
-            if (null != targets)
-                for (int i = 0; i < targets.Count; ++i)
-                    if (null != targets[i])
-                        _uiTargets.Add(targets[i]);
-
-            BeginUIFocus(padding);
         }
 
         public void FocusWorldBounds(List<Bounds> worldBoundsList, float padding)
@@ -69,7 +45,6 @@ namespace Pinball.Ingame.Tutorial
             if (null != worldBoundsList)
                 _worldBoundsList.AddRange(worldBoundsList);
 
-            _uiTargets.Clear();
             _padding = padding;
             _mode = _worldBoundsList.Count > 0 ? EFocusMode.WorldBounds : EFocusMode.Full;
             gameObject.SetActive(true);
@@ -78,18 +53,8 @@ namespace Pinball.Ingame.Tutorial
 
         public void Hide()
         {
-            _uiTargets.Clear();
             _worldBoundsList.Clear();
             gameObject.SetActive(false);
-        }
-
-        void BeginUIFocus(float padding)
-        {
-            _worldBoundsList.Clear();
-            _padding = padding;
-            _mode = _uiTargets.Count > 0 ? EFocusMode.UITargets : EFocusMode.Full;
-            gameObject.SetActive(true);
-            Refresh();
         }
 
         void LateUpdate()
@@ -111,17 +76,11 @@ namespace Pinball.Ingame.Tutorial
         void RebuildHoleBuffer()
         {
             _holeBuffer.Clear();
-            if (_mode == EFocusMode.UITargets)
-            {
-                for (int i = 0; i < _uiTargets.Count; ++i)
-                    if (null != _uiTargets[i] && _uiTargets[i].gameObject.activeInHierarchy)
-                        _holeBuffer.Add(Expand(CalculateUILocalRect(_uiTargets[i]), _padding));
-            }
-            else if (_mode == EFocusMode.WorldBounds)
-            {
-                for (int i = 0; i < _worldBoundsList.Count; ++i)
-                    _holeBuffer.Add(Expand(CalculateWorldLocalRect(_worldBoundsList[i]), _padding));
-            }
+            if (_mode != EFocusMode.WorldBounds)
+                return;
+
+            for (int i = 0; i < _worldBoundsList.Count; ++i)
+                _holeBuffer.Add(Expand(CalculateWorldLocalRect(_worldBoundsList[i]), _padding));
         }
 
         bool HasHoleChanged()
@@ -141,23 +100,6 @@ namespace Pinball.Ingame.Tutorial
             }
 
             return false;
-        }
-
-        Rect CalculateUILocalRect(RectTransform target)
-        {
-            target.GetWorldCorners(_cornerBuffer);
-            Camera worldCamera = CameraController.GetMainCamera();
-            Vector2 min = Vector2.positiveInfinity;
-            Vector2 max = Vector2.negativeInfinity;
-            for (int i = 0; i < RECT_CORNER_COUNT; ++i)
-            {
-                Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(worldCamera, _cornerBuffer[i]);
-                Vector2 localPoint = ScreenToLocal(screenPoint);
-                min = Vector2.Min(min, localPoint);
-                max = Vector2.Max(max, localPoint);
-            }
-
-            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
         }
 
         Rect CalculateWorldLocalRect(Bounds worldBounds)

@@ -110,6 +110,11 @@ namespace Pinball.UI
             return (RectTransform)_rerollButton.transform;
         }
 
+        public RectTransform GetStartAnchor()
+        {
+            return (RectTransform)_startButton.transform;
+        }
+
         public void Bind(BindParam param)
         {
             bool isCurrent = param.State == EState.Current;

@@ -14,10 +14,13 @@ namespace Pinball.Ingame.Tutorial
             bool IsNewRun,
             int InterestPerAmount,
             int InterestMax,
+            int PassiveSlotCount,
             Func<int> StageNumberGetter,
             Func<bool> IsEndlessGetter,
             Func<bool> IsPlayStateGetter,
             Action<bool> TimeFreezer,
+            Func<bool> CanNudgeGetter,
+            Action NudgeCooldownResetter,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
@@ -25,6 +28,7 @@ namespace Pinball.Ingame.Tutorial
         const float SHOP_OPEN_WAIT_SECONDS = 1f;
 
         [SerializeField] TutorialDimmer _dimmer = null;
+        [SerializeField] TutorialHighlightLayer _highlightLayer = null;
         [SerializeField] TutorialDialogView _dialog = null;
 
         InitParam _param = null;
@@ -38,9 +42,11 @@ namespace Pinball.Ingame.Tutorial
         bool _hasLaunched = false;
         bool _isComboTriggerReached = false;
         bool _hasBallLost = false;
+        bool _hasNudged = false;
         bool _isStageClearIntercepted = false;
         bool _isPlayIntroRunning = false;
         bool _isModalActive = false;
+        bool _isTimeFreezeActive = false;
 
         public void Init(InitParam param)
         {
@@ -51,16 +57,20 @@ namespace Pinball.Ingame.Tutorial
             _playIntroBlock = new PlayIntroTutorialBlock(new PlayIntroTutorialBlock.InitParam(
                 MapGetter: GetCurrentMap,
                 ModalSetter: SetModal,
+                TimeFreezeSetter: SetTimeFreeze,
                 IsPlayReadyGetter: GetIsPlayIntroReady,
                 IsPlayStateGetter: param.IsPlayStateGetter,
                 HasLaunchedGetter: GetHasLaunched,
                 IsComboTriggerReachedGetter: GetIsComboTriggerReached,
                 HasBallLostGetter: GetHasBallLost,
                 IsStageClearInterceptedGetter: GetIsStageClearIntercepted,
+                HasNudgedGetter: GetHasNudged,
+                CanNudgeGetter: param.CanNudgeGetter,
+                NudgeWaitPreparer: PrepareNudgeWait,
                 ScoreAnchorGetter: param.ScoreAnchorGetter,
-                ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog);
-            _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax), _dimmer, _dialog);
-            _stageGimmickBlock = new StageGimmickTutorialBlock(_dimmer, _dialog);
+                ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog, _highlightLayer);
+            _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _dimmer, _dialog, _highlightLayer);
+            _stageGimmickBlock = new StageGimmickTutorialBlock(_dimmer, _dialog, _highlightLayer);
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             WatchPlayIntroAsync(_cancellationTokenSource.Token).Forget();
@@ -111,6 +121,11 @@ namespace Pinball.Ingame.Tutorial
         public void NotifyBallLost()
         {
             _hasBallLost = true;
+        }
+
+        public void NotifyNudged()
+        {
+            _hasNudged = true;
         }
 
         public bool IsOverlayActive()
@@ -236,9 +251,20 @@ namespace Pinball.Ingame.Tutorial
             return _hasBallLost;
         }
 
+        bool GetHasNudged()
+        {
+            return _hasNudged;
+        }
+
         bool GetIsStageClearIntercepted()
         {
             return _isStageClearIntercepted;
+        }
+
+        void PrepareNudgeWait()
+        {
+            _hasNudged = false;
+            _param.NudgeCooldownResetter();
         }
 
         void SetModal(bool isModal)
@@ -252,7 +278,21 @@ namespace Pinball.Ingame.Tutorial
             else
                 Blocker.Unblock();
 
-            _param.TimeFreezer(isModal);
+            ApplyTimeFreeze();
+        }
+
+        void SetTimeFreeze(bool isFrozen)
+        {
+            if (_isTimeFreezeActive == isFrozen)
+                return;
+
+            _isTimeFreezeActive = isFrozen;
+            ApplyTimeFreeze();
+        }
+
+        void ApplyTimeFreeze()
+        {
+            _param.TimeFreezer(_isModalActive || _isTimeFreezeActive);
         }
 
         void CancelWatchers()
@@ -267,8 +307,10 @@ namespace Pinball.Ingame.Tutorial
 
         void ClearOverlay()
         {
+            SetTimeFreeze(false);
             SetModal(false);
             _dimmer.Hide();
+            _highlightLayer.Clear();
             _dialog.Hide();
         }
     }

@@ -328,6 +328,31 @@ namespace Pinball.Ingame.Map
             return TryUnionRendererBounds(_springRenderers, out worldBounds);
         }
 
+        public void CollectLeftFlipperSprites(List<MapInteractable.SpriteSnapshot> buffer)
+        {
+            CollectSprites(_leftFlipperRenderers, buffer);
+        }
+
+        public void CollectRightFlipperSprites(List<MapInteractable.SpriteSnapshot> buffer)
+        {
+            CollectSprites(_rightFlipperRenderers, buffer);
+        }
+
+        public void CollectSpringSprites(List<MapInteractable.SpriteSnapshot> buffer)
+        {
+            CollectSprites(_springRenderers, buffer);
+        }
+
+        static void CollectSprites(Renderer[] renderers, List<MapInteractable.SpriteSnapshot> buffer)
+        {
+            if (null == renderers)
+                return;
+
+            for (int i = 0; i < renderers.Length; ++i)
+                if (MapInteractable.SpriteSnapshot.TryCreate(renderers[i], out MapInteractable.SpriteSnapshot snapshot))
+                    buffer.Add(snapshot);
+        }
+
         static bool TryUnionRendererBounds(Renderer[] renderers, out Bounds worldBounds)
         {
             worldBounds = default;

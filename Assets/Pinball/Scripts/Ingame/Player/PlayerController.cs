@@ -32,6 +32,7 @@ namespace Pinball.Ingame.Player
         float _nudgeAimElapsed = 0f;
 
         public event Action<float> OnLaunched;
+        public event Action OnNudged;
 
         public PlayerController(InitParam param, IngameInputRouter inputRouter)
         {
@@ -226,6 +227,7 @@ namespace Pinball.Ingame.Player
 
             _remainingNudgeCooldown = StatProvider.GetNudgeCooldownSeconds();
             _nudgePresenter?.Invoke();
+            OnNudged?.Invoke();
         }
 
         void CancelNudgeAim()

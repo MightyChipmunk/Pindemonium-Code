@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Util;
@@ -34,6 +35,72 @@ namespace Pinball.Ingame.Map
             Action<Collider2D> OnBallHit,
             Action GimmickHitPresenter,
             int ScoreGainLimit);
+
+        public record LineSnapshot(
+            Vector3[] Points,
+            float Width,
+            Color Color)
+        {
+            const int MIN_POINT_COUNT = 2;
+
+            public static bool TryCreate(Renderer renderer, out LineSnapshot snapshot)
+            {
+                snapshot = null;
+                if (null == renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    return false;
+
+                LineRenderer lineRenderer = renderer as LineRenderer;
+                if (null == lineRenderer || lineRenderer.positionCount < MIN_POINT_COUNT)
+                    return false;
+
+                Vector3[] points = new Vector3[lineRenderer.positionCount];
+                lineRenderer.GetPositions(points);
+                float width = lineRenderer.startWidth * lineRenderer.widthMultiplier;
+                if (!lineRenderer.useWorldSpace)
+                {
+                    Transform rendererTransform = lineRenderer.transform;
+                    for (int i = 0; i < points.Length; ++i)
+                        points[i] = rendererTransform.TransformPoint(points[i]);
+
+                    width *= Mathf.Abs(rendererTransform.lossyScale.x);
+                }
+
+                snapshot = new LineSnapshot(points, width, lineRenderer.startColor);
+                return true;
+            }
+        }
+
+        public record SpriteSnapshot(
+            Sprite Sprite,
+            Vector3 Position,
+            Quaternion Rotation,
+            Vector3 LossyScale,
+            Color Color,
+            bool FlipX,
+            bool FlipY)
+        {
+            public static bool TryCreate(Renderer renderer, out SpriteSnapshot snapshot)
+            {
+                snapshot = null;
+                if (null == renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    return false;
+
+                SpriteRenderer spriteRenderer = renderer as SpriteRenderer;
+                if (null == spriteRenderer || null == spriteRenderer.sprite)
+                    return false;
+
+                Transform rendererTransform = renderer.transform;
+                snapshot = new SpriteSnapshot(
+                    Sprite: spriteRenderer.sprite,
+                    Position: rendererTransform.position,
+                    Rotation: rendererTransform.rotation,
+                    LossyScale: rendererTransform.lossyScale,
+                    Color: spriteRenderer.color,
+                    FlipX: spriteRenderer.flipX,
+                    FlipY: spriteRenderer.flipY);
+                return true;
+            }
+        }
 
         public const int NO_SCORE_GAIN_LIMIT = 0;
 
@@ -103,6 +170,26 @@ namespace Pinball.Ingame.Map
             }
 
             return hasBounds;
+        }
+
+        public void CollectHighlightSprites(List<SpriteSnapshot> buffer)
+        {
+            if (null == _boundsRenderers)
+                return;
+
+            for (int i = 0; i < _boundsRenderers.Length; ++i)
+                if (SpriteSnapshot.TryCreate(_boundsRenderers[i], out SpriteSnapshot snapshot))
+                    buffer.Add(snapshot);
+        }
+
+        public void CollectHighlightLines(List<LineSnapshot> buffer)
+        {
+            if (null == _boundsRenderers)
+                return;
+
+            for (int i = 0; i < _boundsRenderers.Length; ++i)
+                if (LineSnapshot.TryCreate(_boundsRenderers[i], out LineSnapshot snapshot))
+                    buffer.Add(snapshot);
         }
 
         public void Deactivate()

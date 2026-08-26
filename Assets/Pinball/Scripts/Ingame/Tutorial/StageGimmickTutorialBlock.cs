@@ -1,22 +1,24 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.UI;
+using UnityEngine;
 
 namespace Pinball.Ingame.Tutorial
 {
     public class StageGimmickTutorialBlock
     {
-        const float UI_FOCUS_PADDING = 12f;
         const string GIMMICK_KEY = "ui.tutorial.stage_select.gimmick";
         const string REROLL_KEY = "ui.tutorial.stage_select.reroll";
 
         readonly TutorialDimmer _dimmer;
         readonly TutorialDialogView _dialog;
+        readonly TutorialHighlightLayer _highlightLayer;
 
-        public StageGimmickTutorialBlock(TutorialDimmer dimmer, TutorialDialogView dialog)
+        public StageGimmickTutorialBlock(TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
         {
             _dimmer = dimmer;
             _dialog = dialog;
+            _highlightLayer = highlightLayer;
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -25,15 +27,22 @@ namespace Pinball.Ingame.Tutorial
             if (null == view)
                 return false;
 
-            _dimmer.FocusUI(view.GetCurrentGimmickAnchor(), UI_FOCUS_PADDING);
+            FocusUI(view.GetCurrentGimmickAnchor());
             await _dialog.ShowAndWaitClickAsync(GIMMICK_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
 
-            _dimmer.FocusUI(view.GetCurrentRerollAnchor(), UI_FOCUS_PADDING);
+            FocusUI(view.GetCurrentRerollAnchor());
             await _dialog.ShowAndWaitClickAsync(REROLL_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
 
+            _highlightLayer.Clear();
             _dimmer.Hide();
             _dialog.Hide();
             return true;
+        }
+
+        void FocusUI(RectTransform target)
+        {
+            _dimmer.ShowFull();
+            _highlightLayer.ShowUITarget(target);
         }
     }
 }
