@@ -230,7 +230,7 @@ namespace Pinball.Ingame.Tutorial
             Vector2 widthOrigin = WorldToLocal(snapshot.Points[0]);
             Vector2 widthOffset = WorldToLocal(snapshot.Points[0] + Vector3.up * snapshot.Width);
             float localWidth = (widthOffset - widthOrigin).magnitude;
-            line.SetLine(_localPointBuffer, localWidth, snapshot.Color);
+            line.SetLine(_localPointBuffer, localWidth, snapshot.Color, snapshot.HasRoundCorner, snapshot.HasRoundCap);
         }
 
         Vector2 WorldToLocal(Vector3 worldPoint)

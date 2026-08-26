@@ -39,9 +39,12 @@ namespace Pinball.Ingame.Map
         public record LineSnapshot(
             Vector3[] Points,
             float Width,
-            Color Color)
+            Color Color,
+            bool HasRoundCorner,
+            bool HasRoundCap)
         {
             const int MIN_POINT_COUNT = 2;
+            const int NO_ROUND_VERTEX = 0;
 
             public static bool TryCreate(Renderer renderer, out LineSnapshot snapshot)
             {
@@ -65,7 +68,7 @@ namespace Pinball.Ingame.Map
                     width *= Mathf.Abs(rendererTransform.lossyScale.x);
                 }
 
-                snapshot = new LineSnapshot(points, width, lineRenderer.startColor);
+                snapshot = new LineSnapshot(points, width, lineRenderer.startColor, lineRenderer.numCornerVertices > NO_ROUND_VERTEX, lineRenderer.numCapVertices > NO_ROUND_VERTEX);
                 return true;
             }
         }
