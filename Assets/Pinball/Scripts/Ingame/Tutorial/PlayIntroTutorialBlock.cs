@@ -31,6 +31,7 @@ namespace Pinball.Ingame.Tutorial
         const float WORLD_FOCUS_PADDING = 14f;
         const float NUDGE_SETTLE_SECONDS = 1f;
         const string SECOND_PAGE_SUFFIX = ".2";
+        const string WELCOME_KEY = "ui.tutorial.play.welcome";
         const string STAGE_SELECT_KEY = "ui.tutorial.play.stage_select";
         const string STAGE_START_KEY = "ui.tutorial.play.stage_start";
         const string SCORE_KEY = "ui.tutorial.play.score";
@@ -128,9 +129,16 @@ namespace Pinball.Ingame.Tutorial
 
         async UniTask RunStageSelectIntroAsync(CancellationToken cancellationToken)
         {
+            ShowFullDim();
+            await _dialog.ShowAndWaitClickAsync(WELCOME_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+
             StageSelectView view = UIManager.GetActive(UIViewCatalogData.EViewType.StageSelect) as StageSelectView;
             if (null == view)
+            {
+                HideOverlay();
+                _dialog.Hide();
                 return;
+            }
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
@@ -205,28 +213,24 @@ namespace Pinball.Ingame.Tutorial
 
         async UniTask RunLaunchGuideAsync(CancellationToken cancellationToken)
         {
-            MapRoot map = _param.MapGetter();
-            if (null != map)
-                FocusSpring(map);
+            HideOverlay();
 
             LocalizedTextRef guideText = new LocalizedTextRef(LAUNCH_GUIDE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
             _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top);
             await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
-            HideOverlay();
             _dialog.Hide();
         }
 
         async UniTask RunNudgeGuideAsync(CancellationToken cancellationToken)
         {
+            _param.ModalSetter(true);
+            LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
+            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
+            _param.ModalSetter(false);
+            _dialog.Hide();
+
             if (!_param.CanNudgeGetter() || !_param.IsPlayStateGetter())
-            {
-                _param.ModalSetter(true);
-                LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-                await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
-                _param.ModalSetter(false);
-                _dialog.Hide();
                 return;
-            }
 
             _param.NudgeWaitPreparer();
             _param.TimeFreezeSetter(true);
