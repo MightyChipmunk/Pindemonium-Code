@@ -1,24 +1,27 @@
+using System;
 using UnityEngine;
 
 namespace Pinball.Ingame
 {
     public class OrbitalBody : EffectBodyBase
     {
-        public const float HIT_RADIUS = 0.16f;
-
         const float ORBIT_DEGREES_PER_SECOND = 180f;
         const float ORBIT_RADIUS = 0.75f;
         const float FULL_CIRCLE_DEGREE = 360f;
-        const float HIT_INTERVAL_SECONDS = 0.45f;
+
+        [SerializeField] Rigidbody2D _rigidbody = null;
 
         float _angleDegree = 0f;
-        float _hitElapsed = 0f;
+
+        public event Action<Collider2D> OnContact;
 
         public void Setup(float phaseDegree, Vector2 centerPosition)
         {
             _angleDegree = phaseDegree;
-            _hitElapsed = 0f;
-            MoveTo(centerPosition + GetOrbitOffset());
+
+            Vector2 position = centerPosition + GetOrbitOffset();
+            _rigidbody.position = position;
+            MoveTo(position);
         }
 
         public void Tick(Vector2 centerPosition, float deltaTime)
@@ -27,17 +30,18 @@ namespace Pinball.Ingame
             if (_angleDegree >= FULL_CIRCLE_DEGREE)
                 _angleDegree -= FULL_CIRCLE_DEGREE;
 
-            MoveTo(centerPosition + GetOrbitOffset());
-            _hitElapsed += deltaTime;
+            _rigidbody.MovePosition(centerPosition + GetOrbitOffset());
         }
 
-        public bool TryConsumeHitInterval()
+        public override void OnReturn()
         {
-            if (_hitElapsed < HIT_INTERVAL_SECONDS)
-                return false;
+            base.OnReturn();
+            OnContact = null;
+        }
 
-            _hitElapsed = 0f;
-            return true;
+        void OnTriggerEnter2D(Collider2D other)
+        {
+            OnContact?.Invoke(other);
         }
 
         Vector2 GetOrbitOffset()

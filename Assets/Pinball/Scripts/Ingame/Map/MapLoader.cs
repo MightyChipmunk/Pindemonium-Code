@@ -52,12 +52,12 @@ namespace Pinball.Ingame.Map
             return _currentMap.CollectAliveBumperPositions(buffer);
         }
 
-        public void ApplyCircleHit(Vector2 center, float radius, float damage)
+        public bool ApplyColliderHit(Collider2D hitCollider, float damage)
         {
             if (null == _currentMap)
-                return;
+                return false;
 
-            _currentMap.ApplyCircleHit(center, radius, damage);
+            return _currentMap.ApplyColliderHit(hitCollider, damage);
         }
 
         public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)

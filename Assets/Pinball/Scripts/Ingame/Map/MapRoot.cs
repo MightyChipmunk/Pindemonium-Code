@@ -150,12 +150,16 @@ namespace Pinball.Ingame.Map
                 _damageableRegistry.Register(_damageColliderBuffer[i].GetInstanceID(), damageable);
         }
 
-        public void ApplyCircleHit(Vector2 center, float radius, float damage)
+        public bool ApplyColliderHit(Collider2D hitCollider, float damage)
         {
-            if (null == _hitBuffer)
-                return;
+            if (null == _damageableRegistry || null == hitCollider)
+                return false;
 
-            ApplyHits(Physics2D.OverlapCircle(center, radius, _hitFilter, _hitBuffer), damage);
+            if (!_damageableRegistry.Find(hitCollider.GetInstanceID(), out IDamageable damageable))
+                return false;
+
+            damageable.TakeHit(damage, hitCollider.bounds.center);
+            return true;
         }
 
         public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)

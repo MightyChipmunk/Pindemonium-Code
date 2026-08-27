@@ -1,11 +1,10 @@
+using System;
 using UnityEngine;
 
 namespace Pinball.Ingame
 {
     public class MissileBody : EffectBodyBase
     {
-        public const float HIT_RADIUS = 0.13f;
-
         const float LAUNCH_SPEED = 7f;
         const float MAX_SPEED = 17f;
         const float ACCELERATION = 22f;
@@ -13,6 +12,7 @@ namespace Pinball.Ingame
         const float MIN_STEER_SQR_DISTANCE = 0.0001f;
         const float UP_ANGLE_OFFSET_DEGREE = 90f;
 
+        [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] TrailRenderer _trail = null;
         [SerializeField] Transform _visual = null;
 
@@ -23,8 +23,11 @@ namespace Pinball.Ingame
 
         public bool IsExpired => _isExpired;
 
+        public event Action<MissileBody, Collider2D> OnContact;
+
         public void Launch(Vector2 startPosition, Vector2 launchDirection, Vector2 targetPosition)
         {
+            _rigidbody.position = startPosition;
             MoveTo(startPosition);
             _moveDirection = launchDirection;
             _targetPosition = targetPosition;
@@ -50,21 +53,27 @@ namespace Pinball.Ingame
             }
 
             _speed = Mathf.Min(MAX_SPEED, _speed + ACCELERATION * deltaTime);
-            MoveTo(GetPosition() + _moveDirection * (_speed * deltaTime));
+            _rigidbody.MovePosition(GetPosition() + _moveDirection * (_speed * deltaTime));
             ApplyVisualRotation();
-        }
-
-        public bool HasReachedTarget(float arriveDistance)
-        {
-            if (_isExpired)
-                return false;
-
-            return (_targetPosition - GetPosition()).sqrMagnitude <= arriveDistance * arriveDistance;
         }
 
         public void Expire()
         {
             _isExpired = true;
+        }
+
+        public override void OnReturn()
+        {
+            base.OnReturn();
+            OnContact = null;
+        }
+
+        void OnTriggerEnter2D(Collider2D other)
+        {
+            if (_isExpired)
+                return;
+
+            OnContact?.Invoke(this, other);
         }
 
         void ApplyVisualRotation()

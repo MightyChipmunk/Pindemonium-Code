@@ -15,7 +15,7 @@ namespace Pinball.Ingame
             Func<bool> IsPlayingGetter,
             Func<List<Vector2>, int> BumperPositionCollector,
             Func<float, float> EffectDamageEvaluator,
-            Action<Vector2, float, float> CircleHitApplier,
+            Func<Collider2D, float, bool> ColliderHitApplier,
             Action<Vector2, Vector2, float, float> BoxHitApplier);
 
         const int ORBITAL_COUNT = 2;
@@ -23,7 +23,6 @@ namespace Pinball.Ingame
         const float MIN_MISSILE_INTERVAL = 0.5f;
         const float MISSILE_SPAWN_OFFSET = 0.45f;
         const float MISSILE_LIFETIME = 3.5f;
-        const float MISSILE_ARRIVE_DISTANCE = 0.28f;
         const int HOLE_CAPACITY = 2;
         const float MIN_HOLE_DISTANCE = 0.35f;
         const float RIFT_DURATION_SECONDS = 0.4f;
@@ -34,7 +33,7 @@ namespace Pinball.Ingame
         Func<bool> _isPlayingGetter = null;
         Func<List<Vector2>, int> _bumperPositionCollector = null;
         Func<float, float> _effectDamageEvaluator = null;
-        Action<Vector2, float, float> _circleHitApplier = null;
+        Func<Collider2D, float, bool> _colliderHitApplier = null;
         Action<Vector2, Vector2, float, float> _boxHitApplier = null;
         EffectBodySpawner _spawner = null;
         List<OrbitalBody> _orbitals = null;
@@ -53,7 +52,7 @@ namespace Pinball.Ingame
             _isPlayingGetter = param.IsPlayingGetter;
             _bumperPositionCollector = param.BumperPositionCollector;
             _effectDamageEvaluator = param.EffectDamageEvaluator;
-            _circleHitApplier = param.CircleHitApplier;
+            _colliderHitApplier = param.ColliderHitApplier;
             _boxHitApplier = param.BoxHitApplier;
             _spawner = spawner;
             _orbitals = new List<OrbitalBody>();
@@ -138,15 +137,8 @@ namespace Pinball.Ingame
             if (_orbitals.Count == 0)
                 SpawnOrbitals(ballPosition);
 
-            float damage = EvaluateDamage(ShopItemData.EEffectType.BallOrbital);
             for (int i = 0; i < _orbitals.Count; ++i)
-            {
-                OrbitalBody orbital = _orbitals[i];
-                orbital.Tick(ballPosition, deltaTime);
-
-                if (orbital.TryConsumeHitInterval())
-                    _circleHitApplier?.Invoke(orbital.transform.position, OrbitalBody.HIT_RADIUS, damage);
-            }
+                _orbitals[i].Tick(ballPosition, deltaTime);
         }
 
         void SpawnOrbitals(Vector2 ballPosition)
@@ -158,36 +150,39 @@ namespace Pinball.Ingame
                     continue;
 
                 orbital.Setup(i * ORBITAL_PHASE_STEP_DEGREE, ballPosition);
+                orbital.OnContact += HandleOrbitalContact;
                 _orbitals.Add(orbital);
             }
+        }
+
+        void HandleOrbitalContact(Collider2D hitCollider)
+        {
+            _colliderHitApplier?.Invoke(hitCollider, EvaluateDamage(ShopItemData.EEffectType.BallOrbital));
         }
 
         void DespawnOrbitals()
         {
             for (int i = 0; i < _orbitals.Count; ++i)
+            {
+                _orbitals[i].OnContact -= HandleOrbitalContact;
                 _spawner.Despawn(_orbitals[i]);
+            }
 
             _orbitals.Clear();
         }
 
         void TickMissiles(float deltaTime)
         {
-            float damage = EvaluateDamage(ShopItemData.EEffectType.BallHomingMissile);
             for (int i = _missiles.Count - 1; i >= 0; --i)
             {
                 MissileBody missile = _missiles[i];
                 missile.Tick(deltaTime);
                 _missileLifeRemains[i] -= deltaTime;
 
-                if (missile.HasReachedTarget(MISSILE_ARRIVE_DISTANCE))
-                {
-                    _circleHitApplier?.Invoke(missile.transform.position, MissileBody.HIT_RADIUS, damage);
-                    missile.Expire();
-                }
-
                 if (!missile.IsExpired && _missileLifeRemains[i] > 0f)
                     continue;
 
+                missile.OnContact -= HandleMissileContact;
                 _spawner.Despawn(missile);
                 _missiles.RemoveAt(i);
                 _missileLifeRemains.RemoveAt(i);
@@ -226,15 +221,30 @@ namespace Pinball.Ingame
                 Vector2 launchDirection = MISSILE_LAUNCH_DIRECTIONS[i];
                 Vector2 targetPosition = _bumperPositionBuffer[UnityEngine.Random.Range(0, targetCount)];
                 missile.Launch(ballPosition + launchDirection * MISSILE_SPAWN_OFFSET, launchDirection, targetPosition);
+                missile.OnContact += HandleMissileContact;
                 _missiles.Add(missile);
                 _missileLifeRemains.Add(MISSILE_LIFETIME);
             }
         }
 
+        void HandleMissileContact(MissileBody missile, Collider2D hitCollider)
+        {
+            if (null == _colliderHitApplier)
+                return;
+
+            if (!_colliderHitApplier(hitCollider, EvaluateDamage(ShopItemData.EEffectType.BallHomingMissile)))
+                return;
+
+            missile.Expire();
+        }
+
         void DespawnAllMissiles()
         {
             for (int i = 0; i < _missiles.Count; ++i)
+            {
+                _missiles[i].OnContact -= HandleMissileContact;
                 _spawner.Despawn(_missiles[i]);
+            }
 
             _missiles.Clear();
             _missileLifeRemains.Clear();

@@ -274,7 +274,7 @@ namespace Pinball.Ingame
                 IsPlayingGetter: GetIsPlaying,
                 BumperPositionCollector: _mapLoader.CollectAliveBumperPositions,
                 EffectDamageEvaluator: _damageCalculator.EvaluateEffectDamage,
-                CircleHitApplier: _mapLoader.ApplyCircleHit,
+                ColliderHitApplier: _mapLoader.ApplyColliderHit,
                 BoxHitApplier: _mapLoader.ApplyBoxHit), _effectBodySpawner);
             _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
             _powerSurgeCharger.OnChargedChanged += OnSurgeChargedChanged;
