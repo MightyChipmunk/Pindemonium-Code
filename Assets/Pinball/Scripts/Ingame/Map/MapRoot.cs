@@ -21,9 +21,12 @@ namespace Pinball.Ingame.Map
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
             Func<Collider2D, float, float> DamageEvaluator,
+            Func<Collider2D, float> AttackPowerEvaluator,
             Action<Flipper.EHitGrade, Vector2> OnBallStruck,
-            Action<BumperInteractable, float> OnBumperDamaged,
+            Action<BumperInteractable, float, Collider2D> OnBumperDamaged,
             Action OnBumperBroken,
+            Action<Collider2D> OnSlingshotBallHit,
+            Func<SlingshotInteractable.ESide, float> SlingshotHitScoreMultiplierConsumer,
             Action<Spring.EChargeEvent, Vector2> OnSpringChargeEvent,
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
@@ -34,6 +37,8 @@ namespace Pinball.Ingame.Map
             float BumperHealthMultiplier);
 
         [SerializeField] MapInteractable[] _interactables = null;
+        [SerializeField] MapSlot[] _slots = null;
+        [SerializeField] MapSlotReplacementData _slotReplacementData = null;
         [SerializeField] Flipper _leftFlipper = null;
         [SerializeField] Flipper _rightFlipper = null;
         [SerializeField] Spring _spring = null;
@@ -42,11 +47,19 @@ namespace Pinball.Ingame.Map
         [SerializeField] Renderer[] _springRenderers = null;
 
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
-        Action<BumperInteractable, float> _onBumperDamaged = null;
+        Action<BumperInteractable, float, Collider2D> _onBumperDamaged = null;
         Action _onBumperBroken = null;
+        Action<Collider2D> _onSlingshotBallHit = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
+        List<MapInteractable> _activeInteractables = null;
+        ObjectRegistry<int, IDamageable> _damageableRegistry = null;
+        List<Collider2D> _damageColliderBuffer = null;
+        List<Collider2D> _hitBuffer = null;
+        ContactFilter2D _hitFilter = default;
         List<BumperInteractable> _bumpers = null;
+        List<SlingshotInteractable> _slingshots = null;
+        List<LampBankInteractable> _lampBanks = null;
         List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
         float _sniperMarkElapsed = 0f;
@@ -55,42 +68,66 @@ namespace Pinball.Ingame.Map
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _bumpers = new List<BumperInteractable>();
+            _slingshots = new List<SlingshotInteractable>();
+            _lampBanks = new List<LampBankInteractable>();
             _markCandidates = new List<BumperInteractable>();
             _sniperMarkElapsed = 0f;
             _onBumperDamaged = param.OnBumperDamaged;
             _onBumperBroken = param.OnBumperBroken;
+            _onSlingshotBallHit = param.OnSlingshotBallHit;
             _fxPlayer = param.FXPlayer;
             _lineFXPlayer = param.LineFXPlayer;
 
-            if (null != _interactables)
+            _damageableRegistry = new ObjectRegistry<int, IDamageable>();
+            _damageColliderBuffer = new List<Collider2D>();
+            _hitBuffer = new List<Collider2D>();
+            _hitFilter = new ContactFilter2D();
+            _hitFilter.useTriggers = true;
+
+            BuildActiveInteractables();
+            for (int i = 0; i < _activeInteractables.Count; ++i)
             {
-                for (int i = 0; i < _interactables.Length; ++i)
+                MapInteractable interactable = _activeInteractables[i];
+                int scoreGainLimit = interactable.IsDeactivatable ? param.ScoreGainLimitGetter(interactable.GimmickType) : MapInteractable.NO_SCORE_GAIN_LIMIT;
+                BumperInteractable bumper = interactable as BumperInteractable;
+
+                if (null != bumper)
+                    bumper.SetHealthMultiplier(param.BumperHealthMultiplier);
+
+                SlingshotInteractable slingshot = interactable as SlingshotInteractable;
+                if (null != slingshot)
+                    slingshot.SetHitScoreMultiplierConsumer(param.SlingshotHitScoreMultiplierConsumer);
+
+                interactable.Init(new MapInteractable.InitParam(
+                    OnScoreGained: param.OnScoreGained,
+                    DamageEvaluator: param.DamageEvaluator,
+                    AttackPowerEvaluator: param.AttackPowerEvaluator,
+                    FXPlayer: param.FXPlayer,
+                    OnBallHit: param.OnGimmickBallHit,
+                    GimmickHitPresenter: param.GimmickHitPresenter,
+                    ScoreGainLimit: scoreGainLimit));
+
+                if (interactable.IsDeactivatable && param.IsGimmickAbsentGetter(interactable.GimmickType))
+                    interactable.Deactivate();
+
+                RegisterDamageable(interactable);
+
+                if (null != bumper)
                 {
-                    MapInteractable interactable = _interactables[i];
-                    int scoreGainLimit = interactable.IsDeactivatable ? param.ScoreGainLimitGetter(interactable.GimmickType) : MapInteractable.NO_SCORE_GAIN_LIMIT;
-                    BumperInteractable bumper = interactable as BumperInteractable;
-
-                    if (null != bumper)
-                        bumper.SetHealthMultiplier(param.BumperHealthMultiplier);
-
-                    interactable.Init(new MapInteractable.InitParam(
-                        OnScoreGained: param.OnScoreGained,
-                        DamageEvaluator: param.DamageEvaluator,
-                        FXPlayer: param.FXPlayer,
-                        OnBallHit: param.OnGimmickBallHit,
-                        GimmickHitPresenter: param.GimmickHitPresenter,
-                        ScoreGainLimit: scoreGainLimit));
-
-                    if (interactable.IsDeactivatable && param.IsGimmickAbsentGetter(interactable.GimmickType))
-                        interactable.Deactivate();
-
-                    if (null == bumper)
-                        continue;
-
                     _bumpers.Add(bumper);
                     bumper.OnBallDamaged += HandleBumperDamaged;
                     bumper.OnBroken += HandleBumperBroken;
                 }
+
+                if (null != slingshot)
+                {
+                    _slingshots.Add(slingshot);
+                    slingshot.OnBallBounced += HandleSlingshotBallBounced;
+                }
+
+                LampBankInteractable lampBank = interactable as LampBankInteractable;
+                if (null != lampBank)
+                    _lampBanks.Add(lampBank);
             }
 
             _onBallStruck = param.OnBallStruck;
@@ -101,16 +138,76 @@ namespace Pinball.Ingame.Map
             _spring.Init(param.OnSpringChargeEvent);
         }
 
+        void RegisterDamageable(MapInteractable interactable)
+        {
+            IDamageable damageable = interactable as IDamageable;
+            if (null == damageable)
+                return;
+
+            _damageColliderBuffer.Clear();
+            interactable.CollectDamageColliders(_damageColliderBuffer);
+            for (int i = 0; i < _damageColliderBuffer.Count; ++i)
+                _damageableRegistry.Register(_damageColliderBuffer[i].GetInstanceID(), damageable);
+        }
+
+        public void ApplyCircleHit(Vector2 center, float radius, float damage)
+        {
+            if (null == _hitBuffer)
+                return;
+
+            ApplyHits(Physics2D.OverlapCircle(center, radius, _hitFilter, _hitBuffer), damage);
+        }
+
+        public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)
+        {
+            if (null == _hitBuffer)
+                return;
+
+            ApplyHits(Physics2D.OverlapBox(center, size, angleDegree, _hitFilter, _hitBuffer), damage);
+        }
+
+        void ApplyHits(int hitCount, float damage)
+        {
+            for (int i = 0; i < hitCount; ++i)
+            {
+                Collider2D hitCollider = _hitBuffer[i];
+                if (!_damageableRegistry.Find(hitCollider.GetInstanceID(), out IDamageable damageable))
+                    continue;
+
+                damageable.TakeHit(damage, hitCollider.bounds.center);
+            }
+        }
+
+        void BuildActiveInteractables()
+        {
+            _activeInteractables = new List<MapInteractable>();
+            if (null != _interactables)
+                _activeInteractables.AddRange(_interactables);
+
+            if (null == _slots)
+                return;
+
+            for (int i = 0; i < _slots.Length; ++i)
+            {
+                MapSlot slot = _slots[i];
+                MapInteractable defaultInteractable = slot.GetDefaultInteractable();
+                MapInteractable resolved = slot.Resolve(_slotReplacementData);
+                if (resolved == defaultInteractable)
+                    continue;
+
+                int index = _activeInteractables.IndexOf(defaultInteractable);
+                if (index < 0)
+                    continue;
+
+                _activeInteractables[index] = resolved;
+            }
+        }
+
         public void Suspend()
         {
             CancelChainDamage();
             _spring.SetCharging(false);
-
-            if (null == _interactables)
-                return;
-
-            for (int i = 0; i < _interactables.Length; ++i)
-                _interactables[i].Release();
+            ReleaseInteractables();
         }
 
         public void Release()
@@ -126,6 +223,7 @@ namespace Pinball.Ingame.Map
             _onBallStruck = null;
             _onBumperDamaged = null;
             _onBumperBroken = null;
+            _onSlingshotBallHit = null;
 
             if (null != _bumpers)
             {
@@ -139,10 +237,58 @@ namespace Pinball.Ingame.Map
                 _bumpers = null;
             }
 
+            if (null != _slingshots)
+            {
+                for (int i = 0; i < _slingshots.Count; ++i)
+                    _slingshots[i].OnBallBounced -= HandleSlingshotBallBounced;
+
+                _slingshots.Clear();
+                _slingshots = null;
+            }
+
+            if (null != _lampBanks)
+            {
+                _lampBanks.Clear();
+                _lampBanks = null;
+            }
+
             if (null != _markCandidates)
             {
                 _markCandidates.Clear();
                 _markCandidates = null;
+            }
+
+            if (null != _damageableRegistry)
+            {
+                _damageableRegistry.Clear();
+                _damageableRegistry = null;
+            }
+
+            if (null != _damageColliderBuffer)
+            {
+                _damageColliderBuffer.Clear();
+                _damageColliderBuffer = null;
+            }
+
+            if (null != _hitBuffer)
+            {
+                _hitBuffer.Clear();
+                _hitBuffer = null;
+            }
+
+            ReleaseInteractables();
+            ClearSlots();
+            _activeInteractables = null;
+        }
+
+        void ReleaseInteractables()
+        {
+            if (null != _activeInteractables)
+            {
+                for (int i = 0; i < _activeInteractables.Count; ++i)
+                    _activeInteractables[i].Release();
+
+                return;
             }
 
             if (null == _interactables)
@@ -150,6 +296,15 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _interactables.Length; ++i)
                 _interactables[i].Release();
+        }
+
+        void ClearSlots()
+        {
+            if (null == _slots)
+                return;
+
+            for (int i = 0; i < _slots.Length; ++i)
+                _slots[i].Clear();
         }
 
         void CancelChainDamage()
@@ -162,7 +317,22 @@ namespace Pinball.Ingame.Map
             _cancellationTokenSource = null;
         }
 
-        public void TickSniperMark(float deltaTime)
+        public void Tick(float deltaTime)
+        {
+            TickLampWarmup(deltaTime);
+            TickSniperMark(deltaTime);
+        }
+
+        void TickLampWarmup(float deltaTime)
+        {
+            if (null == _lampBanks)
+                return;
+
+            for (int i = 0; i < _lampBanks.Count; ++i)
+                _lampBanks[i].TickWarmup(deltaTime);
+        }
+
+        void TickSniperMark(float deltaTime)
         {
             if (null == _bumpers)
                 return;
@@ -285,9 +455,9 @@ namespace Pinball.Ingame.Map
             return nearest;
         }
 
-        void HandleBumperDamaged(BumperInteractable bumper, float damage)
+        void HandleBumperDamaged(BumperInteractable bumper, float damage, Collider2D ballCollider)
         {
-            _onBumperDamaged?.Invoke(bumper, damage);
+            _onBumperDamaged?.Invoke(bumper, damage, ballCollider);
         }
 
         void HandleBumperBroken()
@@ -295,13 +465,42 @@ namespace Pinball.Ingame.Map
             _onBumperBroken?.Invoke();
         }
 
+        void HandleSlingshotBallBounced(Collider2D ballCollider)
+        {
+            _onSlingshotBallHit?.Invoke(ballCollider);
+        }
+
+        public int CollectAliveBumperPositions(List<Vector2> buffer)
+        {
+            buffer.Clear();
+            if (null == _bumpers)
+                return 0;
+
+            for (int i = 0; i < _bumpers.Count; ++i)
+            {
+                BumperInteractable bumper = _bumpers[i];
+                if (bumper.IsBroken || bumper.IsDeactivated)
+                    continue;
+
+                buffer.Add(bumper.transform.position);
+            }
+
+            return buffer.Count;
+        }
+
         public int GetInteractableCount()
         {
+            if (null != _activeInteractables)
+                return _activeInteractables.Count;
+
             return null == _interactables ? 0 : _interactables.Length;
         }
 
         public MapInteractable GetInteractable(int index)
         {
+            if (null != _activeInteractables)
+                return index < 0 || index >= _activeInteractables.Count ? null : _activeInteractables[index];
+
             if (null == _interactables || index < 0 || index >= _interactables.Length)
                 return null;
 
@@ -422,6 +621,7 @@ namespace Pinball.Ingame.Map
         protected override void OnBindSerializedField()
         {
             _interactables = GetComponentsInChildren<MapInteractable>(true);
+            _slots = GetComponentsInChildren<MapSlot>(true);
             _spring = GetComponentInChildren<Spring>(true);
 
             Flipper[] flippers = GetComponentsInChildren<Flipper>(true);

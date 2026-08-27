@@ -21,13 +21,15 @@ namespace Pinball.Ingame
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
-            Action<PoolableFX.EFXType, Vector2> FXPlayer);
+            Action<PoolableFX.EFXType, Vector2> FXPlayer,
+            Action<Vector2> SurfaceHitReporter);
 
         BallSpawner _spawner = null;
         BallStockCounter _ballStock = null;
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
+        Action<Vector2> _surfaceHitReporter = null;
         MapRoot _map = null;
         Ball _activeBall = null;
         List<Ball> _cloneBalls = null;
@@ -51,6 +53,7 @@ namespace Pinball.Ingame
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
             _fxPlayer = param.FXPlayer;
+            _surfaceHitReporter = param.SurfaceHitReporter;
             _usedBallCount = 0;
             _cloneBalls = new List<Ball>();
             _cloneLifeRemains = new List<float>();
@@ -82,6 +85,7 @@ namespace Pinball.Ingame
 
             ball.SetMass(StatProvider.GetBallMass());
             ball.SetHitFXPlayer(_fxPlayer);
+            ball.SetSurfaceHitReporter(_surfaceHitReporter);
             ApplyPassiveAura(ball);
             ball.SetAura(BallAura.EAuraType.Surge, _isSurgeCharged);
             _activeBall = ball;
@@ -120,6 +124,16 @@ namespace Pinball.Ingame
             return _activeBall.IsSimulated();
         }
 
+        public bool TryGetActiveBallPosition(out Vector2 position)
+        {
+            position = default;
+            if (null == _activeBall)
+                return false;
+
+            position = _activeBall.transform.position;
+            return true;
+        }
+
         public bool TryApplyNudgeToActiveBall(Vector2 impulse)
         {
             if (!CanNudgeActiveBall())
@@ -155,6 +169,30 @@ namespace Pinball.Ingame
                 return false;
 
             return _cloneBalls.Contains(ball);
+        }
+
+        public void MultiplyDamageStack(Collider2D ballCollider, float scale)
+        {
+            if (!_spawner.TryResolve(ballCollider, out Ball ball))
+                return;
+
+            ball.MultiplyDamageStack(scale);
+        }
+
+        public void ResetDamageStack(Collider2D ballCollider)
+        {
+            if (!_spawner.TryResolve(ballCollider, out Ball ball))
+                return;
+
+            ball.ResetDamageStack();
+        }
+
+        public float GetDamageStackMultiplier(Collider2D ballCollider)
+        {
+            if (!_spawner.TryResolve(ballCollider, out Ball ball))
+                return Ball.DEFAULT_DAMAGE_STACK;
+
+            return ball.DamageStackMultiplier;
         }
 
         void HandleBallCountChanged(int remaining)

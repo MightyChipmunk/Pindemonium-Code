@@ -16,6 +16,9 @@ namespace Pinball.Ingame
         const float MIN_HIT_FX_IMPULSE = 3f;
         const PoolableFX.EFXType WALL_HIT_FX = PoolableFX.EFXType.BallCollide;
         const float MAX_HIT_VOLUME_RATIO = 1f;
+        public const float DEFAULT_DAMAGE_STACK = 1f;
+
+        const float MAX_DAMAGE_STACK = 1000000000000f;
 
         static readonly Color STONE_TINT = new Color(0.49f, 0.59f, 1f, 1f);
 
@@ -30,9 +33,22 @@ namespace Pinball.Ingame
         [SerializeField] LayerMask _hitSoundLayerMask = 0;
 
         Action<PoolableFX.EFXType, Vector2> _hitFXPlayer = null;
+        Action<Vector2> _surfaceHitReporter = null;
+        float _damageStackMultiplier = DEFAULT_DAMAGE_STACK;
 
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
+        public float DamageStackMultiplier => _damageStackMultiplier;
+
+        public void MultiplyDamageStack(float scale)
+        {
+            _damageStackMultiplier = Mathf.Min(_damageStackMultiplier * scale, MAX_DAMAGE_STACK);
+        }
+
+        public void ResetDamageStack()
+        {
+            _damageStackMultiplier = DEFAULT_DAMAGE_STACK;
+        }
 
         public void SetMass(float mass)
         {
@@ -59,6 +75,11 @@ namespace Pinball.Ingame
         public void SetHitFXPlayer(Action<PoolableFX.EFXType, Vector2> hitFXPlayer)
         {
             _hitFXPlayer = hitFXPlayer;
+        }
+
+        public void SetSurfaceHitReporter(Action<Vector2> surfaceHitReporter)
+        {
+            _surfaceHitReporter = surfaceHitReporter;
         }
 
         public void SetSpikesActive(bool isActive)
@@ -132,6 +153,7 @@ namespace Pinball.Ingame
         public void OnGet()
         {
             gameObject.SetActive(true);
+            ResetDamageStack();
             SetAlpha(OPAQUE_ALPHA);
             SetSpikesActive(false);
             SetScopeActive(false);
@@ -146,6 +168,7 @@ namespace Pinball.Ingame
             SetKinematic(true);
             _auraController.Release();
             _hitFXPlayer = null;
+            _surfaceHitReporter = null;
             _trail.Release();
         }
 
@@ -153,6 +176,8 @@ namespace Pinball.Ingame
 
         void OnCollisionEnter2D(Collision2D collision)
         {
+            _surfaceHitReporter?.Invoke(collision.GetContact(0).point);
+
             if (!_hitSoundLayerMask.HasLayer(collision.gameObject.layer))
                 return;
 

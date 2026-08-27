@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class LampBankInteractable : MapInteractable
+    public class LampBankInteractable : MapInteractable, IDamageable
     {
         const int SIREN_CYCLE_COUNT = 3;
         const float SIREN_STEP_INTERVAL = 0.08f;
@@ -32,6 +32,9 @@ namespace Pinball.Ingame.Map
         int _hitCount = 0;
         int _requiredCount = 0;
         int _litLampCount = NO_LIT_LAMP;
+        int _clearCount = 0;
+        float _warmupElapsed = 0f;
+        float _pendingAttackScore = 0f;
         bool _isPlayingSiren = false;
 
         public override EGimmickType GimmickType => EGimmickType.LampBank;
@@ -41,6 +44,9 @@ namespace Pinball.Ingame.Map
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _hitCount = 0;
             _litLampCount = NO_LIT_LAMP;
+            _clearCount = 0;
+            _warmupElapsed = 0f;
+            _pendingAttackScore = 0f;
             _isPlayingSiren = false;
 
             if (null == _lamps)
@@ -103,18 +109,37 @@ namespace Pinball.Ingame.Map
                 _lamps[i].Release();
         }
 
+        public void TickWarmup(float deltaTime)
+        {
+            if (_isPlayingSiren || IsDeactivated)
+                return;
+
+            _warmupElapsed += deltaTime;
+        }
+
+        public void TakeHit(float damage, Vector2 worldPoint)
+        {
+            ApplyLampHit(damage);
+        }
+
         void OnTriggerEnter2D(Collider2D other)
         {
-            if (_isPlayingSiren)
+            if (!IsBallLayer(other.gameObject.layer))
+                return;
+
+            ApplyLampHit(EvaluateAttackPower(other));
+        }
+
+        void ApplyLampHit(float attackPower)
+        {
+            if (_isPlayingSiren || IsDeactivated)
                 return;
 
             if (null == _lamps || _lamps.Length == 0)
                 return;
 
-            if (!IsBallLayer(other.gameObject.layer))
-                return;
-
-            ++_hitCount;
+            _hitCount += StatProvider.GetLampIgniteCount(attackPower);
+            _pendingAttackScore += StatProvider.GetLampAttackScore(attackPower);
             LightUpProgressLamps();
             PlayGimmickHit();
 
@@ -139,7 +164,12 @@ namespace Pinball.Ingame.Map
         void Clear()
         {
             _isPlayingSiren = true;
-            GainScore(Mathf.RoundToInt(_clearScoreReward * StatProvider.GetLampScoreMultiplier()));
+            float baseScore = _clearScoreReward * StatProvider.GetLampScoreMultiplier() + _pendingAttackScore;
+            float clearMultiplier = StatProvider.GetLampWarmupMultiplier(_warmupElapsed) * (1f + _clearCount * StatProvider.GetLampCompletionGrowth());
+            GainScore(Mathf.RoundToInt(baseScore * clearMultiplier));
+            ++_clearCount;
+            _warmupElapsed = 0f;
+            _pendingAttackScore = 0f;
             PlayFX(_clearFX, transform.position);
             PlayBankClearedSound();
 

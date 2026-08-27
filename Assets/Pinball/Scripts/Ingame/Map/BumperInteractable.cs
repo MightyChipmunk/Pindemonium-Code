@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class BumperInteractable : CollisionInteractable
+    public class BumperInteractable : CollisionInteractable, IDamageable
     {
         const float HIT_PUNCH_RATIO = 0.7f;
         const float HIT_PUNCH_DURATION = 0.2f;
@@ -57,7 +57,12 @@ namespace Pinball.Ingame.Map
         public bool IsSniperMarked => _isSniperMarked;
 
         public event Action OnBroken;
-        public event Action<BumperInteractable, float> OnBallDamaged;
+        public event Action<BumperInteractable, float, Collider2D> OnBallDamaged;
+
+        public BumperGradeData.EGrade GetGrade()
+        {
+            return _grade;
+        }
 
         protected override void OnInit()
         {
@@ -160,7 +165,7 @@ namespace Pinball.Ingame.Map
 
             float overkillScoreRatio = ConsumeSniperMark();
             ReduceHealth(damage, overkillScoreRatio);
-            OnBallDamaged?.Invoke(this, damage);
+            OnBallDamaged?.Invoke(this, damage, collision.collider);
         }
 
         public void SetHealthMultiplier(float multiplier)
@@ -248,6 +253,14 @@ namespace Pinball.Ingame.Map
                 _sniperMark.localRotation = Quaternion.identity;
 
             _sniperMark.gameObject.SetActive(_isSniperMarked);
+        }
+
+        public void TakeHit(float damage, Vector2 worldPoint)
+        {
+            if (IsDeactivated)
+                return;
+
+            ApplyDamage(damage, PoolableFX.EFXType.NonePooling);
         }
 
         public void ApplyDamage(float damage, PoolableFX.EFXType extraFX)

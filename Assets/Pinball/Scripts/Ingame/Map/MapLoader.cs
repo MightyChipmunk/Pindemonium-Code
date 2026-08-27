@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -38,6 +39,33 @@ namespace Pinball.Ingame.Map
             _currentMap.Release();
             Destroy(_currentMap.gameObject);
             _currentMap = null;
+        }
+
+        public int CollectAliveBumperPositions(List<Vector2> buffer)
+        {
+            if (null == _currentMap)
+            {
+                buffer.Clear();
+                return 0;
+            }
+
+            return _currentMap.CollectAliveBumperPositions(buffer);
+        }
+
+        public void ApplyCircleHit(Vector2 center, float radius, float damage)
+        {
+            if (null == _currentMap)
+                return;
+
+            _currentMap.ApplyCircleHit(center, radius, damage);
+        }
+
+        public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)
+        {
+            if (null == _currentMap)
+                return;
+
+            _currentMap.ApplyBoxHit(center, size, angleDegree, damage);
         }
     }
 }

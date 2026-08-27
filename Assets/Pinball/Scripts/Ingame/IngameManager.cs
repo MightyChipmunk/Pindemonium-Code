@@ -35,6 +35,7 @@ namespace Pinball.Ingame
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
+        [SerializeField] EffectBodySpawner _effectBodySpawner = null;
         [SerializeField] BallDrainZone _drainZone = null;
         [SerializeField] MapLoader _mapLoader = null;
         [SerializeField] IngameUIRoot _uiRoot = null;
@@ -69,6 +70,7 @@ namespace Pinball.Ingame
         IngameResultPresenter _resultPresenter = null;
         PlayerController _playerController = null;
         BallFlowController _ballFlow = null;
+        BallEffectController _ballEffectController = null;
         ScoreCounter _scoreCounter = null;
         SlingshotScoreGrowth _slingshotGrowth = null;
         GimmickScoreTracker _gimmickScoreTracker = null;
@@ -236,6 +238,8 @@ namespace Pinball.Ingame
 
             _ballSpawner.Init();
             Track(_ballSpawner.Release);
+            _effectBodySpawner.Init();
+            Track(_effectBodySpawner.Release);
             _drainZone.Init();
             Track(_drainZone.Release);
             _uiRoot.Init();
@@ -256,12 +260,22 @@ namespace Pinball.Ingame
             _ballFlow = new BallFlowController(new BallFlowController.InitParam(
                 IsControlBlockedGetter: GetIsControlBlocked,
                 IsPlayingGetter: GetIsPlaying,
-                FXPlayer: _director.PlayFX), _ballSpawner);
+                FXPlayer: _director.PlayFX,
+                SurfaceHitReporter: ReportBallSurfaceHit), _ballSpawner);
             _drainZone.OnColliderEntered += _ballFlow.HandleBallDrained;
 
             _damageCalculator = new DamageCalculator(new DamageCalculator.InitParam(
                 SurgeMultiplierConsumer: _powerSurgeCharger.ConsumeMultiplier,
-                IsCloneBallGetter: _ballFlow.IsCloneBall));
+                IsCloneBallGetter: _ballFlow.IsCloneBall,
+                DamageStackMultiplierGetter: _ballFlow.GetDamageStackMultiplier));
+
+            _ballEffectController = new BallEffectController(new BallEffectController.InitParam(
+                ActiveBallPositionGetter: _ballFlow.TryGetActiveBallPosition,
+                IsPlayingGetter: GetIsPlaying,
+                BumperPositionCollector: _mapLoader.CollectAliveBumperPositions,
+                EffectDamageEvaluator: _damageCalculator.EvaluateEffectDamage,
+                CircleHitApplier: _mapLoader.ApplyCircleHit,
+                BoxHitApplier: _mapLoader.ApplyBoxHit), _effectBodySpawner);
             _powerSurgeCharger.OnChargedChanged += _ballFlow.SetSurgeCharged;
             _powerSurgeCharger.OnChargedChanged += OnSurgeChargedChanged;
 
@@ -325,7 +339,10 @@ namespace Pinball.Ingame
             _playState = new PlayState(new PlayState.InitParam(
                 MapLoader: LoadMapForPlay,
                 DamageEvaluator: _damageCalculator.Calculate,
+                AttackPowerEvaluator: _damageCalculator.EvaluateAttackPower,
                 SurgeTicker: _powerSurgeCharger.Tick,
+                BallEffectTicker: _ballEffectController.Tick,
+                BallEffectResetter: _ballEffectController.Reset,
                 OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
                 StageClearSettler: SettleStageClear,
                 StageClearInterceptorAsync: _tutorialManager.RunPendingPlayStepsAsync,
@@ -629,6 +646,14 @@ namespace Pinball.Ingame
         {
             _director.SetNudgeAiming(isAiming);
             _ballFlow.SetNudgeAimActive(isAiming);
+        }
+
+        void ReportBallSurfaceHit(Vector2 point)
+        {
+            if (null == _ballEffectController)
+                return;
+
+            _ballEffectController.NotifySurfaceHit(point);
         }
 
         bool GetIsControlBlocked()

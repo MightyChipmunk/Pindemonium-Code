@@ -145,6 +145,9 @@ namespace Pinball.Ingame
             if (null == collision.rigidbody)
                 return;
 
+            if (collision.rigidbody.bodyType != RigidbodyType2D.Dynamic)
+                return;
+
             if (!_ballLayerMask.HasLayer(collision.gameObject.layer))
                 return;
 

@@ -31,6 +31,7 @@ namespace Pinball.Ingame.Map
         public record InitParam(
             Action<EGimmickType, int, Vector2, EScoreSource> OnScoreGained,
             Func<Collider2D, float, float> DamageEvaluator,
+            Func<Collider2D, float> AttackPowerEvaluator,
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<Collider2D> OnBallHit,
             Action GimmickHitPresenter,
@@ -109,9 +110,11 @@ namespace Pinball.Ingame.Map
 
         [SerializeField] LayerMask _ballLayerMask = default;
         [SerializeField] Renderer[] _boundsRenderers = null;
+        [SerializeField] Collider2D[] _damageColliders = null;
 
         Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
         Func<Collider2D, float, float> _damageEvaluator = null;
+        Func<Collider2D, float> _attackPowerEvaluator = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<Collider2D> _onBallHit = null;
         Action _gimmickHitPresenter = null;
@@ -128,6 +131,7 @@ namespace Pinball.Ingame.Map
         {
             _onScoreGained = param.OnScoreGained;
             _damageEvaluator = param.DamageEvaluator;
+            _attackPowerEvaluator = param.AttackPowerEvaluator;
             _fxPlayer = param.FXPlayer;
             _onBallHit = param.OnBallHit;
             _gimmickHitPresenter = param.GimmickHitPresenter;
@@ -143,6 +147,7 @@ namespace Pinball.Ingame.Map
             OnRelease();
             _onScoreGained = null;
             _damageEvaluator = null;
+            _attackPowerEvaluator = null;
             _fxPlayer = null;
             _onBallHit = null;
             _gimmickHitPresenter = null;
@@ -195,6 +200,16 @@ namespace Pinball.Ingame.Map
                     buffer.Add(snapshot);
         }
 
+        public void CollectDamageColliders(List<Collider2D> buffer)
+        {
+            if (null == _damageColliders)
+                return;
+
+            for (int i = 0; i < _damageColliders.Length; ++i)
+                if (null != _damageColliders[i])
+                    buffer.Add(_damageColliders[i]);
+        }
+
         public void Deactivate()
         {
             if (!IsDeactivatable)
@@ -227,6 +242,14 @@ namespace Pinball.Ingame.Map
                 return 0f;
 
             return _damageEvaluator(ballCollider, collisionImpulse);
+        }
+
+        protected float EvaluateAttackPower(Collider2D ballCollider)
+        {
+            if (null == _attackPowerEvaluator)
+                return 0f;
+
+            return _attackPowerEvaluator(ballCollider);
         }
 
         protected void GainScore(int score)
@@ -333,6 +356,7 @@ namespace Pinball.Ingame.Map
         protected override void OnBindSerializedField()
         {
             _boundsRenderers = GetComponentsInChildren<Renderer>(true);
+            _damageColliders = this is IDamageable ? GetComponentsInChildren<Collider2D>(true) : null;
         }
 #endif // UNITY_EDITOR
     }

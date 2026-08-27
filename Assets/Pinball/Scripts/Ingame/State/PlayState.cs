@@ -21,7 +21,10 @@ namespace Pinball.Ingame.State
         public record InitParam(
             Func<int, MapRoot> MapLoader,
             Func<Collider2D, float, float> DamageEvaluator,
+            Func<Collider2D, float> AttackPowerEvaluator,
             Action<float> SurgeTicker,
+            Action<float> BallEffectTicker,
+            Action BallEffectResetter,
             Action OnGimmickBroken,
             Action StageClearSettler,
             Func<UniTask> StageClearInterceptorAsync,
@@ -34,6 +37,7 @@ namespace Pinball.Ingame.State
         ScoreCounter _scoreCounter = null;
         IngameDirector _director = null;
         StageGimmickResolver _gimmickResolver = null;
+        SlingshotAlternateTracker _slingshotAlternateTracker = null;
         MapRoot _currentMap = null;
         bool _isBallInPlay = false;
         bool _isPaused = false;
@@ -71,6 +75,7 @@ namespace Pinball.Ingame.State
             _isPlayStopped = false;
             _isBallInPlay = false;
             _isPaused = false;
+            _slingshotAlternateTracker = new SlingshotAlternateTracker();
             BgmManager.Play(GetStageBgmType());
             _stageTracker.StartCurrentStage();
             LoadMap();
@@ -112,11 +117,12 @@ namespace Pinball.Ingame.State
             _scoreCounter.Tick(deltaTime);
             _playerController.Tick(deltaTime);
             _param.SurgeTicker?.Invoke(deltaTime);
+            _param.BallEffectTicker?.Invoke(deltaTime);
             _ballFlow.Tick(deltaTime);
             _stageTracker.Tick(deltaTime);
 
             if (null != _currentMap)
-                _currentMap.TickSniperMark(deltaTime);
+                _currentMap.Tick(deltaTime);
         }
 
         public void TogglePause()
@@ -173,6 +179,7 @@ namespace Pinball.Ingame.State
             _isBallInPlay = false;
             _playerController.ResetControlStates();
             _scoreCounter.EndCombo();
+            _param.BallEffectResetter?.Invoke();
             _ballFlow.DespawnBalls();
 
             if (null != _currentMap)
@@ -190,9 +197,12 @@ namespace Pinball.Ingame.State
             _currentMap.Init(new MapRoot.InitParam(
                 OnScoreGained: _scoreCounter.HandleMapScoreGained,
                 DamageEvaluator: _param.DamageEvaluator,
+                AttackPowerEvaluator: _param.AttackPowerEvaluator,
                 OnBallStruck: OnBallStruck,
                 OnBumperDamaged: OnBumperDamaged,
                 OnBumperBroken: OnBumperBroken,
+                OnSlingshotBallHit: OnSlingshotBallHit,
+                SlingshotHitScoreMultiplierConsumer: _slingshotAlternateTracker.ConsumeHit,
                 OnSpringChargeEvent: _director.PlaySpringCharge,
                 FXPlayer: _director.PlayFX,
                 LineFXPlayer: _director.PlayLineFX,
@@ -289,8 +299,20 @@ namespace Pinball.Ingame.State
             _scoreCounter.HandleBallStruck(grade, worldPoint);
         }
 
-        void OnBumperDamaged(BumperInteractable bumper, float damage)
+        void OnSlingshotBallHit(Collider2D ballCollider)
         {
+            if (StatProvider.HasEffect(ShopItemData.EEffectType.SlingshotNudgeReset))
+                _playerController.ResetNudgeCooldown();
+
+            if (StatProvider.HasEffect(ShopItemData.EEffectType.SlingshotAttackStack))
+                _ballFlow.MultiplyDamageStack(ballCollider, StatProvider.GetSlingshotAttackStackScale());
+        }
+
+        void OnBumperDamaged(BumperInteractable bumper, float damage, Collider2D ballCollider)
+        {
+            if (StatProvider.HasEffect(ShopItemData.EEffectType.SlingshotAttackStack))
+                _ballFlow.ResetDamageStack(ballCollider);
+
             bumper.GainHitScore(Mathf.RoundToInt(StatProvider.GetBumperHitScore()));
             ApplyBlast(bumper, damage);
 

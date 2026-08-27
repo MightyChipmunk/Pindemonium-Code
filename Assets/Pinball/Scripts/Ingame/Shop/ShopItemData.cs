@@ -66,6 +66,20 @@ namespace Pinball.Ingame.Shop
             ComboGainRate = 34,
             ComboDigitDamage = 35,
             TopUpgradeScoreRatio = 36,
+            SlingshotAttackStack = 37,
+            SlingshotAlternateScore = 38,
+            SlingshotNudgeReset = 39,
+            BumperToSaucerSmall = 40,
+            BumperToSaucerMedium = 41,
+            BumperToSaucerLarge = 42,
+            SaucerCooldownRatio = 43,
+            LampWarmup = 44,
+            LampCompletionGrowth = 45,
+            LampMultiIgnite = 46,
+            LampAttackScore = 47,
+            BallOrbital = 48,
+            BallHomingMissile = 49,
+            BallVoidRift = 50,
         }
 
         [SerializeField] string _nameKey = string.Empty;

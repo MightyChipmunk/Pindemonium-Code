@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class SpinnerInteractable : MapInteractable
+    public class SpinnerInteractable : MapInteractable, IDamageable
     {
         const float FULL_ROTATION = 360f;
         const float REST_ANGLE = 0f;
@@ -59,11 +59,16 @@ namespace Pinball.Ingame.Map
             _hasPendingBallHit = false;
         }
 
-        void OnTriggerEnter2D(Collider2D other)
+        public void TakeHit(float damage, Vector2 worldPoint)
         {
-            if (null == _cancellationTokenSource)
+            if (IsDeactivated)
                 return;
 
+            AddRevolutions(_minRevolutions);
+        }
+
+        void OnTriggerEnter2D(Collider2D other)
+        {
             if (!IsBallLayer(other.gameObject.layer))
                 return;
 
@@ -71,7 +76,15 @@ namespace Pinball.Ingame.Map
             if (null == body)
                 return;
 
-            _remainingRevolutions += GetRevolutions(body.linearVelocity.magnitude);
+            AddRevolutions(GetRevolutions(body.linearVelocity.magnitude));
+        }
+
+        void AddRevolutions(float revolutions)
+        {
+            if (null == _cancellationTokenSource)
+                return;
+
+            _remainingRevolutions += revolutions;
             _hasPendingBallHit = true;
             PlayGimmickHitPresentation();
             PlaySpinTick();

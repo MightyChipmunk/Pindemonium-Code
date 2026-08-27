@@ -40,6 +40,8 @@ namespace Pinball.Ingame.Map
         static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 1f, 0.5f, 1f);
         static readonly Color WEAK_TARGET_TINT = new Color(0.42f, 0.78f, 0.45f, 1f);
 
+        [SerializeField] SaucerGradeData _gradeData = null;
+        [SerializeField] SaucerGradeData.EGrade _grade = SaucerGradeData.EGrade.Normal;
         [SerializeField] Collider2D _collider = null;
         [SerializeField] Transform _visual = null;
         [SerializeField] Lamp[] _indicators = null;
@@ -54,6 +56,7 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         Rigidbody2D _heldBody = null;
         Tween _visualTween = null;
+        SaucerGradeData.GradeSpec _spec = default;
         Vector3 _visualBaseScale = Vector3.one;
         float[] _spinIntervals = null;
         int _litIndex = NO_LIT_INDEX;
@@ -62,12 +65,23 @@ namespace Pinball.Ingame.Map
 
         public override EGimmickType GimmickType => EGimmickType.Saucer;
 
+        public void SetGrade(SaucerGradeData.EGrade grade)
+        {
+            _grade = grade;
+        }
+
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _heldBody = null;
             _captureCount = 0;
             _litIndex = NO_LIT_INDEX;
+
+            if (null != _gradeData)
+            {
+                _spec = _gradeData.GetSpec(_grade);
+                transform.localScale = Vector3.one * _spec.RootScale;
+            }
 
             if (null != _visual)
                 _visualBaseScale = _visual.localScale;
@@ -128,7 +142,7 @@ namespace Pinball.Ingame.Map
                 return;
             }
 
-            float spinTime = Mathf.Max(_holdDuration - SPIN_STOP_LEAD_TIME, MIN_SPIN_TIME);
+            float spinTime = Mathf.Max(GetHoldDuration() - SPIN_STOP_LEAD_TIME, MIN_SPIN_TIME);
             int stepCount = Mathf.Max(_indicators.Length, Mathf.RoundToInt(spinTime / SPIN_BASE_INTERVAL));
             _spinIntervals = new float[stepCount];
 
@@ -196,12 +210,13 @@ namespace Pinball.Ingame.Map
 
         async UniTask CooldownAsync(CancellationToken cancellationToken)
         {
-            if (_cooldownDuration <= NO_COOLDOWN)
+            float cooldownDuration = GetCooldownDuration();
+            if (cooldownDuration <= NO_COOLDOWN)
                 return;
 
             _collider.enabled = false;
             PlayIndicatorsHide();
-            await UniTask.Delay(TimeSpan.FromSeconds(_cooldownDuration), cancellationToken: cancellationToken);
+            await UniTask.Delay(TimeSpan.FromSeconds(cooldownDuration), cancellationToken: cancellationToken);
             RefreshBonusTargets();
             PlayIndicatorsShow();
             _collider.enabled = true;
@@ -293,7 +308,7 @@ namespace Pinball.Ingame.Map
         {
             if (null == _spinIntervals || targetIndex == NO_LIT_INDEX)
             {
-                await UniTask.Delay(TimeSpan.FromSeconds(Mathf.Max(_holdDuration - SPIN_STOP_LEAD_TIME, MIN_SPIN_TIME)), cancellationToken: cancellationToken);
+                await UniTask.Delay(TimeSpan.FromSeconds(Mathf.Max(GetHoldDuration() - SPIN_STOP_LEAD_TIME, MIN_SPIN_TIME)), cancellationToken: cancellationToken);
                 return;
             }
 
@@ -342,8 +357,27 @@ namespace Pinball.Ingame.Map
 
         int GetCurrentReward()
         {
-            int step = Mathf.Clamp(_captureCount, MIN_REWARD_STEP, _maxRewardStep);
-            return _scoreReward + _scoreRewardIncrement * step;
+            int maxRewardStep = null == _gradeData ? _maxRewardStep : _spec.MaxRewardStep;
+            int scoreReward = null == _gradeData ? _scoreReward : _spec.ScoreReward;
+            int scoreRewardIncrement = null == _gradeData ? _scoreRewardIncrement : _spec.ScoreRewardIncrement;
+            int step = Mathf.Clamp(_captureCount, MIN_REWARD_STEP, maxRewardStep);
+            return scoreReward + scoreRewardIncrement * step;
+        }
+
+        float GetHoldDuration()
+        {
+            return null == _gradeData ? _holdDuration : _spec.HoldDuration;
+        }
+
+        float GetCooldownDuration()
+        {
+            float baseDuration = null == _gradeData ? _cooldownDuration : _spec.CooldownDuration;
+            return baseDuration * StatProvider.GetSaucerCooldownScale();
+        }
+
+        float GetEjectSpeed()
+        {
+            return null == _gradeData ? _ejectSpeed : _spec.EjectSpeed;
         }
 
         void ReleaseHeldBody(Vector2 ejectDirection)
@@ -354,7 +388,7 @@ namespace Pinball.Ingame.Map
             Rigidbody2D body = _heldBody;
             _heldBody = null;
             body.bodyType = RigidbodyType2D.Dynamic;
-            body.linearVelocity = ejectDirection * _ejectSpeed;
+            body.linearVelocity = ejectDirection * GetEjectSpeed();
         }
 
         void PlayCaptureMotion()

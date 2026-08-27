@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class DropTargetBankInteractable : MapInteractable
+    public class DropTargetBankInteractable : MapInteractable, IDamageable
     {
         const float NO_ORDER_MULTIPLIER = 1f;
         const float ORDER_STEP_MAX_PITCH = 1.6f;
@@ -113,6 +113,39 @@ namespace Pinball.Ingame.Map
             bool hasOrder = _isOrderKept && StatProvider.HasDropTargetOrder() && _droppedCount < _order.Length;
             for (int i = 0; i < _targets.Length; ++i)
                 _targets[i].SetHighlighted(hasOrder && i == _order[_droppedCount]);
+        }
+
+        public void TakeHit(float damage, Vector2 worldPoint)
+        {
+            if (IsDeactivated || null == _targets)
+                return;
+
+            DropTarget nearest = FindNearestStandingTarget(worldPoint);
+            if (null == nearest)
+                return;
+
+            nearest.TryDropByEffect();
+        }
+
+        DropTarget FindNearestStandingTarget(Vector2 worldPoint)
+        {
+            DropTarget nearest = null;
+            float nearestSqrDistance = float.MaxValue;
+
+            for (int i = 0; i < _targets.Length; ++i)
+            {
+                if (_targets[i].IsDropped())
+                    continue;
+
+                float sqrDistance = ((Vector2)_targets[i].transform.position - worldPoint).sqrMagnitude;
+                if (sqrDistance >= nearestSqrDistance)
+                    continue;
+
+                nearestSqrDistance = sqrDistance;
+                nearest = _targets[i];
+            }
+
+            return nearest;
         }
 
         void OnTargetDropped(int targetIndex, Collider2D ballCollider)

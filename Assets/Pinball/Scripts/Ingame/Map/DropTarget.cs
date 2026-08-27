@@ -100,6 +100,20 @@ namespace Pinball.Ingame.Map
             _moveTween = sequence;
         }
 
+        public bool TryDropByEffect()
+        {
+            if (_isDropped)
+                return false;
+
+            Drop(null);
+            return true;
+        }
+
+        public bool IsDropped()
+        {
+            return _isDropped;
+        }
+
         void Drop(Collider2D ballCollider)
         {
             _isDropped = true;

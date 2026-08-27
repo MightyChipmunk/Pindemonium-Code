@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Pinball.Ingame.Map
 {
-    public class StandupTargetInteractable : CollisionInteractable
+    public class StandupTargetInteractable : CollisionInteractable, IDamageable
     {
         const float HIT_PUNCH_DISTANCE = 0.08f;
         const float HIT_PUNCH_DURATION = 0.18f;
@@ -47,6 +47,18 @@ namespace Pinball.Ingame.Map
                 _hitTween.Kill();
                 _hitTween = null;
             }
+        }
+
+        public void TakeHit(float damage, Vector2 worldPoint)
+        {
+            if (IsDeactivated || !_collider.enabled)
+                return;
+
+            GainHitScore(damage, worldPoint);
+            PlayHitMotion();
+
+            if (null != _cancellationTokenSource)
+                CooldownAsync(_cancellationTokenSource.Token).Forget();
         }
 
         protected override Vector2 GetBounceDirection(Collision2D collision)
