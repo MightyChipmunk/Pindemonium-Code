@@ -13,7 +13,6 @@ namespace Pinball.Ingame.Shop
 
         static readonly ShopItemData.EEffectType[][] EXCLUSIVE_EFFECT_GROUP_ARR =
         {
-            new ShopItemData.EEffectType[] { ShopItemData.EEffectType.LampRequirementUp, ShopItemData.EEffectType.LampRequirementDown },
         };
 
         List<ShopItemData> _passives = null;
