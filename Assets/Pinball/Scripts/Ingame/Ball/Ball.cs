@@ -19,8 +19,11 @@ namespace Pinball.Ingame
         public const float DEFAULT_DAMAGE_STACK = 1f;
 
         const float MAX_DAMAGE_STACK = 1000000000000f;
+        const float MAX_CHARGE_STEP = 5f;
+        const int NO_CHARGE_STEP = 0;
 
         static readonly Color STONE_TINT = new Color(0.49f, 0.59f, 1f, 1f);
+        static readonly Color CHARGE_TINT = new Color(1f, 0.24f, 0.18f, 1f);
 
         [SerializeField] Rigidbody2D _rigidbody = null;
         [SerializeField] Collider2D _collider = null;
@@ -34,7 +37,9 @@ namespace Pinball.Ingame
 
         Action<PoolableFX.EFXType, Vector2> _hitFXPlayer = null;
         Action<Vector2> _surfaceHitReporter = null;
+        Color _baseTint = Color.white;
         float _damageStackMultiplier = DEFAULT_DAMAGE_STACK;
+        int _chargeStep = NO_CHARGE_STEP;
 
         public IPoolBase OwnPool { get; set; }
         public int ColliderInstanceID => _collider.GetInstanceID();
@@ -43,11 +48,15 @@ namespace Pinball.Ingame
         public void MultiplyDamageStack(float scale)
         {
             _damageStackMultiplier = Mathf.Min(_damageStackMultiplier * scale, MAX_DAMAGE_STACK);
+            ++_chargeStep;
+            ApplyTint();
         }
 
         public void ResetDamageStack()
         {
             _damageStackMultiplier = DEFAULT_DAMAGE_STACK;
+            _chargeStep = NO_CHARGE_STEP;
+            ApplyTint();
         }
 
         public void SetMass(float mass)
@@ -105,7 +114,13 @@ namespace Pinball.Ingame
 
         public void SetStoneActive(bool isActive)
         {
-            Color tint = isActive ? STONE_TINT : Color.white;
+            _baseTint = isActive ? STONE_TINT : Color.white;
+            ApplyTint();
+        }
+
+        void ApplyTint()
+        {
+            Color tint = Color.Lerp(_baseTint, CHARGE_TINT, Mathf.Clamp01(_chargeStep / MAX_CHARGE_STEP));
             tint.a = _renderer.color.a;
             _renderer.color = tint;
         }
