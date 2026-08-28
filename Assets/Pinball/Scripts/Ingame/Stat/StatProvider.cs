@@ -14,6 +14,7 @@ namespace Pinball.Ingame.Stat
         const float NO_RATIO = 0f;
         const float MIN_FLIP_POWER_SCALE = 0f;
         const float MIN_SAUCER_COOLDOWN_SCALE = 0.1f;
+        const float MAX_SAUCER_CAPTURE_RATIO = 0.4f;
         const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 珥덇린?붾릺吏 ?딆? ?곹깭?먯꽌 ?ㅽ꺈??議고쉶?덉뒿?덈떎.";
 
         static PinballStatData _statData = null;
@@ -298,10 +299,7 @@ namespace Pinball.Ingame.Stat
 
         public static float GetSaucerCaptureScale()
         {
-            if (!HasEffect(ShopItemData.EEffectType.SaucerCooldownRatio))
-                return DEFAULT_SCALE;
-
-            return DEFAULT_SCALE + GetEffectValue(ShopItemData.EEffectType.SaucerCooldownRatio, ShopItemData.SUB_VALUE_INDEX);
+            return DEFAULT_SCALE + Mathf.Min(GetEffectSum(ShopItemData.EEffectType.SaucerCaptureRatio), MAX_SAUCER_CAPTURE_RATIO);
         }
 
         public static float GetLampWarmupRatio(float warmupElapsedSeconds)

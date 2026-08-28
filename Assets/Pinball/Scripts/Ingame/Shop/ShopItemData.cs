@@ -82,6 +82,7 @@ namespace Pinball.Ingame.Shop
             BallVoidRift = 50,
             BumperSweep = 51,
             BumperForge = 52,
+            SaucerCaptureRatio = 53,
         }
 
         [SerializeField] string _nameKey = string.Empty;
