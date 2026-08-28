@@ -399,6 +399,7 @@ namespace Pinball.Ingame
             ball.SetAura(BallAura.EAuraType.Frost, StatProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze));
             ball.SetAura(BallAura.EAuraType.Gold, StatProvider.HasEffect(ShopItemData.EEffectType.GimmickBreakMoney));
             ball.SetAura(BallAura.EAuraType.Blast, StatProvider.HasEffect(ShopItemData.EEffectType.BumperBlast));
+            ball.SetAura(BallAura.EAuraType.Void, StatProvider.HasEffect(ShopItemData.EEffectType.BallVoidRift));
             ball.SetSpikesActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperHitScoreAdd));
             ball.SetScopeActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperSniperMark));
             ball.SetStoneActive(StatProvider.HasEffect(ShopItemData.EEffectType.BallDamageRatio));

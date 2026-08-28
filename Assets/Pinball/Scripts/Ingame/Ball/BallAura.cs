@@ -13,6 +13,7 @@ namespace Pinball.Ingame
             Gold = 3,
             Surge = 4,
             Blast = 5,
+            Void = 6,
         }
 
         [SerializeField] EAuraType _auraType = EAuraType.Fire;
