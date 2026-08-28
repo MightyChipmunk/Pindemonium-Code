@@ -35,6 +35,7 @@ namespace Pinball.Ingame.Map
         const int MIN_BONUS_INDICATOR_COUNT = 3;
         const float NO_BONUS_MULTIPLIER = 1f;
         const float STRONG_TARGET_DIM_ALPHA_RATIO = 3f;
+        const float NO_CAPTURE_RADIUS = 0f;
         const float WEAK_TARGET_DIM_ALPHA_RATIO = 2f;
 
         static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 1f, 0.5f, 1f);
@@ -42,7 +43,7 @@ namespace Pinball.Ingame.Map
 
         [SerializeField] SaucerGradeData _gradeData = null;
         [SerializeField] SaucerGradeData.EGrade _grade = SaucerGradeData.EGrade.Normal;
-        [SerializeField] Collider2D _collider = null;
+        [SerializeField] CircleCollider2D _collider = null;
         [SerializeField] Transform _visual = null;
         [SerializeField] Lamp[] _indicators = null;
         [SerializeField] int _scoreReward = 0;
@@ -58,6 +59,7 @@ namespace Pinball.Ingame.Map
         Tween _visualTween = null;
         SaucerGradeData.GradeSpec _spec = default;
         Vector3 _visualBaseScale = Vector3.one;
+        float _baseCaptureRadius = NO_CAPTURE_RADIUS;
         float[] _spinIntervals = null;
         int _litIndex = NO_LIT_INDEX;
         int _captureCount = 0;
@@ -86,6 +88,7 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _visualBaseScale = _visual.localScale;
 
+            ApplyCaptureRadius();
             InitIndicators();
             BuildSpinIntervals();
             RefreshBonusTargets();
@@ -111,6 +114,17 @@ namespace Pinball.Ingame.Map
         {
             ReleaseHeldBody(transform.up);
             base.OnDeactivated();
+        }
+
+        void ApplyCaptureRadius()
+        {
+            if (null == _collider)
+                return;
+
+            if (_baseCaptureRadius <= NO_CAPTURE_RADIUS)
+                _baseCaptureRadius = _collider.radius;
+
+            _collider.radius = _baseCaptureRadius * StatProvider.GetSaucerCaptureScale();
         }
 
         void InitIndicators()
@@ -431,7 +445,7 @@ namespace Pinball.Ingame.Map
         protected override void OnBindSerializedField()
         {
             base.OnBindSerializedField();
-            _collider = GetComponent<Collider2D>();
+            _collider = GetComponent<CircleCollider2D>();
             _indicators = GetComponentsInChildren<Lamp>(true);
 
             SpriteRenderer visualRenderer = GetComponentInChildren<SpriteRenderer>(true);

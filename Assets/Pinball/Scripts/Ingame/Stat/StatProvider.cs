@@ -296,6 +296,14 @@ namespace Pinball.Ingame.Stat
             return Mathf.Clamp(DEFAULT_SCALE - GetEffectSum(ShopItemData.EEffectType.SaucerCooldownRatio), MIN_SAUCER_COOLDOWN_SCALE, DEFAULT_SCALE);
         }
 
+        public static float GetSaucerCaptureScale()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.SaucerCooldownRatio))
+                return DEFAULT_SCALE;
+
+            return DEFAULT_SCALE + GetEffectValue(ShopItemData.EEffectType.SaucerCooldownRatio, ShopItemData.SUB_VALUE_INDEX);
+        }
+
         public static float GetLampWarmupRatio(float warmupElapsedSeconds)
         {
             if (!HasEffect(ShopItemData.EEffectType.LampWarmup))
