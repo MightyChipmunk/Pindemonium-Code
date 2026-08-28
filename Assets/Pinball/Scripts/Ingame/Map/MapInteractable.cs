@@ -79,10 +79,14 @@ namespace Pinball.Ingame.Map
             Vector3 Position,
             Quaternion Rotation,
             Vector3 LossyScale,
+            Vector2 LocalCenter,
+            Vector2 LocalSize,
             Color Color,
             bool FlipX,
             bool FlipY)
         {
+            static readonly Vector2 CENTER_PIVOT = new Vector2(0.5f, 0.5f);
+
             public static bool TryCreate(Renderer renderer, out SpriteSnapshot snapshot)
             {
                 snapshot = null;
@@ -93,16 +97,29 @@ namespace Pinball.Ingame.Map
                 if (null == spriteRenderer || null == spriteRenderer.sprite)
                     return false;
 
+                Sprite sprite = spriteRenderer.sprite;
+                Vector2 localSize = spriteRenderer.drawMode == SpriteDrawMode.Simple ? (Vector2)sprite.bounds.size : spriteRenderer.size;
                 Transform rendererTransform = renderer.transform;
                 snapshot = new SpriteSnapshot(
-                    Sprite: spriteRenderer.sprite,
+                    Sprite: sprite,
                     Position: rendererTransform.position,
                     Rotation: rendererTransform.rotation,
                     LossyScale: rendererTransform.lossyScale,
+                    LocalCenter: Vector2.Scale(localSize, CENTER_PIVOT - GetNormalizedPivot(sprite)),
+                    LocalSize: localSize,
                     Color: spriteRenderer.color,
                     FlipX: spriteRenderer.flipX,
                     FlipY: spriteRenderer.flipY);
                 return true;
+            }
+
+            static Vector2 GetNormalizedPivot(Sprite sprite)
+            {
+                Rect spriteRect = sprite.rect;
+                if (Mathf.Approximately(spriteRect.width, 0f) || Mathf.Approximately(spriteRect.height, 0f))
+                    return CENTER_PIVOT;
+
+                return new Vector2(sprite.pivot.x / spriteRect.width, sprite.pivot.y / spriteRect.height);
             }
         }
 

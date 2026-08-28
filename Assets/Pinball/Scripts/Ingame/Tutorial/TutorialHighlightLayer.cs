@@ -195,16 +195,15 @@ namespace Pinball.Ingame.Tutorial
 
         void BindSprite(Image image, MapInteractable.SpriteSnapshot snapshot)
         {
-            Bounds spriteBounds = snapshot.Sprite.bounds;
-            Vector3 localCenter = spriteBounds.center;
+            Vector3 localCenter = snapshot.LocalCenter;
             if (snapshot.FlipX)
                 localCenter.x = -localCenter.x;
             if (snapshot.FlipY)
                 localCenter.y = -localCenter.y;
 
             Vector3 worldCenter = snapshot.Position + snapshot.Rotation * Vector3.Scale(localCenter, snapshot.LossyScale);
-            Vector3 halfX = snapshot.Rotation * new Vector3(spriteBounds.extents.x * snapshot.LossyScale.x, 0f, 0f);
-            Vector3 halfY = snapshot.Rotation * new Vector3(0f, spriteBounds.extents.y * snapshot.LossyScale.y, 0f);
+            Vector3 halfX = snapshot.Rotation * new Vector3(snapshot.LocalSize.x * HALF_RATIO * snapshot.LossyScale.x, 0f, 0f);
+            Vector3 halfY = snapshot.Rotation * new Vector3(0f, snapshot.LocalSize.y * HALF_RATIO * snapshot.LossyScale.y, 0f);
 
             Vector2 layerCenter = WorldToLocal(worldCenter);
             float width = (WorldToLocal(worldCenter + halfX) - layerCenter).magnitude * 2f;
