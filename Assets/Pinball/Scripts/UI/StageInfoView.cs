@@ -11,9 +11,9 @@ namespace Pinball.UI
         public const int NO_TIME_LIMIT = -1;
 
         const string STAGE_FORMAT = "STAGE {0}";
-        const string STAGE_KEY = "ui.stage_info.stage";
+        const string STAGE_KEY = "ui.common.stage_number";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
-        const string ENDLESS_STAGE_KEY = "ui.stage_info.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_number";
         const string SCORE_GOAL_FORMAT = "TARGET SCORE {0}";
         const string SCORE_GOAL_KEY = "ui.stage_info.score_goal";
         const string NUMBER_FORMAT = "N0";

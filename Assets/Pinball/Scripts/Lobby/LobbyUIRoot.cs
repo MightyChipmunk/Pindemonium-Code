@@ -9,7 +9,7 @@ namespace Pinball.Lobby
     public class LobbyUIRoot : MonoBehaviour
     {
         const string STAGE_CHIP_FORMAT = "STAGE {0}";
-        const string STAGE_CHIP_KEY = "ui.lobby.stage_chip";
+        const string STAGE_CHIP_KEY = "ui.common.stage_number";
         const float CONTINUE_FULL_ALPHA = 1f;
         const float CONTINUE_DIMMED_ALPHA = 0.45f;
 

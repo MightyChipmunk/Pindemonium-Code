@@ -24,13 +24,13 @@ namespace Pinball.UI
         }
 
         const string STAGE_FORMAT = "{0} OF {1}";
-        const string STAGE_KEY = "ui.continue.stage";
+        const string STAGE_KEY = "ui.continue_run.stage";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
-        const string ENDLESS_STAGE_KEY = "ui.continue.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_number";
         const string MONEY_FORMAT = "${0}";
         const string SCORE_FORMAT = "N0";
         const string EMPTY_GIMMICK_TEXT = "NONE";
-        const string EMPTY_GIMMICK_KEY = "ui.continue.empty_gimmick";
+        const string EMPTY_GIMMICK_KEY = "ui.continue_run.empty_gimmick";
         const string GIMMICK_SEPARATOR = " / ";
 
         [SerializeField] FlipperCardView _card = null;

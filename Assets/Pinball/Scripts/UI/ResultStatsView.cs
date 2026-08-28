@@ -28,7 +28,7 @@ namespace Pinball.UI
         const string NUMBER_FORMAT = "N0";
         const string COUNT_FORMAT = "x{0}";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
-        const string ENDLESS_STAGE_KEY = "ui.result_stats.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_number";
         const int STACKED_COUNT_MIN = 2;
         const int EMPTY_PLACEHOLDER_COUNT = 1;
         const float PASSIVE_SLOT_WIDTH = 112f;

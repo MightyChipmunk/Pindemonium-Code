@@ -27,7 +27,7 @@ namespace Pinball.UI
         const string PAGE_FORMAT = "{0} / {1}";
         const string LOCKED_NAME = "???";
         const string LOCKED_ABILITY = "LOCKED";
-        const string LOCKED_ABILITY_KEY = "ui.flipper_select.locked_ability";
+        const string LOCKED_ABILITY_KEY = "ui.common.locked";
         const string DEFAULT_LINE = "STANDARD ISSUE";
         const string DEFAULT_LINE_KEY = "ui.flipper_select.default_line";
         const string UNLOCKED_REWARD_LINE = "REWARD: RUN CLEAR";
@@ -39,11 +39,11 @@ namespace Pinball.UI
         const string BEST_RECORD_FORMAT = "BEST RECORD: {0}";
         const string BEST_RECORD_KEY = "ui.flipper_select.best_record";
         const string BEST_STAGE_FORMAT = "STAGE {0}";
-        const string BEST_STAGE_KEY = "ui.flipper_select.best_stage";
+        const string BEST_STAGE_KEY = "ui.common.stage_number";
         const string BEST_CLEAR_TEXT = "GAME CLEAR";
         const string BEST_CLEAR_KEY = "ui.flipper_select.best_clear";
         const string BEST_ENDLESS_FORMAT = "ENDLESS STAGE {0}";
-        const string BEST_ENDLESS_KEY = "ui.flipper_select.best_endless";
+        const string BEST_ENDLESS_KEY = "ui.common.endless_stage";
         const int FIRST_CLEAR_TIER = 0;
         const int DEFAULT_INDEX = 0;
         const int NO_BEST_STAGE = 0;

@@ -21,14 +21,14 @@ namespace Pinball.UI
         }
 
         const string CLEAR_TITLE = "ALL STAGES CLEAR!";
-        const string CLEAR_TITLE_KEY = "ui.result.clear_title";
+        const string CLEAR_TITLE_KEY = "ui.game_result.clear_title";
         const string GAME_OVER_TITLE = "GAME OVER";
-        const string GAME_OVER_TITLE_KEY = "ui.result.game_over_title";
+        const string GAME_OVER_TITLE_KEY = "ui.game_result.game_over_title";
         const string SCORE_FORMAT = "N0";
         const string STAGE_FORMAT = "STAGE {0}";
-        const string STAGE_KEY = "ui.result.stage";
+        const string STAGE_KEY = "ui.common.stage_number";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS STAGE {0}";
-        const string ENDLESS_STAGE_KEY = "ui.result.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_stage";
         const float APPEAR_DURATION = 0.35f;
         const float APPEAR_SLIDE_OFFSET = 120f;
 

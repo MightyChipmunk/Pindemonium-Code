@@ -56,13 +56,13 @@ namespace Pinball.UI
         const string PRICE_FORMAT = "${0}";
         const string OWNED_COUNT_FORMAT = "x{0}";
         const string ROUND_FORMAT = "ROUND {0} / {1}";
-        const string ROUND_KEY = "ui.shop.round";
+        const string ROUND_KEY = "ui.common.round";
         const string STAGE_FORMAT = "STAGE {0} / {1}";
         const string STAGE_KEY = "ui.shop.stage";
         const string ENDLESS_ROUND_FORMAT = "ENDLESS ROUND {0}";
-        const string ENDLESS_ROUND_KEY = "ui.shop.endless_round";
+        const string ENDLESS_ROUND_KEY = "ui.common.endless_round";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
-        const string ENDLESS_STAGE_KEY = "ui.shop.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_number";
         const float OFFER_ROW_WIDTH = 1071f;
         const float OFFER_ROW_HEIGHT = 338f;
         const float OFFER_SLOT_WIDTH = 380f;

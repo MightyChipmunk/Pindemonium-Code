@@ -21,11 +21,11 @@ namespace Pinball.UI
         }
 
         const string FLIPPER_KIND_TEXT = "FLIPPER";
-        const string FLIPPER_KIND_KEY = "ui.reward.kind_flipper";
+        const string FLIPPER_KIND_KEY = "ui.common.flipper";
         const string PASSIVE_KIND_TEXT = "PASSIVE";
-        const string PASSIVE_KIND_KEY = "ui.reward.kind_passive";
+        const string PASSIVE_KIND_KEY = "ui.common.passive";
         const string UPGRADE_KIND_TEXT = "UPGRADE";
-        const string UPGRADE_KIND_KEY = "ui.reward.kind_upgrade";
+        const string UPGRADE_KIND_KEY = "ui.common.upgrade";
 
         [SerializeField] RewardTileView[] _tiles = null;
         [SerializeField] Button _okButton = null;

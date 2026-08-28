@@ -31,9 +31,9 @@ namespace Pinball.UI
             bool CanReroll);
 
         const string STAGE_FORMAT = "STAGE {0}";
-        const string STAGE_KEY = "ui.stage_card.stage";
+        const string STAGE_KEY = "ui.common.stage_number";
         const string ENDLESS_STAGE_FORMAT = "ENDLESS {0}";
-        const string ENDLESS_STAGE_KEY = "ui.stage_card.endless_stage";
+        const string ENDLESS_STAGE_KEY = "ui.common.endless_number";
         const string TARGET_SCORE_FORMAT = "N0";
         const string MULTIPLIER_FORMAT = "x{0:0.#}";
         const string BUMPER_HEALTH_FORMAT = "BUMPER HP x{0:0.#}";

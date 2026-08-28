@@ -37,9 +37,9 @@ namespace Pinball.UI
         const string BALLS_FORMAT = "BALLS {0}";
         const string BALLS_KEY = "ui.stage_select.balls";
         const string ROUND_FORMAT = "ROUND {0} OF {1}";
-        const string ROUND_KEY = "ui.stage_select.round";
+        const string ROUND_KEY = "ui.common.round";
         const string ENDLESS_ROUND_FORMAT = "ENDLESS ROUND {0}";
-        const string ENDLESS_ROUND_KEY = "ui.stage_select.endless_round";
+        const string ENDLESS_ROUND_KEY = "ui.common.endless_round";
 
         const int NO_CARD_INDEX = -1;
 

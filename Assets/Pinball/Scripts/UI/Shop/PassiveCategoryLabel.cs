@@ -6,7 +6,7 @@ namespace Pinball.UI
     public static class PassiveCategoryLabel
     {
         const string BALL_TEXT = "BALL";
-        const string BALL_KEY = "ui.passive.category_ball";
+        const string BALL_KEY = "ui.common.ball";
         const string MAP_TEXT = "MAP";
         const string MAP_KEY = "ui.passive.category_map";
         const string COMMON_TEXT = "COMMON";
