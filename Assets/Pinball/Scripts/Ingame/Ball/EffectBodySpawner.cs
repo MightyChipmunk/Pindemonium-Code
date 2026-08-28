@@ -12,7 +12,7 @@ namespace Pinball.Ingame
         [SerializeField] OrbitalBody _orbitalPrefab = null;
         [SerializeField] MissileBody _missilePrefab = null;
         [SerializeField] RiftBody _riftPrefab = null;
-        [SerializeField] SpriteRenderer[] _holeMarkers = null;
+        [SerializeField] VoidHoleMarker[] _holeMarkers = null;
 
         ObjectPool<OrbitalBody> _orbitalPool = null;
         ObjectPool<MissileBody> _missilePool = null;
@@ -23,11 +23,33 @@ namespace Pinball.Ingame
             _orbitalPool = new ObjectPool<OrbitalBody>(_orbitalPrefab, CreateBody, ORBITAL_POOL_CAPACITY);
             _missilePool = new ObjectPool<MissileBody>(_missilePrefab, CreateBody, MISSILE_POOL_CAPACITY);
             _riftPool = new ObjectPool<RiftBody>(_riftPrefab, CreateBody, RIFT_POOL_CAPACITY);
-            HideHoleMarkers();
+            InitHoleMarkers();
+        }
+
+        void InitHoleMarkers()
+        {
+            if (null == _holeMarkers)
+                return;
+
+            for (int i = 0; i < _holeMarkers.Length; ++i)
+                if (null != _holeMarkers[i])
+                    _holeMarkers[i].Init();
+        }
+
+        void ReleaseHoleMarkers()
+        {
+            if (null == _holeMarkers)
+                return;
+
+            for (int i = 0; i < _holeMarkers.Length; ++i)
+                if (null != _holeMarkers[i])
+                    _holeMarkers[i].Release();
         }
 
         public void Release()
         {
+            ReleaseHoleMarkers();
+
             if (null != _riftPool)
             {
                 _riftPool.Clear();
@@ -80,13 +102,11 @@ namespace Pinball.Ingame
             if (null == _holeMarkers || index < 0 || index >= _holeMarkers.Length)
                 return;
 
-            SpriteRenderer marker = _holeMarkers[index];
+            VoidHoleMarker marker = _holeMarkers[index];
             if (null == marker)
                 return;
 
-            marker.gameObject.SetActive(false);
-            marker.transform.position = position;
-            marker.gameObject.SetActive(true);
+            marker.Show(position);
         }
 
         public void HideHoleMarkers()
@@ -96,11 +116,11 @@ namespace Pinball.Ingame
 
             for (int i = 0; i < _holeMarkers.Length; ++i)
             {
-                SpriteRenderer marker = _holeMarkers[i];
+                VoidHoleMarker marker = _holeMarkers[i];
                 if (null == marker)
                     continue;
 
-                marker.gameObject.SetActive(false);
+                marker.Hide();
             }
         }
     }

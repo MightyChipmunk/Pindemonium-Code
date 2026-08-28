@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 
 namespace Pinball.Ingame
@@ -5,13 +6,17 @@ namespace Pinball.Ingame
     public class RiftBody : EffectBodyBase
     {
         public const float RIFT_WIDTH = 0.48f;
+        public const float HIDE_DURATION = 0.15f;
 
+        const float SHOW_DURATION = 0.12f;
+        const float SHOW_OVERSHOOT = 2.6f;
         const int LINE_POINT_COUNT = 2;
         const float MIN_RIFT_LENGTH = 0.01f;
         const float HALF_RATIO = 0.5f;
 
         [SerializeField] LineRenderer _line = null;
 
+        Tween _scaleTween = null;
         float _length = 0f;
         float _angleDegree = 0f;
 
@@ -29,7 +34,37 @@ namespace Pinball.Ingame
             MoveTo(startPosition + offset * HALF_RATIO);
             SetRotation(_angleDegree);
             BuildLine(_length);
+            PlayShow();
             return true;
+        }
+
+        public void PlayHide()
+        {
+            KillScaleTween();
+            _scaleTween = transform.DOScaleY(0f, HIDE_DURATION).SetEase(Ease.InBack);
+        }
+
+        public override void OnReturn()
+        {
+            base.OnReturn();
+            KillScaleTween();
+            transform.localScale = Vector3.one;
+        }
+
+        void PlayShow()
+        {
+            KillScaleTween();
+            transform.localScale = new Vector3(1f, 0f, 1f);
+            _scaleTween = transform.DOScaleY(1f, SHOW_DURATION).SetEase(Ease.OutBack, SHOW_OVERSHOOT);
+        }
+
+        void KillScaleTween()
+        {
+            if (null == _scaleTween)
+                return;
+
+            _scaleTween.Kill(false);
+            _scaleTween = null;
         }
 
         void BuildLine(float length)

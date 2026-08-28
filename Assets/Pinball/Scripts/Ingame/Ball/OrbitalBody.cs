@@ -30,7 +30,9 @@ namespace Pinball.Ingame
             if (_angleDegree >= FULL_CIRCLE_DEGREE)
                 _angleDegree -= FULL_CIRCLE_DEGREE;
 
-            _rigidbody.MovePosition(centerPosition + GetOrbitOffset());
+            Vector2 position = centerPosition + GetOrbitOffset();
+            _rigidbody.position = position;
+            MoveTo(position);
         }
 
         public override void OnReturn()

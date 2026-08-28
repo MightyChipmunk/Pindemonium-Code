@@ -43,6 +43,7 @@ namespace Pinball.Ingame
         Vector2[] _holePositions = null;
         RiftBody _rift = null;
         float _riftRemaining = 0f;
+        bool _isRiftHiding = false;
         float _missileElapsed = 0f;
         int _holeCount = 0;
 
@@ -119,6 +120,7 @@ namespace Pinball.Ingame
             }
 
             _riftRemaining = RIFT_DURATION_SECONDS;
+            _isRiftHiding = false;
             _boxHitApplier?.Invoke(
                 _rift.transform.position,
                 new Vector2(_rift.Length, RiftBody.RIFT_WIDTH),
@@ -256,6 +258,14 @@ namespace Pinball.Ingame
                 return;
 
             _riftRemaining -= deltaTime;
+
+            if (!_isRiftHiding && _riftRemaining <= RiftBody.HIDE_DURATION)
+            {
+                _isRiftHiding = true;
+                _rift.PlayHide();
+                _spawner.HideHoleMarkers();
+            }
+
             if (_riftRemaining > 0f)
                 return;
 
@@ -271,6 +281,7 @@ namespace Pinball.Ingame
             _spawner.Despawn(_rift);
             _rift = null;
             _riftRemaining = 0f;
+            _isRiftHiding = false;
         }
 
         void ClearHoles()
