@@ -407,6 +407,22 @@ namespace Pinball.Ingame.Stat
             return HasEffect(ShopItemData.EEffectType.DropTargetOrderBonus);
         }
 
+        public static float GetBumperRespawnDelayScale()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.BumperSweep))
+                return DEFAULT_SCALE;
+
+            return Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.BumperSweep, ShopItemData.MAIN_VALUE_INDEX));
+        }
+
+        public static float GetBumperSweepBonusScale()
+        {
+            if (!HasEffect(ShopItemData.EEffectType.BumperSweep))
+                return 0f;
+
+            return Mathf.Max(0f, GetEffectValue(ShopItemData.EEffectType.BumperSweep, ShopItemData.SUB_VALUE_INDEX));
+        }
+
         public static float GetEffectSum(ShopItemData.EEffectType effectType)
         {
             if (!EnsureReady() || null == _loadout)

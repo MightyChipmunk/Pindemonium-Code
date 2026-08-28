@@ -18,6 +18,9 @@ namespace Pinball.Ingame.Map
         const float RESPAWN_PUNCH_RATIO = 0.6f;
         const float RESPAWN_PUNCH_DURATION = 0.15f;
         const int RESPAWN_PUNCH_VIBRATO = 6;
+        const float PROMOTE_PUNCH_RATIO = 1f;
+        const float PROMOTE_PUNCH_DURATION = 0.3f;
+        const int PROMOTE_PUNCH_VIBRATO = 10;
         const float MIN_BURN_INTERVAL = 0.05f;
         const float MIN_RESPAWN_DELAY_SCALE = 0.1f;
         const float NO_OVERKILL_SCORE_RATIO = 0f;
@@ -41,6 +44,7 @@ namespace Pinball.Ingame.Map
         PoolableFX.EFXType _shatterFX = PoolableFX.EFXType.NonePooling;
         Tween _visualTween = null;
         BumperGradeData.GradeSpec _spec = default;
+        BumperGradeData.EGrade _baseGrade = BumperGradeData.EGrade.Yellow;
         Vector3 _visualBaseScale = Vector3.one;
         Color _visualBaseColor = Color.white;
         float _currentHealth = 0f;
@@ -67,6 +71,7 @@ namespace Pinball.Ingame.Map
         protected override void OnInit()
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+            _baseGrade = _grade;
 
             if (null != _gradeData)
                 _spec = _gradeData.GetSpec(_grade);
@@ -91,6 +96,7 @@ namespace Pinball.Ingame.Map
         {
             OnBroken = null;
             OnBallDamaged = null;
+            ApplyGrade(_baseGrade);
             StopBurning();
             ClearFrozen();
             ClearSniperMark();
@@ -176,6 +182,43 @@ namespace Pinball.Ingame.Map
         public float GetRadius()
         {
             return _radius;
+        }
+
+        public int GetBreakScore()
+        {
+            return _spec.BreakScore;
+        }
+
+        public void ResetGrade()
+        {
+            if (_grade == _baseGrade)
+                return;
+
+            ApplyGrade(_baseGrade);
+            _currentHealth = Mathf.Min(_currentHealth, GetMaxHealth());
+        }
+
+        bool TryPromoteGrade()
+        {
+            if (_grade >= BumperGradeData.MAX_GRADE)
+                return false;
+
+            ApplyGrade(_grade + 1);
+            return true;
+        }
+
+        void ApplyGrade(BumperGradeData.EGrade grade)
+        {
+            if (_grade == grade)
+                return;
+
+            _grade = grade;
+            if (null == _gradeData)
+                return;
+
+            _spec = _gradeData.GetSpec(_grade);
+            ApplyGradeVisual();
+            _radius = CalculateRadius();
         }
 
         float GetMaxHealth()
@@ -451,13 +494,14 @@ namespace Pinball.Ingame.Map
         float GetRespawnDelay()
         {
             float scale = Mathf.Max(MIN_RESPAWN_DELAY_SCALE, 1f - StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperRespawnTimeRatio));
-            return _spec.RespawnDelay * scale;
+            return _spec.RespawnDelay * scale * StatProvider.GetBumperRespawnDelayScale();
         }
 
         async UniTaskVoid RespawnAsync(CancellationToken cancellationToken)
         {
             await UniTask.Delay(TimeSpan.FromSeconds(GetRespawnDelay()), cancellationToken: cancellationToken);
 
+            bool isPromoted = StatProvider.HasEffect(ShopItemData.EEffectType.BumperForge) && TryPromoteGrade();
             _currentHealth = GetMaxHealth();
             _isBroken = false;
             _collider.enabled = true;
@@ -467,7 +511,16 @@ namespace Pinball.Ingame.Map
 
             _visual.gameObject.SetActive(true);
             _visual.localScale = _visualBaseScale;
-            PlayVisualPunch(RESPAWN_PUNCH_RATIO, RESPAWN_PUNCH_DURATION, RESPAWN_PUNCH_VIBRATO);
+
+            if (!isPromoted)
+            {
+                PlayVisualPunch(RESPAWN_PUNCH_RATIO, RESPAWN_PUNCH_DURATION, RESPAWN_PUNCH_VIBRATO);
+                return;
+            }
+
+            PlayFX(_spec.HitFX, transform.position);
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
+            PlayVisualPunch(PROMOTE_PUNCH_RATIO, PROMOTE_PUNCH_DURATION, PROMOTE_PUNCH_VIBRATO);
         }
 
         void PlayVisualPunch(float punchRatio, float duration, int vibrato)

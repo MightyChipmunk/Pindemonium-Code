@@ -80,6 +80,8 @@ namespace Pinball.Ingame.Shop
             BallOrbital = 48,
             BallHomingMissile = 49,
             BallVoidRift = 50,
+            BumperSweep = 51,
+            BumperForge = 52,
         }
 
         [SerializeField] string _nameKey = string.Empty;

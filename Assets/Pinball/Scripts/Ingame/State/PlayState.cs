@@ -286,6 +286,9 @@ namespace Pinball.Ingame.State
         void OnBallLost()
         {
             _scoreCounter.EndCombo();
+
+            if (null != _currentMap)
+                _currentMap.ResetBumperGrades();
         }
 
         void OnBallReady()

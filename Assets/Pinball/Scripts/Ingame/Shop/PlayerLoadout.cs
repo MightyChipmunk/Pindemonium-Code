@@ -13,6 +13,8 @@ namespace Pinball.Ingame.Shop
 
         static readonly ShopItemData.EEffectType[][] EXCLUSIVE_EFFECT_GROUP_ARR =
         {
+            new ShopItemData.EEffectType[] { ShopItemData.EEffectType.BumperFortify, ShopItemData.EEffectType.BumperSweep },
+            new ShopItemData.EEffectType[] { ShopItemData.EEffectType.BumperFortify, ShopItemData.EEffectType.BumperForge },
         };
 
         List<ShopItemData> _passives = null;

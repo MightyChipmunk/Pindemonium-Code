@@ -17,6 +17,7 @@ namespace Pinball.Ingame.Map
         const PoolableFX.EFXType CHAIN_FX = PoolableFX.EFXType.LightningBall;
         const PoolableFX.EFXType CHAIN_LINK_FX = PoolableFX.EFXType.LightningChainLink;
         const PoolableFX.EFXType BLAST_FX = PoolableFX.EFXType.Blast;
+        const PoolableFX.EFXType SWEEP_FX = PoolableFX.EFXType.Blast;
 
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
@@ -46,6 +47,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] Renderer[] _rightFlipperRenderers = null;
         [SerializeField] Renderer[] _springRenderers = null;
 
+        Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> _onScoreGained = null;
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
         Action<BumperInteractable, float, Collider2D> _onBumperDamaged = null;
         Action _onBumperBroken = null;
@@ -63,6 +65,7 @@ namespace Pinball.Ingame.Map
         List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
         float _sniperMarkElapsed = 0f;
+        bool _isSweepArmed = true;
 
         public void Init(InitParam param)
         {
@@ -72,6 +75,8 @@ namespace Pinball.Ingame.Map
             _lampBanks = new List<LampBankInteractable>();
             _markCandidates = new List<BumperInteractable>();
             _sniperMarkElapsed = 0f;
+            _isSweepArmed = true;
+            _onScoreGained = param.OnScoreGained;
             _onBumperDamaged = param.OnBumperDamaged;
             _onBumperBroken = param.OnBumperBroken;
             _onSlingshotBallHit = param.OnSlingshotBallHit;
@@ -225,6 +230,7 @@ namespace Pinball.Ingame.Map
             _rightFlipper.Release();
             _leftFlipper.Release();
             _onBallStruck = null;
+            _onScoreGained = null;
             _onBumperDamaged = null;
             _onBumperBroken = null;
             _onSlingshotBallHit = null;
@@ -325,6 +331,28 @@ namespace Pinball.Ingame.Map
         {
             TickLampWarmup(deltaTime);
             TickSniperMark(deltaTime);
+            RefreshSweepArm();
+        }
+
+        void RefreshSweepArm()
+        {
+            if (_isSweepArmed)
+                return;
+
+            if (null == _bumpers)
+                return;
+
+            for (int i = 0; i < _bumpers.Count; ++i)
+            {
+                BumperInteractable bumper = _bumpers[i];
+                if (bumper.IsDeactivated)
+                    continue;
+
+                if (bumper.IsBroken)
+                    return;
+            }
+
+            _isSweepArmed = true;
         }
 
         void TickLampWarmup(float deltaTime)
@@ -467,6 +495,59 @@ namespace Pinball.Ingame.Map
         void HandleBumperBroken()
         {
             _onBumperBroken?.Invoke();
+            TryGainSweepBonus();
+        }
+
+        void TryGainSweepBonus()
+        {
+            if (!_isSweepArmed)
+                return;
+
+            float bonusScale = StatProvider.GetBumperSweepBonusScale();
+            if (bonusScale <= 0f)
+                return;
+
+            if (null == _bumpers)
+                return;
+
+            int breakScoreSum = 0;
+            int sweptCount = 0;
+            Vector2 centerPoint = Vector2.zero;
+            for (int i = 0; i < _bumpers.Count; ++i)
+            {
+                BumperInteractable bumper = _bumpers[i];
+                if (bumper.IsDeactivated)
+                    continue;
+
+                if (!bumper.IsBroken)
+                    return;
+
+                breakScoreSum += bumper.GetBreakScore();
+                centerPoint += (Vector2)bumper.transform.position;
+                ++sweptCount;
+            }
+
+            if (sweptCount <= 0)
+                return;
+
+            int bonusScore = Mathf.RoundToInt(breakScoreSum * bonusScale);
+            if (bonusScore <= 0)
+                return;
+
+            _isSweepArmed = false;
+            centerPoint /= sweptCount;
+            _fxPlayer?.Invoke(SWEEP_FX, centerPoint);
+            AudioManager.Play(AudioStorage.EAudioClipType.GimmickBankCleared);
+            _onScoreGained?.Invoke(MapInteractable.EGimmickType.Bumper, bonusScore, centerPoint, MapInteractable.EScoreSource.GimmickBreak);
+        }
+
+        public void ResetBumperGrades()
+        {
+            if (null == _bumpers)
+                return;
+
+            for (int i = 0; i < _bumpers.Count; ++i)
+                _bumpers[i].ResetGrade();
         }
 
         void HandleSlingshotBallBounced(Collider2D ballCollider)

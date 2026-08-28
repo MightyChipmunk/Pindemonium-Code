@@ -7,6 +7,8 @@ namespace Pinball.Ingame.Map
     [CreateAssetMenu(fileName = "BumperGradeData", menuName = "Pinball/Ingame/BumperGradeData")]
     public class BumperGradeData : ScriptableObject
     {
+        public const EGrade MAX_GRADE = EGrade.Red;
+
         public enum EGrade
         {
             Yellow = 0,
