@@ -31,6 +31,7 @@ namespace Pinball.Ingame
         [SerializeField] BallTrail _trail = null;
         [SerializeField] BallAuraController _auraController = null;
         [SerializeField] SpriteRenderer _spikeRenderer = null;
+        [SerializeField] SpriteRenderer _podRenderer = null;
         [SerializeField] SpriteRenderer _scopeRenderer = null;
         [SerializeField] Transform _nudgeAimPivot = null;
         [SerializeField] LayerMask _hitSoundLayerMask = 0;
@@ -94,6 +95,11 @@ namespace Pinball.Ingame
         public void SetSpikesActive(bool isActive)
         {
             _spikeRenderer.enabled = isActive;
+        }
+
+        public void SetMissilePodActive(bool isActive)
+        {
+            _podRenderer.enabled = isActive;
         }
 
         public void SetScopeActive(bool isActive)
@@ -171,6 +177,7 @@ namespace Pinball.Ingame
             ResetDamageStack();
             SetAlpha(OPAQUE_ALPHA);
             SetSpikesActive(false);
+            SetMissilePodActive(false);
             SetScopeActive(false);
             SetNudgeAimActive(false);
             SetStoneActive(false);
