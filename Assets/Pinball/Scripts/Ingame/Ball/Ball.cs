@@ -191,16 +191,16 @@ namespace Pinball.Ingame
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            _surfaceHitReporter?.Invoke(collision.GetContact(0).point);
-
-            if (!_hitSoundLayerMask.HasLayer(collision.gameObject.layer))
-                return;
-
             float hitSpeedSqr = collision.relativeVelocity.sqrMagnitude;
             if (hitSpeedSqr < MIN_HIT_SPEED * MIN_HIT_SPEED)
                 return;
 
             ContactPoint2D contact = collision.GetContact(0);
+            _surfaceHitReporter?.Invoke(contact.point);
+
+            if (!_hitSoundLayerMask.HasLayer(collision.gameObject.layer))
+                return;
+
             if (contact.normalImpulse >= MIN_HIT_FX_IMPULSE)
                 _hitFXPlayer?.Invoke(WALL_HIT_FX, contact.point);
 
