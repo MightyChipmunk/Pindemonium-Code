@@ -4,8 +4,8 @@ Shader "Pinball/UI/TutorialBrighten"
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1, 1, 1, 1)
-        _Brightness ("Brightness", Range(1, 3)) = 1.4
-        _Lift ("Lift", Range(0, 1)) = 0.08
+        _Brightness ("Brightness", Range(1, 3)) = 1.15
+        _Lift ("Lift", Range(0, 1)) = 0.04
     }
 
     SubShader
