@@ -14,6 +14,11 @@ namespace Pinball.Ingame
     {
         const float CLONE_ALPHA = 0.6f;
         const float CLONE_SPAWN_OFFSET = 0.4f;
+        const float CLONE_SPAWN_CLEARANCE = 0.2f;
+        const int CLONE_SPAWN_PROBE_COUNT = 8;
+        const float CLONE_SPAWN_PROBE_STEP_DEGREE = 45f;
+        const string BLOCK_LAYER_WALL = "Wall";
+        const string BLOCK_LAYER_INTERACTABLE = "Interactable";
         const float MIN_CLONE_OFFSET_SQR_SPEED = 0.01f;
         const float CLONE_SPLIT_IMPULSE = 2f;
         const float FULL_CIRCLE_DEGREE = 360f;
@@ -35,6 +40,7 @@ namespace Pinball.Ingame
         List<Ball> _cloneBalls = null;
         List<float> _cloneLifeRemains = null;
         float _cloneSpawnElapsed = 0f;
+        int _cloneBlockLayerMask = 0;
         int _gimmickHitCount = 0;
         int _usedBallCount = 0;
         bool _isSurgeCharged = false;
@@ -58,6 +64,7 @@ namespace Pinball.Ingame
             _cloneBalls = new List<Ball>();
             _cloneLifeRemains = new List<float>();
             _cloneSpawnElapsed = 0f;
+            _cloneBlockLayerMask = LayerMask.GetMask(BLOCK_LAYER_WALL, BLOCK_LAYER_INTERACTABLE);
             _isSurgeCharged = false;
             _ballStock = new BallStockCounter(StatProvider.GetInitialBallCount());
             _ballStock.OnChanged += HandleBallCountChanged;
@@ -379,9 +386,19 @@ namespace Pinball.Ingame
 
         Vector3 GetCloneSpawnPosition()
         {
+            Vector2 ballPosition = _activeBall.transform.position;
             Vector2 velocity = _activeBall.GetVelocity();
             Vector2 offsetDirection = velocity.sqrMagnitude > MIN_CLONE_OFFSET_SQR_SPEED ? -velocity.normalized : Vector2.down;
-            return _activeBall.transform.position + (Vector3)(offsetDirection * CLONE_SPAWN_OFFSET);
+
+            for (int i = 0; i < CLONE_SPAWN_PROBE_COUNT; ++i)
+            {
+                Vector2 probeDirection = Quaternion.Euler(0f, 0f, i * CLONE_SPAWN_PROBE_STEP_DEGREE) * offsetDirection;
+                Vector2 candidate = ballPosition + probeDirection * CLONE_SPAWN_OFFSET;
+                if (null == Physics2D.OverlapCircle(candidate, CLONE_SPAWN_CLEARANCE, _cloneBlockLayerMask))
+                    return candidate;
+            }
+
+            return ballPosition;
         }
 
         bool IsActiveBall(Collider2D ballCollider)
