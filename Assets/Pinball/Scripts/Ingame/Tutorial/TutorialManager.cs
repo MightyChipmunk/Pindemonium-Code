@@ -15,6 +15,7 @@ namespace Pinball.Ingame.Tutorial
             int InterestPerAmount,
             int InterestMax,
             int PassiveSlotCount,
+            float ComboTimeoutSeconds,
             Func<int> StageNumberGetter,
             Func<bool> IsEndlessGetter,
             Func<bool> IsPlayStateGetter,
@@ -22,6 +23,7 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> CanNudgeGetter,
             Func<int> ComboCountGetter,
             Action NudgeCooldownResetter,
+            Action ControlStateResetter,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
@@ -43,6 +45,8 @@ namespace Pinball.Ingame.Tutorial
         bool _hasStageStarted = false;
         bool _hasLaunched = false;
         bool _hasSlingshotHit = false;
+        bool _hasBallStruck = false;
+        bool _isBallLostPending = false;
         bool _isComboTriggerReached = false;
         bool _isLastBallLost = false;
         bool _hasNudged = false;
@@ -65,13 +69,18 @@ namespace Pinball.Ingame.Tutorial
                 IsPlayStateGetter: param.IsPlayStateGetter,
                 HasLaunchedGetter: GetHasLaunched,
                 HasSlingshotHitGetter: GetHasSlingshotHit,
+                HasBallStruckGetter: GetHasBallStruck,
+                IsBallLostGetter: GetIsBallLostPending,
                 IsComboTriggerReachedGetter: GetIsComboTriggerReached,
                 IsLastBallLostGetter: GetIsLastBallLost,
                 IsStageClearInterceptedGetter: GetIsStageClearIntercepted,
                 HasNudgedGetter: GetHasNudged,
                 CanNudgeGetter: param.CanNudgeGetter,
                 NudgeWaitPreparer: PrepareNudgeWait,
+                FlipWaitPreparer: PrepareFlipWait,
+                LaunchWaitPreparer: PrepareLaunchWait,
                 ComboWaitPreparer: PrepareComboWait,
+                ComboTimeoutSeconds: param.ComboTimeoutSeconds,
                 ScoreAnchorGetter: param.ScoreAnchorGetter,
                 ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog, _highlightLayer);
             _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _dimmer, _dialog, _highlightLayer);
@@ -120,6 +129,16 @@ namespace Pinball.Ingame.Tutorial
             _hasSlingshotHit = true;
         }
 
+        public void NotifyBallStruck()
+        {
+            _hasBallStruck = true;
+        }
+
+        public void NotifyBallReady()
+        {
+            _isBallLostPending = true;
+        }
+
         public void NotifyComboChanged(int comboCount)
         {
             if (comboCount < COMBO_TRIGGER_COUNT)
@@ -139,6 +158,11 @@ namespace Pinball.Ingame.Tutorial
         public void NotifyNudged()
         {
             _hasNudged = true;
+        }
+
+        public bool IsPlayIntroRunning()
+        {
+            return _isPlayIntroRunning;
         }
 
         public bool IsOverlayActive()
@@ -247,6 +271,16 @@ namespace Pinball.Ingame.Tutorial
             return _hasSlingshotHit;
         }
 
+        bool GetHasBallStruck()
+        {
+            return _hasBallStruck;
+        }
+
+        bool GetIsBallLostPending()
+        {
+            return _isBallLostPending;
+        }
+
         bool GetIsComboTriggerReached()
         {
             return _isComboTriggerReached;
@@ -273,6 +307,17 @@ namespace Pinball.Ingame.Tutorial
             _param.NudgeCooldownResetter();
         }
 
+        void PrepareFlipWait()
+        {
+            _hasBallStruck = false;
+        }
+
+        void PrepareLaunchWait()
+        {
+            _isBallLostPending = false;
+            _hasLaunched = false;
+        }
+
         void PrepareComboWait()
         {
             _isComboTriggerReached = _param.ComboCountGetter() >= COMBO_TRIGGER_COUNT;
@@ -288,6 +333,9 @@ namespace Pinball.Ingame.Tutorial
                 Blocker.Block();
             else
                 Blocker.Unblock();
+
+            if (isModal)
+                _param.ControlStateResetter();
 
             ApplyTimeFreeze();
         }

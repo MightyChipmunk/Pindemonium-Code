@@ -20,18 +20,24 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> IsPlayStateGetter,
             Func<bool> HasLaunchedGetter,
             Func<bool> HasSlingshotHitGetter,
+            Func<bool> HasBallStruckGetter,
+            Func<bool> IsBallLostGetter,
             Func<bool> IsComboTriggerReachedGetter,
             Func<bool> IsLastBallLostGetter,
             Func<bool> IsStageClearInterceptedGetter,
             Func<bool> HasNudgedGetter,
             Func<bool> CanNudgeGetter,
             Action NudgeWaitPreparer,
+            Action FlipWaitPreparer,
+            Action LaunchWaitPreparer,
             Action ComboWaitPreparer,
+            float ComboTimeoutSeconds,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
         const float WORLD_FOCUS_PADDING = 14f;
         const float NUDGE_SETTLE_SECONDS = 1f;
+        const float SLINGSHOT_HIT_DELAY_SECONDS = 0.3f;
         const string SECOND_PAGE_SUFFIX = ".2";
         const string WELCOME_KEY = "ui.tutorial.play.welcome";
         const string STAGE_SELECT_KEY = "ui.tutorial.play.stage_select";
@@ -45,6 +51,8 @@ namespace Pinball.Ingame.Tutorial
         const string NUDGE_KEY = "ui.tutorial.play.nudge";
         const string NUDGE_TRY_KEY = "ui.tutorial.play.nudge_try";
         const string FREE_PLAY_KEY = "ui.tutorial.play.free_play";
+        const string BALL_LOST_KEY = "ui.tutorial.play.ball_lost";
+        const string BALL_LOST_NOTICE_KEY = "ui.tutorial.play.ball_lost_notice";
         const string GIMMICK_BUMPER_KEY = "ui.tutorial.play.gimmick.bumper";
         const string GIMMICK_SLINGSHOT_KEY = "ui.tutorial.play.gimmick.slingshot";
         const string GIMMICK_SPINNER_KEY = "ui.tutorial.play.gimmick.spinner";
@@ -77,6 +85,10 @@ namespace Pinball.Ingame.Tutorial
         readonly List<Bounds> _worldBoundsBuffer = new List<Bounds>();
         readonly List<MapInteractable.SpriteSnapshot> _spriteBuffer = new List<MapInteractable.SpriteSnapshot>();
         readonly List<MapInteractable.LineSnapshot> _lineBuffer = new List<MapInteractable.LineSnapshot>();
+        bool _isNudgeGuidePending = false;
+        bool _isFlipperGuidePending = false;
+        bool _hasSlingshot = false;
+        bool _hasBallLostGuideShown = false;
 
         public PlayIntroTutorialBlock(InitParam param, TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
         {
@@ -96,7 +108,7 @@ namespace Pinball.Ingame.Tutorial
 
             _param.ModalSetter(true);
             FocusUI(_param.ScoreAnchorGetter());
-            await _dialog.ShowAndWaitClickAsync(SCORE_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(SCORE_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken, TutorialDialogView.EIcon.Score);
 
             await RunGimmickTourAsync(cancellationToken);
             await RunControlIntroAsync(cancellationToken);
@@ -104,16 +116,22 @@ namespace Pinball.Ingame.Tutorial
 
             await RunLaunchGuideAsync(cancellationToken);
 
-            await WaitSlingshotHitAsync(cancellationToken);
+            await RunPlayGuidesAsync(cancellationToken);
             if (!_param.IsPlayStateGetter())
                 return false;
-
-            await RunNudgeGuideAsync(cancellationToken);
 
             _param.ComboWaitPreparer();
-            await UniTask.WaitUntil(GetIsComboWaitFinished, cancellationToken: cancellationToken);
-            if (!_param.IsPlayStateGetter())
-                return false;
+            while (true)
+            {
+                await UniTask.WaitUntil(GetIsComboWaitFinished, cancellationToken: cancellationToken);
+                if (!_param.IsPlayStateGetter())
+                    return false;
+
+                if (!_param.IsBallLostGetter())
+                    break;
+
+                await RunBallLostGuideAsync(cancellationToken);
+            }
 
             _param.ModalSetter(true);
             if (_param.IsComboTriggerReachedGetter())
@@ -121,10 +139,19 @@ namespace Pinball.Ingame.Tutorial
             else
                 ShowFullDim();
 
-            await _dialog.ShowAndWaitClickAsync(COMBO_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+            LocalizedTextRef comboText = new LocalizedTextRef(COMBO_KEY, new object[] { _param.ComboTimeoutSeconds });
+            await _dialog.ShowAndWaitClickAsync(comboText, TutorialDialogView.EPlacement.Center, cancellationToken, TutorialDialogView.EIcon.Combo);
             HideOverlay();
 
-            await _dialog.ShowAndWaitClickAsync(FREE_PLAY_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+            if (!_hasBallLostGuideShown)
+            {
+                LocalizedTextRef noticeText = new LocalizedTextRef(BALL_LOST_NOTICE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
+                await _dialog.ShowAndWaitClickAsync(noticeText, TutorialDialogView.EPlacement.Center, cancellationToken, TutorialDialogView.EIcon.BallLost);
+            }
+
+            if (!_param.IsStageClearInterceptedGetter())
+                await _dialog.ShowAndWaitClickAsync(FREE_PLAY_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+
             _param.ModalSetter(false);
 
             HideOverlay();
@@ -184,15 +211,92 @@ namespace Pinball.Ingame.Tutorial
                     placement = TutorialDialogView.EPlacement.Bottom;
 
                 string gimmickKey = GetGimmickKey(gimmickType);
-                await _dialog.ShowAndWaitClickAsync(gimmickKey, placement, cancellationToken);
+                await _dialog.ShowAndWaitClickAsync(gimmickKey, placement, cancellationToken, TutorialDialogView.EIcon.Bumper);
 
                 string secondPageKey = gimmickKey + SECOND_PAGE_SUFFIX;
                 if (!string.IsNullOrEmpty(LocalizationTable.Get(secondPageKey, string.Empty)))
-                    await _dialog.ShowAndWaitClickAsync(secondPageKey, placement, cancellationToken);
+                    await _dialog.ShowAndWaitClickAsync(secondPageKey, placement, cancellationToken, TutorialDialogView.EIcon.Bumper);
             }
         }
 
         async UniTask RunControlIntroAsync(CancellationToken cancellationToken)
+        {
+            MapRoot map = _param.MapGetter();
+            if (null == map)
+                return;
+
+            FocusSpring(map);
+            LocalizedTextRef springText = new LocalizedTextRef(SPRING_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
+            await _dialog.ShowAndWaitClickAsync(springText, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Launch);
+        }
+
+        async UniTask RunLaunchGuideAsync(CancellationToken cancellationToken)
+        {
+            HideOverlay();
+
+            LocalizedTextRef guideText = new LocalizedTextRef(LAUNCH_GUIDE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
+            _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Launch);
+            await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
+            _dialog.Hide();
+        }
+
+        async UniTask RunPlayGuidesAsync(CancellationToken cancellationToken)
+        {
+            MapRoot map = _param.MapGetter();
+            _hasSlingshot = null != map && HasActiveGimmick(map, MapInteractable.EGimmickType.Slingshot);
+            _isNudgeGuidePending = true;
+            _isFlipperGuidePending = null != map;
+            if (null != map)
+                map.ArmFlipperApproachZone();
+
+            while (_isNudgeGuidePending || _isFlipperGuidePending)
+            {
+                await UniTask.WaitUntil(GetIsPlayGuideWaitFinished, cancellationToken: cancellationToken);
+                if (!_param.IsPlayStateGetter())
+                    return;
+
+                if (_param.IsBallLostGetter())
+                {
+                    await RunBallLostGuideAsync(cancellationToken);
+                    continue;
+                }
+
+                if (GetIsPlayInterrupted())
+                    return;
+
+                if (_isNudgeGuidePending && GetIsNudgeTriggerReached())
+                {
+                    _isNudgeGuidePending = false;
+                    await DelayAfterSlingshotHitAsync(cancellationToken);
+                    await RunNudgeGuideAsync(cancellationToken);
+                    continue;
+                }
+
+                _isFlipperGuidePending = false;
+                await RunFlipperGuideAsync(cancellationToken);
+            }
+        }
+
+        async UniTask RunBallLostGuideAsync(CancellationToken cancellationToken)
+        {
+            _hasBallLostGuideShown = true;
+            HideOverlay();
+            _param.LaunchWaitPreparer();
+            LocalizedTextRef lostText = new LocalizedTextRef(BALL_LOST_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
+            _dialog.ShowGuide(lostText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.BallLost);
+            await UniTask.WaitUntil(GetIsRelaunchWaitFinished, cancellationToken: cancellationToken);
+            _dialog.Hide();
+        }
+
+        async UniTask DelayAfterSlingshotHitAsync(CancellationToken cancellationToken)
+        {
+            if (!_param.HasSlingshotHitGetter())
+                return;
+
+            await UniTask.Delay(TimeSpan.FromSeconds(SLINGSHOT_HIT_DELAY_SECONDS), cancellationToken: cancellationToken);
+        }
+
+        async UniTask RunFlipperGuideAsync(CancellationToken cancellationToken)
         {
             MapRoot map = _param.MapGetter();
             if (null == map)
@@ -206,40 +310,29 @@ namespace Pinball.Ingame.Tutorial
             map.CollectLeftFlipperSprites(_spriteBuffer);
             map.CollectRightFlipperSprites(_spriteBuffer);
             FocusWorldTargets();
+
+            _param.FlipWaitPreparer();
             LocalizedTextRef flipperText = new LocalizedTextRef(FLIPPER_KEY, new object[] { GetKeyName(EKeyAction.FlipperLeft), GetKeyName(EKeyAction.FlipperRight) });
-            await _dialog.ShowAndWaitClickAsync(flipperText, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            await _dialog.ShowAndWaitClickAsync(PARRY_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            FocusSpring(map);
-            LocalizedTextRef springText = new LocalizedTextRef(SPRING_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-            await _dialog.ShowAndWaitClickAsync(springText, TutorialDialogView.EPlacement.Top, cancellationToken);
-        }
-
-        async UniTask RunLaunchGuideAsync(CancellationToken cancellationToken)
-        {
+            _dialog.ShowGuide(flipperText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Flipper);
+            await UniTask.WaitUntil(GetIsFlipWaitFinished, cancellationToken: cancellationToken);
+            map.DisarmFlipperApproachZone();
+            _dialog.Hide();
             HideOverlay();
 
-            LocalizedTextRef guideText = new LocalizedTextRef(LAUNCH_GUIDE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-            _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top);
-            await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
-            _dialog.Hide();
-        }
-
-        async UniTask WaitSlingshotHitAsync(CancellationToken cancellationToken)
-        {
-            MapRoot map = _param.MapGetter();
-            if (null == map || !HasActiveGimmick(map, MapInteractable.EGimmickType.Slingshot))
+            if (!_param.IsPlayStateGetter())
                 return;
 
-            await UniTask.WaitUntil(GetIsSlingshotWaitFinished, cancellationToken: cancellationToken);
+            _param.ModalSetter(true);
+            await _dialog.ShowAndWaitClickAsync(PARRY_KEY, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Flipper);
+            _param.ModalSetter(false);
+            _dialog.Hide();
         }
 
         async UniTask RunNudgeGuideAsync(CancellationToken cancellationToken)
         {
             _param.ModalSetter(true);
             LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken);
+            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Nudge);
             _param.ModalSetter(false);
             _dialog.Hide();
 
@@ -249,7 +342,7 @@ namespace Pinball.Ingame.Tutorial
             _param.NudgeWaitPreparer();
             _param.TimeFreezeSetter(true);
             LocalizedTextRef tryText = new LocalizedTextRef(NUDGE_TRY_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            _dialog.ShowGuide(tryText, TutorialDialogView.EPlacement.Top);
+            _dialog.ShowGuide(tryText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Nudge);
             await UniTask.WaitUntil(GetIsNudgeWaitFinished, cancellationToken: cancellationToken);
             _param.TimeFreezeSetter(false);
             _dialog.Hide();
@@ -374,14 +467,44 @@ namespace Pinball.Ingame.Tutorial
             return _param.HasLaunchedGetter() || GetIsPlayInterrupted();
         }
 
-        bool GetIsSlingshotWaitFinished()
+        bool GetIsNudgeTriggerReached()
         {
-            return _param.HasSlingshotHitGetter() || GetIsPlayInterrupted();
+            return !_hasSlingshot || _param.HasSlingshotHitGetter();
+        }
+
+        bool GetIsFlipperTriggerReached()
+        {
+            MapRoot map = _param.MapGetter();
+            return null != map && map.IsHoldingBallOnFlipperApproach();
+        }
+
+        bool GetIsRelaunchWaitFinished()
+        {
+            if (_param.HasLaunchedGetter() || _param.IsStageClearInterceptedGetter())
+                return true;
+
+            return !_param.IsPlayStateGetter();
+        }
+
+        bool GetIsPlayGuideWaitFinished()
+        {
+            if (GetIsPlayInterrupted() || _param.IsBallLostGetter())
+                return true;
+
+            if (_isNudgeGuidePending && GetIsNudgeTriggerReached())
+                return true;
+
+            return _isFlipperGuidePending && GetIsFlipperTriggerReached();
+        }
+
+        bool GetIsFlipWaitFinished()
+        {
+            return _param.HasBallStruckGetter() || GetIsPlayInterrupted();
         }
 
         bool GetIsComboWaitFinished()
         {
-            return _param.IsComboTriggerReachedGetter() || GetIsPlayInterrupted();
+            return _param.IsComboTriggerReachedGetter() || _param.IsBallLostGetter() || GetIsPlayInterrupted();
         }
 
         bool GetIsNudgeWaitFinished()

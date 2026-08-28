@@ -4,6 +4,7 @@ using Pinball.Localization;
 using Pinball.UI;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Pinball.Ingame.Tutorial
@@ -17,8 +18,20 @@ namespace Pinball.Ingame.Tutorial
             Center = 2,
         }
 
-        const string CONTINUE_HINT_TEXT = "CLICK TO CONTINUE";
+        public enum EIcon
+        {
+            Flipper = 0,
+            Launch = 1,
+            Nudge = 2,
+            Combo = 3,
+            BallLost = 4,
+            Score = 5,
+            Bumper = 6,
+        }
+
+        const string CONTINUE_HINT_TEXT = "SPACE OR CLICK TO CONTINUE";
         const string CONTINUE_HINT_KEY = "ui.tutorial.continue";
+        const Key CONTINUE_KEY = Key.Space;
         const float REVEAL_CHARS_PER_SECOND = 40f;
 
         static readonly Vector2 BOTTOM_POSITION = new Vector2(0f, -340f);
@@ -29,6 +42,8 @@ namespace Pinball.Ingame.Tutorial
         [SerializeField] RectTransform _panel = null;
         [SerializeField] TMP_Text _bodyLabel = null;
         [SerializeField] TMP_Text _continueHintLabel = null;
+        [SerializeField] Image _iconImage = null;
+        [SerializeField] Sprite[] _iconSprites = null;
 
         LocalizedTextRef _currentBody = default;
         bool _isClicked = false;
@@ -39,14 +54,14 @@ namespace Pinball.Ingame.Tutorial
 
         public void Init()
         {
-            _clickCatcher.onClick.AddListener(OnClicked);
+            _clickCatcher.onClick.AddListener(Advance);
             LocalizationManager.OnLanguageChanged += RefreshTexts;
         }
 
         public void Release()
         {
             LocalizationManager.OnLanguageChanged -= RefreshTexts;
-            _clickCatcher.onClick.RemoveListener(OnClicked);
+            _clickCatcher.onClick.RemoveListener(Advance);
         }
 
         public bool IsShowing()
@@ -54,16 +69,16 @@ namespace Pinball.Ingame.Tutorial
             return gameObject.activeSelf;
         }
 
-        public async UniTask ShowAndWaitClickAsync(LocalizedTextRef body, EPlacement placement, CancellationToken cancellationToken)
+        public async UniTask ShowAndWaitClickAsync(LocalizedTextRef body, EPlacement placement, CancellationToken cancellationToken, EIcon icon = EIcon.Flipper)
         {
             await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
-            Show(body, placement, true);
+            Show(body, placement, true, icon);
             await UniTask.WaitUntil(GetIsClicked, cancellationToken: cancellationToken);
         }
 
-        public void ShowGuide(LocalizedTextRef body, EPlacement placement)
+        public void ShowGuide(LocalizedTextRef body, EPlacement placement, EIcon icon = EIcon.Flipper)
         {
-            Show(body, placement, false);
+            Show(body, placement, false, icon);
         }
 
         public void Hide()
@@ -72,7 +87,7 @@ namespace Pinball.Ingame.Tutorial
             gameObject.SetActive(false);
         }
 
-        void Show(LocalizedTextRef body, EPlacement placement, bool waitsClick)
+        void Show(LocalizedTextRef body, EPlacement placement, bool waitsClick, EIcon icon)
         {
             gameObject.SetActive(true);
             _currentBody = body;
@@ -80,11 +95,26 @@ namespace Pinball.Ingame.Tutorial
             _waitsClick = waitsClick;
             _panel.anchoredPosition = GetPlacementPosition(placement);
             _clickCatcher.gameObject.SetActive(waitsClick);
+            ApplyIcon(icon);
             RefreshTexts();
+        }
+
+        void ApplyIcon(EIcon icon)
+        {
+            if (null == _iconImage || null == _iconSprites)
+                return;
+
+            int index = (int)icon;
+            if (index < 0 || index >= _iconSprites.Length || null == _iconSprites[index])
+                return;
+
+            _iconImage.sprite = _iconSprites[index];
         }
 
         void Update()
         {
+            CheckSkipInput();
+
             if (!_isRevealing)
                 return;
 
@@ -94,18 +124,50 @@ namespace Pinball.Ingame.Tutorial
                 CompleteReveal();
         }
 
+        void CheckSkipInput()
+        {
+            if (_isClicked)
+                return;
+
+            Keyboard keyboard = Keyboard.current;
+            if (null != keyboard && keyboard[CONTINUE_KEY].wasPressedThisFrame)
+            {
+                Advance();
+                return;
+            }
+
+            if (_waitsClick || !_isRevealing)
+                return;
+
+            if (IsPointerPressed())
+                CompleteReveal();
+        }
+
+        static bool IsPointerPressed()
+        {
+            Mouse mouse = Mouse.current;
+            if (null != mouse && mouse.leftButton.wasPressedThisFrame)
+                return true;
+
+            Touchscreen touchscreen = Touchscreen.current;
+            return null != touchscreen && touchscreen.primaryTouch.press.wasPressedThisFrame;
+        }
+
         bool GetIsClicked()
         {
             return _isClicked;
         }
 
-        void OnClicked()
+        void Advance()
         {
             if (_isRevealing)
             {
                 CompleteReveal();
                 return;
             }
+
+            if (!_waitsClick)
+                return;
 
             _isClicked = true;
         }

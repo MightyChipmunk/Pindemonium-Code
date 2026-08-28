@@ -32,6 +32,7 @@ namespace Pinball.Ingame
     {
         const int DEFAULT_MAP_INDEX = 0;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
+        const float DEFAULT_COMBO_TIMEOUT_SECONDS = 3f;
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -260,6 +261,7 @@ namespace Pinball.Ingame
             _ballFlow = new BallFlowController(new BallFlowController.InitParam(
                 IsControlBlockedGetter: GetIsControlBlocked,
                 IsPlayingGetter: GetIsPlaying,
+                IsBallLossBlockedGetter: _tutorialManager.IsPlayIntroRunning,
                 FXPlayer: _director.PlayFX,
                 SurfaceHitReporter: ReportBallSurfaceHit), _ballSpawner);
             _drainZone.OnColliderEntered += _ballFlow.HandleBallDrained;
@@ -346,6 +348,7 @@ namespace Pinball.Ingame
                 BallEffectResetter: _ballEffectController.Reset,
                 OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
                 OnSlingshotHit: _tutorialManager.NotifySlingshotHit,
+                OnFlipperBallStruck: _tutorialManager.NotifyBallStruck,
                 StageClearSettler: SettleStageClear,
                 StageClearInterceptorAsync: _tutorialManager.RunPendingPlayStepsAsync,
                 MapIndex: DEFAULT_MAP_INDEX), _stageTracker, _ballFlow, _playerController, _scoreCounter, _director, _gimmickResolver);
@@ -441,6 +444,7 @@ namespace Pinball.Ingame
                 InterestPerAmount: hasShopConfig ? _shopConfig.InterestPerAmount : 0,
                 InterestMax: hasShopConfig ? _shopConfig.InterestMax : 0,
                 PassiveSlotCount: hasShopConfig ? _shopConfig.CommonPassiveSlotCount : DEFAULT_PASSIVE_SLOT_COUNT,
+                ComboTimeoutSeconds: null == _comboConfig ? DEFAULT_COMBO_TIMEOUT_SECONDS : _comboConfig.TimeoutSeconds,
                 StageNumberGetter: GetStageNumber,
                 IsEndlessGetter: GetIsEndless,
                 IsPlayStateGetter: GetIsPlayState,
@@ -448,11 +452,13 @@ namespace Pinball.Ingame
                 CanNudgeGetter: _ballFlow.CanNudgeActiveBall,
                 ComboCountGetter: GetComboCount,
                 NudgeCooldownResetter: _playerController.ResetNudgeCooldown,
+                ControlStateResetter: _playerController.ResetControlStates,
                 ScoreAnchorGetter: _uiRoot.GetScoreAnchor,
                 ComboAnchorGetter: _uiRoot.GetComboAnchor));
             Track(_tutorialManager.Release);
 
             _ballFlow.OnBallCountChanged += _tutorialManager.NotifyBallCountChanged;
+            _ballFlow.OnBallReady += _tutorialManager.NotifyBallReady;
             _playerController.OnLaunched += NotifyTutorialLaunched;
             _playerController.OnNudged += _tutorialManager.NotifyNudged;
             _scoreCounter.OnComboChanged += NotifyTutorialComboChanged;
@@ -464,6 +470,7 @@ namespace Pinball.Ingame
             _scoreCounter.OnComboChanged -= NotifyTutorialComboChanged;
             _playerController.OnNudged -= _tutorialManager.NotifyNudged;
             _playerController.OnLaunched -= NotifyTutorialLaunched;
+            _ballFlow.OnBallReady -= _tutorialManager.NotifyBallReady;
             _ballFlow.OnBallCountChanged -= _tutorialManager.NotifyBallCountChanged;
         }
 

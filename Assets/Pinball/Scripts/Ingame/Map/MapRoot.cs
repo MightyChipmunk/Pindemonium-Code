@@ -46,6 +46,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] Renderer[] _leftFlipperRenderers = null;
         [SerializeField] Renderer[] _rightFlipperRenderers = null;
         [SerializeField] Renderer[] _springRenderers = null;
+        [SerializeField] BallHoldZone _flipperApproachZone = null;
 
         Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> _onScoreGained = null;
         Action<Flipper.EHitGrade, Vector2> _onBallStruck = null;
@@ -141,6 +142,9 @@ namespace Pinball.Ingame.Map
             _leftFlipper.OnBallStruck += OnFlipperBallStruck;
             _rightFlipper.OnBallStruck += OnFlipperBallStruck;
             _spring.Init(param.OnSpringChargeEvent);
+
+            if (null != _flipperApproachZone)
+                _flipperApproachZone.SetHoldPredicate(CanFlipperStrikePoint);
         }
 
         void RegisterDamageable(MapInteractable interactable)
@@ -250,6 +254,10 @@ namespace Pinball.Ingame.Map
             _leftFlipper.Release();
             _onBallStruck = null;
             _onScoreGained = null;
+
+            if (null != _flipperApproachZone)
+                _flipperApproachZone.SetHoldPredicate(null);
+
             _onBumperDamaged = null;
             _onBumperBroken = null;
             _onSlingshotBallHit = null;
@@ -693,6 +701,32 @@ namespace Pinball.Ingame.Map
             return _rightFlipper.transform.position;
         }
 
+        public void ArmFlipperApproachZone()
+        {
+            if (null == _flipperApproachZone)
+                return;
+
+            _flipperApproachZone.Arm();
+        }
+
+        public void DisarmFlipperApproachZone()
+        {
+            if (null == _flipperApproachZone)
+                return;
+
+            _flipperApproachZone.Disarm();
+        }
+
+        bool CanFlipperStrikePoint(Vector2 worldPoint)
+        {
+            return _leftFlipper.CanStrikePoint(worldPoint) || _rightFlipper.CanStrikePoint(worldPoint);
+        }
+
+        public bool IsHoldingBallOnFlipperApproach()
+        {
+            return null != _flipperApproachZone && _flipperApproachZone.IsHolding();
+        }
+
         public void SetFlipperPressed(Flipper.ESide side, bool isPressed)
         {
             if (side == Flipper.ESide.Left)
@@ -727,6 +761,7 @@ namespace Pinball.Ingame.Map
             _interactables = GetComponentsInChildren<MapInteractable>(true);
             _slots = GetComponentsInChildren<MapSlot>(true);
             _spring = GetComponentInChildren<Spring>(true);
+            _flipperApproachZone = GetComponentInChildren<BallHoldZone>(true);
 
             Flipper[] flippers = GetComponentsInChildren<Flipper>(true);
             for (int i = 0; i < flippers.Length; ++i)

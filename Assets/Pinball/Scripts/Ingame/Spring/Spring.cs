@@ -16,6 +16,12 @@ namespace Pinball.Ingame
         const float COMPRESS_SCALE_Y = 0.6f;
         const float COMPRESS_DURATION = 0.05f;
         const float RESTORE_DURATION = 0.15f;
+        const float LAUNCH_OVERSHOOT_SCALE_Y = 1.18f;
+        const float LAUNCH_SETTLE_DURATION = 0.12f;
+        const float LAUNCH_WOBBLE_ANGLE = 7f;
+        const float LAUNCH_WOBBLE_DURATION = 0.45f;
+        const int LAUNCH_WOBBLE_VIBRATO = 10;
+        const float LAUNCH_WOBBLE_ELASTICITY = 0.6f;
         const float FULL_SCALE_Y = 1f;
         const float MIN_DURATION = 0.0001f;
         const float EMPTY_CHARGE_RATIO = 0f;
@@ -221,8 +227,10 @@ namespace Pinball.Ingame
             KillLaunchTween(true);
 
             Sequence sequence = DOTween.Sequence();
-            sequence.Append(_visual.DOScaleY(COMPRESS_SCALE_Y, COMPRESS_DURATION));
-            sequence.Append(_visual.DOScaleY(FULL_SCALE_Y, RESTORE_DURATION));
+            sequence.Append(_visual.DOScaleY(COMPRESS_SCALE_Y, COMPRESS_DURATION).SetEase(Ease.OutQuad));
+            sequence.Append(_visual.DOScaleY(LAUNCH_OVERSHOOT_SCALE_Y, RESTORE_DURATION).SetEase(Ease.OutQuad));
+            sequence.Append(_visual.DOScaleY(FULL_SCALE_Y, LAUNCH_SETTLE_DURATION).SetEase(Ease.OutBack));
+            sequence.Insert(COMPRESS_DURATION, _visual.DOPunchRotation(new Vector3(0f, 0f, LAUNCH_WOBBLE_ANGLE), LAUNCH_WOBBLE_DURATION, LAUNCH_WOBBLE_VIBRATO, LAUNCH_WOBBLE_ELASTICITY));
             _launchTween = sequence;
         }
 

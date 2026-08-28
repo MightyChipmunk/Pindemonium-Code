@@ -15,6 +15,10 @@ namespace Pinball.Ingame.Input
         public event Action OnEscapePressed;
 
         bool _isInited = false;
+        bool _isFlipperLeftHeld = false;
+        bool _isFlipperRightHeld = false;
+        bool _isLaunchHeld = false;
+        bool _isNudgeHeld = false;
 
         public void Init()
         {
@@ -28,13 +32,17 @@ namespace Pinball.Ingame.Input
             OnLaunchChanged = null;
             OnNudgeChanged = null;
             OnEscapePressed = null;
+            ClearHeldKeys();
             _isInited = false;
         }
 
         void Update()
         {
             if (Blocker.IsBlocking)
+            {
+                ClearHeldKeys();
                 return;
+            }
 
             if (!_isInited)
                 return;
@@ -43,13 +51,21 @@ namespace Pinball.Ingame.Input
             if (null == keyboard)
                 return;
 
-            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperLeft), OnFlipperLeftChanged);
-            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperRight), OnFlipperRightChanged);
-            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Launch), OnLaunchChanged);
-            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Nudge), OnNudgeChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperLeft), ref _isFlipperLeftHeld, OnFlipperLeftChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperRight), ref _isFlipperRightHeld, OnFlipperRightChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Launch), ref _isLaunchHeld, OnLaunchChanged);
+            CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Nudge), ref _isNudgeHeld, OnNudgeChanged);
 
             if (keyboard.escapeKey.wasPressedThisFrame)
                 OnEscapePressed?.Invoke();
+        }
+
+        void ClearHeldKeys()
+        {
+            _isFlipperLeftHeld = false;
+            _isFlipperRightHeld = false;
+            _isLaunchHeld = false;
+            _isNudgeHeld = false;
         }
 
         public Vector2 ReadNudgeAimInput()
@@ -70,16 +86,26 @@ namespace Pinball.Ingame.Input
             return input;
         }
 
-        static void CheckKey(Keyboard keyboard, Key key, Action<bool> callback)
+        static void CheckKey(Keyboard keyboard, Key key, ref bool isHeld, Action<bool> callback)
         {
             if (key == Key.None)
                 return;
 
             if (keyboard[key].wasPressedThisFrame)
+            {
+                isHeld = true;
                 callback?.Invoke(true);
+                return;
+            }
+
+            if (!isHeld)
+                return;
 
             if (keyboard[key].wasReleasedThisFrame)
+            {
+                isHeld = false;
                 callback?.Invoke(false);
+            }
         }
     }
 }

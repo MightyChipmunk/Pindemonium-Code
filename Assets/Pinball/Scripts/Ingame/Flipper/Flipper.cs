@@ -27,6 +27,7 @@ namespace Pinball.Ingame
         const float TIMING_RELAX_SIDE_RATIO = 0.5f;
         const float MIN_FALLOFF_RANGE = 0.0001f;
         const float SWING_ANGLE_EPSILON = 0.01f;
+        const float STRAIGHT_ANGLE = 180f;
         const string HIT_LOG_FORMAT = "[Flipper] {0} → {1} | 타이밍 {2:F3}s (퍼펙트 {3:F2}~{4:F2}s) | 위치 {5:F2} (스위트스팟 {6:F2}~{7:F2}) | 세기 x{8:F2}";
 
         [SerializeField] Rigidbody2D _rigidbody = null;
@@ -47,6 +48,7 @@ namespace Pinball.Ingame
         public ESide Side => _side;
 
         float SideDirection => _side == ESide.Left ? NORMAL_MULTIPLIER : MIRRORED_DIRECTION;
+        float ArmAngleOffset => _side == ESide.Left ? 0f : STRAIGHT_ANGLE;
         float RestAngle => _config.RestAngle * SideDirection;
         float PressedAngle => _config.PressedAngle * SideDirection;
 
@@ -84,6 +86,25 @@ namespace Pinball.Ingame
             transform.localScale = _baseLocalScale;
             _rotateSpeedScale = NORMAL_MULTIPLIER;
             OnBallStruck = null;
+        }
+
+        public bool CanStrikePoint(Vector2 worldPoint)
+        {
+            if (null == _config)
+                return false;
+
+            Vector2 offset = worldPoint - (Vector2)transform.position;
+            float strikeRange = _config.FlipperLength * Mathf.Abs(transform.lossyScale.x);
+            if (offset.sqrMagnitude > strikeRange * strikeRange)
+                return false;
+
+            float restArmAngle = RestAngle + ArmAngleOffset;
+            float sweepAngle = Mathf.DeltaAngle(restArmAngle, PressedAngle + ArmAngleOffset);
+            float pointAngle = Mathf.DeltaAngle(restArmAngle, Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg);
+            if (sweepAngle < 0f)
+                return pointAngle <= 0f && pointAngle >= sweepAngle;
+
+            return pointAngle >= 0f && pointAngle <= sweepAngle;
         }
 
         public void SetPressed(bool isPressed)

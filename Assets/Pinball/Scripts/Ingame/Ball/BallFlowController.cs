@@ -22,10 +22,12 @@ namespace Pinball.Ingame
         const float MIN_CLONE_OFFSET_SQR_SPEED = 0.01f;
         const float CLONE_SPLIT_IMPULSE = 2f;
         const float FULL_CIRCLE_DEGREE = 360f;
+        const int MIN_KEPT_BALL_COUNT = 1;
 
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
+            Func<bool> IsBallLossBlockedGetter,
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<Vector2> SurfaceHitReporter);
 
@@ -33,6 +35,7 @@ namespace Pinball.Ingame
         BallStockCounter _ballStock = null;
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
+        Func<bool> _isBallLossBlockedGetter = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<Vector2> _surfaceHitReporter = null;
         MapRoot _map = null;
@@ -58,6 +61,7 @@ namespace Pinball.Ingame
             _spawner = spawner;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
+            _isBallLossBlockedGetter = param.IsBallLossBlockedGetter;
             _fxPlayer = param.FXPlayer;
             _surfaceHitReporter = param.SurfaceHitReporter;
             _usedBallCount = 0;
@@ -247,8 +251,11 @@ namespace Pinball.Ingame
             if (IsControlBlocked())
                 return;
 
-            _ballStock.Consume();
-            ++_usedBallCount;
+            if (!IsBallLossBlocked())
+            {
+                _ballStock.Consume();
+                ++_usedBallCount;
+            }
 
             if (_ballStock.Remaining <= 0)
             {
@@ -259,6 +266,14 @@ namespace Pinball.Ingame
             LoadBallOnSpring();
             AudioManager.Play(AudioStorage.EAudioClipType.BallReady);
             OnBallReady?.Invoke();
+        }
+
+        bool IsBallLossBlocked()
+        {
+            if (null == _isBallLossBlockedGetter)
+                return false;
+
+            return _isBallLossBlockedGetter() && _ballStock.Remaining <= MIN_KEPT_BALL_COUNT;
         }
 
         public void CountGimmickHit(Collider2D ballCollider)

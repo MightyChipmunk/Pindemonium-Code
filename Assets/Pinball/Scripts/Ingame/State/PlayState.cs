@@ -27,6 +27,7 @@ namespace Pinball.Ingame.State
             Action BallEffectResetter,
             Action OnGimmickBroken,
             Action OnSlingshotHit,
+            Action OnFlipperBallStruck,
             Action StageClearSettler,
             Func<UniTask> StageClearInterceptorAsync,
             int MapIndex);
@@ -299,6 +300,7 @@ namespace Pinball.Ingame.State
 
         void OnBallStruck(Flipper.EHitGrade grade, Vector2 worldPoint)
         {
+            _param.OnFlipperBallStruck?.Invoke();
             _director.PlayFlipperHit(grade, worldPoint);
             _scoreCounter.HandleBallStruck(grade, worldPoint);
         }
