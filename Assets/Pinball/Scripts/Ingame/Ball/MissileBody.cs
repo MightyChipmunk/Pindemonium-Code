@@ -5,10 +5,10 @@ namespace Pinball.Ingame
 {
     public class MissileBody : EffectBodyBase
     {
-        const float LAUNCH_SPEED = 7f;
-        const float MAX_SPEED = 17f;
-        const float ACCELERATION = 22f;
-        const float TURN_DEGREES_PER_SECOND = 480f;
+        const float LAUNCH_SPEED = 21f;
+        const float MAX_SPEED = 51f;
+        const float ACCELERATION = 66f;
+        const float TURN_DEGREES_PER_SECOND = 1440f;
         const float MIN_STEER_SQR_DISTANCE = 0.0001f;
         const float UP_ANGLE_OFFSET_DEGREE = 90f;
 

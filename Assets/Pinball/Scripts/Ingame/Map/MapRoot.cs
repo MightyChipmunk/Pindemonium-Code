@@ -157,14 +157,33 @@ namespace Pinball.Ingame.Map
 
         public bool ApplyColliderHit(Collider2D hitCollider, float damage)
         {
-            if (null == _damageableRegistry || null == hitCollider)
-                return false;
-
-            if (!_damageableRegistry.Find(hitCollider.GetInstanceID(), out IDamageable damageable))
+            if (!TryFindDamageable(hitCollider, out IDamageable damageable))
                 return false;
 
             damageable.TakeHit(damage, hitCollider.bounds.center);
             return true;
+        }
+
+        public bool ApplyBumperHit(Collider2D hitCollider, float damage)
+        {
+            if (!TryFindDamageable(hitCollider, out IDamageable damageable))
+                return false;
+
+            BumperInteractable bumper = damageable as BumperInteractable;
+            if (null == bumper)
+                return false;
+
+            damageable.TakeHit(damage, hitCollider.bounds.center);
+            return true;
+        }
+
+        bool TryFindDamageable(Collider2D hitCollider, out IDamageable damageable)
+        {
+            damageable = null;
+            if (null == _damageableRegistry || null == hitCollider)
+                return false;
+
+            return _damageableRegistry.Find(hitCollider.GetInstanceID(), out damageable);
         }
 
         public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)

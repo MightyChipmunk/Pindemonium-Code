@@ -60,6 +60,14 @@ namespace Pinball.Ingame.Map
             return _currentMap.ApplyColliderHit(hitCollider, damage);
         }
 
+        public bool ApplyBumperHit(Collider2D hitCollider, float damage)
+        {
+            if (null == _currentMap)
+                return false;
+
+            return _currentMap.ApplyBumperHit(hitCollider, damage);
+        }
+
         public void ApplyBoxHit(Vector2 center, Vector2 size, float angleDegree, float damage)
         {
             if (null == _currentMap)

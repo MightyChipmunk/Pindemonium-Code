@@ -16,6 +16,7 @@ namespace Pinball.Ingame
             Func<List<Vector2>, int> BumperPositionCollector,
             Func<float, float> EffectDamageEvaluator,
             Func<Collider2D, float, bool> ColliderHitApplier,
+            Func<Collider2D, float, bool> BumperHitApplier,
             Action<Vector2, Vector2, float, float> BoxHitApplier);
 
         const int ORBITAL_COUNT = 2;
@@ -34,6 +35,7 @@ namespace Pinball.Ingame
         Func<List<Vector2>, int> _bumperPositionCollector = null;
         Func<float, float> _effectDamageEvaluator = null;
         Func<Collider2D, float, bool> _colliderHitApplier = null;
+        Func<Collider2D, float, bool> _bumperHitApplier = null;
         Action<Vector2, Vector2, float, float> _boxHitApplier = null;
         EffectBodySpawner _spawner = null;
         List<OrbitalBody> _orbitals = null;
@@ -54,6 +56,7 @@ namespace Pinball.Ingame
             _bumperPositionCollector = param.BumperPositionCollector;
             _effectDamageEvaluator = param.EffectDamageEvaluator;
             _colliderHitApplier = param.ColliderHitApplier;
+            _bumperHitApplier = param.BumperHitApplier;
             _boxHitApplier = param.BoxHitApplier;
             _spawner = spawner;
             _orbitals = new List<OrbitalBody>();
@@ -231,10 +234,10 @@ namespace Pinball.Ingame
 
         void HandleMissileContact(MissileBody missile, Collider2D hitCollider)
         {
-            if (null == _colliderHitApplier)
+            if (null == _bumperHitApplier)
                 return;
 
-            if (!_colliderHitApplier(hitCollider, EvaluateDamage(ShopItemData.EEffectType.BallHomingMissile)))
+            if (!_bumperHitApplier(hitCollider, EvaluateDamage(ShopItemData.EEffectType.BallHomingMissile)))
                 return;
 
             missile.Expire();
