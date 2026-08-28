@@ -187,6 +187,18 @@ namespace Pinball.Ingame
             ball.ResetDamageStack();
         }
 
+        public float GetActiveDamageStackMultiplier()
+        {
+            float multiplier = null == _activeBall ? Ball.DEFAULT_DAMAGE_STACK : _activeBall.DamageStackMultiplier;
+            if (null == _cloneBalls)
+                return multiplier;
+
+            for (int i = 0; i < _cloneBalls.Count; ++i)
+                multiplier = Mathf.Max(multiplier, _cloneBalls[i].DamageStackMultiplier);
+
+            return multiplier;
+        }
+
         public float GetDamageStackMultiplier(Collider2D ballCollider)
         {
             if (!_spawner.TryResolve(ballCollider, out Ball ball))

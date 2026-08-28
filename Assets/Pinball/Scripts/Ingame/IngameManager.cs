@@ -292,7 +292,7 @@ namespace Pinball.Ingame
 
         void InitPresentation()
         {
-            _resultPresenter = new IngameResultPresenter(_loadout, _uiRoot.SetOwnedItems);
+            _resultPresenter = new IngameResultPresenter(_loadout, _uiRoot.SetOwnedItems, _ballFlow.GetActiveDamageStackMultiplier, _slingshotGrowth.GetScoreRatio);
 
             _ballFlow.OnBallCountChanged += _uiRoot.SetBallCount;
             _stageTracker.OnStageScoreChanged += OnStageScoreChanged;

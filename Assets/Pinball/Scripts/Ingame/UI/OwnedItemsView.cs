@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Shop;
 using Pinball.Localization;
@@ -9,7 +10,7 @@ namespace Pinball.Ingame.UI
 {
     public class OwnedItemsView : MonoBehaviour
     {
-        public record Entry(Sprite Icon, int Count, LocalizedTextRef Title, LocalizedTextRef Description, ShopItemData.EPassiveCategory Category);
+        public record Entry(Sprite Icon, int Count, LocalizedTextRef Title, LocalizedTextRef Description, ShopItemData.EPassiveCategory Category, Func<LocalizedTextRef> DetailGetter = null);
 
         public record Args(List<Entry> Passives, List<Entry> Upgrades, int BallSlotCount, int MapSlotCount, int CommonSlotCount);
 
@@ -92,7 +93,7 @@ namespace Pinball.Ingame.UI
                     continue;
 
                 _categoryEntries[(int)entry.Category].Add(
-                    new ItemIconGridView.Entry(entry.Icon, GetCountText(entry.Count), entry.Title, entry.Description));
+                    new ItemIconGridView.Entry(entry.Icon, GetCountText(entry.Count), entry.Title, entry.Description, entry.DetailGetter));
             }
         }
 

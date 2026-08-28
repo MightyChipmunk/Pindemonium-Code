@@ -4,6 +4,7 @@ using Pinball.Ingame.Map;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.UI;
+using Pinball.Localization;
 using Pinball.UI;
 
 namespace Pinball.Ingame.Presentation
@@ -13,16 +14,23 @@ namespace Pinball.Ingame.Presentation
         public record RunSummary(int StageNumber, bool IsEndless, int Score, int Money, int UsedBallCount, int[] GimmickScores);
 
         const int PASSIVE_OWNED_COUNT = 1;
+        const float NO_GROWTH_RATIO = 0f;
+        const string CHARGE_STACK_KEY = "ui.ingame.charge_stack";
+        const string GROWTH_STACK_KEY = "ui.ingame.growth_stack";
 
         PlayerLoadout _loadout = null;
         Action<OwnedItemsView.Args> _ownedItemsPresenter = null;
+        Func<float> _chargeStackGetter = null;
+        Func<float> _slingshotGrowthGetter = null;
         List<OwnedItemsView.Entry> _passiveEntries = null;
         List<OwnedItemsView.Entry> _upgradeEntries = null;
 
-        public IngameResultPresenter(PlayerLoadout loadout, Action<OwnedItemsView.Args> ownedItemsPresenter)
+        public IngameResultPresenter(PlayerLoadout loadout, Action<OwnedItemsView.Args> ownedItemsPresenter, Func<float> chargeStackGetter, Func<float> slingshotGrowthGetter)
         {
             _loadout = loadout;
             _ownedItemsPresenter = ownedItemsPresenter;
+            _chargeStackGetter = chargeStackGetter;
+            _slingshotGrowthGetter = slingshotGrowthGetter;
             _passiveEntries = new List<OwnedItemsView.Entry>();
             _upgradeEntries = new List<OwnedItemsView.Entry>();
         }
@@ -113,12 +121,41 @@ namespace Pinball.Ingame.Presentation
             }
         }
 
-        static OwnedItemsView.Entry BuildOwnedEntry(ShopItemData item, int count)
+        OwnedItemsView.Entry BuildOwnedEntry(ShopItemData item, int count)
         {
             if (null == item)
                 return null;
 
-            return new OwnedItemsView.Entry(item.GetIcon(), count, item.GetNameRef(), item.GetDescriptionRef(), item.PassiveCategory);
+            return new OwnedItemsView.Entry(
+                item.GetIcon(),
+                count,
+                item.GetNameRef(),
+                item.GetDescriptionRef(),
+                item.PassiveCategory,
+                GetDetailGetter(item));
+        }
+
+        Func<LocalizedTextRef> GetDetailGetter(ShopItemData item)
+        {
+            if (item.EffectType == ShopItemData.EEffectType.SlingshotAttackStack)
+                return BuildChargeStackDetail;
+
+            if (item.EffectType == ShopItemData.EEffectType.SlingshotScoreGrowth)
+                return BuildSlingshotGrowthDetail;
+
+            return null;
+        }
+
+        LocalizedTextRef BuildChargeStackDetail()
+        {
+            float multiplier = null == _chargeStackGetter ? Ball.DEFAULT_DAMAGE_STACK : _chargeStackGetter();
+            return new LocalizedTextRef(CHARGE_STACK_KEY, new object[] { multiplier });
+        }
+
+        LocalizedTextRef BuildSlingshotGrowthDetail()
+        {
+            float ratio = null == _slingshotGrowthGetter ? NO_GROWTH_RATIO : _slingshotGrowthGetter();
+            return new LocalizedTextRef(GROWTH_STACK_KEY, new object[] { ratio });
         }
 
         static ResultStatsView.ItemEntry BuildResultItemEntry(ShopItemData item, int count)
