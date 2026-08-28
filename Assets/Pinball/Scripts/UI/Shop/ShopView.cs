@@ -767,7 +767,7 @@ namespace Pinball.UI
                 return;
 
             Rect rect = slotRect.rect;
-            _sellButtonRoot.position = slotRect.TransformPoint(new Vector3(rect.xMax, rect.center.y, 0f));
+            _sellButtonRoot.position = UIRectAnchor.GetUnscaledWorldPoint(slotRect, new Vector2(rect.xMax, rect.center.y));
             _sellButtonRoot.anchoredPosition += new Vector2(SELL_BUTTON_GAP, 0f);
         }
 
