@@ -344,6 +344,7 @@ namespace Pinball.Ingame
                 BallEffectTicker: _ballEffectController.Tick,
                 BallEffectResetter: _ballEffectController.Reset,
                 OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
+                OnSlingshotHit: _tutorialManager.NotifySlingshotHit,
                 StageClearSettler: SettleStageClear,
                 StageClearInterceptorAsync: _tutorialManager.RunPendingPlayStepsAsync,
                 MapIndex: DEFAULT_MAP_INDEX), _stageTracker, _ballFlow, _playerController, _scoreCounter, _director, _gimmickResolver);
@@ -444,12 +445,13 @@ namespace Pinball.Ingame
                 IsPlayStateGetter: GetIsPlayState,
                 TimeFreezer: _director.SetPaused,
                 CanNudgeGetter: _ballFlow.CanNudgeActiveBall,
+                ComboCountGetter: GetComboCount,
                 NudgeCooldownResetter: _playerController.ResetNudgeCooldown,
                 ScoreAnchorGetter: _uiRoot.GetScoreAnchor,
                 ComboAnchorGetter: _uiRoot.GetComboAnchor));
             Track(_tutorialManager.Release);
 
-            _ballFlow.OnBallLost += _tutorialManager.NotifyBallLost;
+            _ballFlow.OnBallCountChanged += _tutorialManager.NotifyBallCountChanged;
             _playerController.OnLaunched += NotifyTutorialLaunched;
             _playerController.OnNudged += _tutorialManager.NotifyNudged;
             _scoreCounter.OnComboChanged += NotifyTutorialComboChanged;
@@ -461,7 +463,7 @@ namespace Pinball.Ingame
             _scoreCounter.OnComboChanged -= NotifyTutorialComboChanged;
             _playerController.OnNudged -= _tutorialManager.NotifyNudged;
             _playerController.OnLaunched -= NotifyTutorialLaunched;
-            _ballFlow.OnBallLost -= _tutorialManager.NotifyBallLost;
+            _ballFlow.OnBallCountChanged -= _tutorialManager.NotifyBallCountChanged;
         }
 
         void NotifyTutorialLaunched(float launchPowerRatio)

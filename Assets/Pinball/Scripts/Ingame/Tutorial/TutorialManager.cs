@@ -20,11 +20,13 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> IsPlayStateGetter,
             Action<bool> TimeFreezer,
             Func<bool> CanNudgeGetter,
+            Func<int> ComboCountGetter,
             Action NudgeCooldownResetter,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
         const int COMBO_TRIGGER_COUNT = 10;
+        const int LAST_BALL_TRIGGER_COUNT = 1;
         const float SHOP_OPEN_WAIT_SECONDS = 1f;
 
         [SerializeField] TutorialDimmer _dimmer = null;
@@ -40,8 +42,9 @@ namespace Pinball.Ingame.Tutorial
         MapRoot _currentMap = null;
         bool _hasStageStarted = false;
         bool _hasLaunched = false;
+        bool _hasSlingshotHit = false;
         bool _isComboTriggerReached = false;
-        bool _hasBallLost = false;
+        bool _isLastBallLost = false;
         bool _hasNudged = false;
         bool _isStageClearIntercepted = false;
         bool _isPlayIntroRunning = false;
@@ -61,12 +64,14 @@ namespace Pinball.Ingame.Tutorial
                 IsPlayReadyGetter: GetIsPlayIntroReady,
                 IsPlayStateGetter: param.IsPlayStateGetter,
                 HasLaunchedGetter: GetHasLaunched,
+                HasSlingshotHitGetter: GetHasSlingshotHit,
                 IsComboTriggerReachedGetter: GetIsComboTriggerReached,
-                HasBallLostGetter: GetHasBallLost,
+                IsLastBallLostGetter: GetIsLastBallLost,
                 IsStageClearInterceptedGetter: GetIsStageClearIntercepted,
                 HasNudgedGetter: GetHasNudged,
                 CanNudgeGetter: param.CanNudgeGetter,
                 NudgeWaitPreparer: PrepareNudgeWait,
+                ComboWaitPreparer: PrepareComboWait,
                 ScoreAnchorGetter: param.ScoreAnchorGetter,
                 ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog, _highlightLayer);
             _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _dimmer, _dialog, _highlightLayer);
@@ -110,6 +115,11 @@ namespace Pinball.Ingame.Tutorial
             _hasLaunched = true;
         }
 
+        public void NotifySlingshotHit()
+        {
+            _hasSlingshotHit = true;
+        }
+
         public void NotifyComboChanged(int comboCount)
         {
             if (comboCount < COMBO_TRIGGER_COUNT)
@@ -118,9 +128,12 @@ namespace Pinball.Ingame.Tutorial
             _isComboTriggerReached = true;
         }
 
-        public void NotifyBallLost()
+        public void NotifyBallCountChanged(int remainingBallCount)
         {
-            _hasBallLost = true;
+            if (remainingBallCount > LAST_BALL_TRIGGER_COUNT)
+                return;
+
+            _isLastBallLost = true;
         }
 
         public void NotifyNudged()
@@ -229,14 +242,19 @@ namespace Pinball.Ingame.Tutorial
             return _hasLaunched;
         }
 
+        bool GetHasSlingshotHit()
+        {
+            return _hasSlingshotHit;
+        }
+
         bool GetIsComboTriggerReached()
         {
             return _isComboTriggerReached;
         }
 
-        bool GetHasBallLost()
+        bool GetIsLastBallLost()
         {
-            return _hasBallLost;
+            return _isLastBallLost;
         }
 
         bool GetHasNudged()
@@ -253,6 +271,11 @@ namespace Pinball.Ingame.Tutorial
         {
             _hasNudged = false;
             _param.NudgeCooldownResetter();
+        }
+
+        void PrepareComboWait()
+        {
+            _isComboTriggerReached = _param.ComboCountGetter() >= COMBO_TRIGGER_COUNT;
         }
 
         void SetModal(bool isModal)

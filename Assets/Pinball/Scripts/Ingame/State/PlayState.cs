@@ -26,6 +26,7 @@ namespace Pinball.Ingame.State
             Action<float> BallEffectTicker,
             Action BallEffectResetter,
             Action OnGimmickBroken,
+            Action OnSlingshotHit,
             Action StageClearSettler,
             Func<UniTask> StageClearInterceptorAsync,
             int MapIndex);
@@ -304,6 +305,8 @@ namespace Pinball.Ingame.State
 
         void OnSlingshotBallHit(Collider2D ballCollider)
         {
+            _param.OnSlingshotHit?.Invoke();
+
             if (StatProvider.HasEffect(ShopItemData.EEffectType.SlingshotNudgeReset))
                 _playerController.ResetNudgeCooldown();
 

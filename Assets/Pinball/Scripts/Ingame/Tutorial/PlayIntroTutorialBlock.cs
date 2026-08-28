@@ -19,12 +19,14 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> IsPlayReadyGetter,
             Func<bool> IsPlayStateGetter,
             Func<bool> HasLaunchedGetter,
+            Func<bool> HasSlingshotHitGetter,
             Func<bool> IsComboTriggerReachedGetter,
-            Func<bool> HasBallLostGetter,
+            Func<bool> IsLastBallLostGetter,
             Func<bool> IsStageClearInterceptedGetter,
             Func<bool> HasNudgedGetter,
             Func<bool> CanNudgeGetter,
             Action NudgeWaitPreparer,
+            Action ComboWaitPreparer,
             Func<RectTransform> ScoreAnchorGetter,
             Func<RectTransform> ComboAnchorGetter);
 
@@ -102,7 +104,14 @@ namespace Pinball.Ingame.Tutorial
 
             await RunLaunchGuideAsync(cancellationToken);
 
-            await UniTask.WaitUntil(GetIsFreePlayInterrupted, cancellationToken: cancellationToken);
+            await WaitSlingshotHitAsync(cancellationToken);
+            if (!_param.IsPlayStateGetter())
+                return false;
+
+            await RunNudgeGuideAsync(cancellationToken);
+
+            _param.ComboWaitPreparer();
+            await UniTask.WaitUntil(GetIsComboWaitFinished, cancellationToken: cancellationToken);
             if (!_param.IsPlayStateGetter())
                 return false;
 
@@ -114,11 +123,7 @@ namespace Pinball.Ingame.Tutorial
 
             await _dialog.ShowAndWaitClickAsync(COMBO_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
             HideOverlay();
-            _param.ModalSetter(false);
 
-            await RunNudgeGuideAsync(cancellationToken);
-
-            _param.ModalSetter(true);
             await _dialog.ShowAndWaitClickAsync(FREE_PLAY_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
             _param.ModalSetter(false);
 
@@ -219,6 +224,15 @@ namespace Pinball.Ingame.Tutorial
             _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top);
             await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
             _dialog.Hide();
+        }
+
+        async UniTask WaitSlingshotHitAsync(CancellationToken cancellationToken)
+        {
+            MapRoot map = _param.MapGetter();
+            if (null == map || !HasActiveGimmick(map, MapInteractable.EGimmickType.Slingshot))
+                return;
+
+            await UniTask.WaitUntil(GetIsSlingshotWaitFinished, cancellationToken: cancellationToken);
         }
 
         async UniTask RunNudgeGuideAsync(CancellationToken cancellationToken)
@@ -327,17 +341,29 @@ namespace Pinball.Ingame.Tutorial
             return CreateFallbackBounds(fallbackCenter, FALLBACK_FLIPPER_EXTENTS);
         }
 
+        static bool HasActiveGimmick(MapRoot map, MapInteractable.EGimmickType gimmickType)
+        {
+            for (int i = 0, count = map.GetInteractableCount(); i < count; ++i)
+            {
+                MapInteractable interactable = map.GetInteractable(i);
+                if (null == interactable || interactable.GimmickType != gimmickType)
+                    continue;
+
+                if (!interactable.IsDeactivated)
+                    return true;
+            }
+
+            return false;
+        }
+
         static Bounds CreateFallbackBounds(Vector2 worldCenter, Vector2 worldExtents)
         {
             return new Bounds(worldCenter, worldExtents * 2f);
         }
 
-        bool GetIsFreePlayInterrupted()
+        bool GetIsPlayInterrupted()
         {
-            if (_param.IsComboTriggerReachedGetter() || _param.HasBallLostGetter())
-                return true;
-
-            if (_param.IsStageClearInterceptedGetter())
+            if (_param.IsLastBallLostGetter() || _param.IsStageClearInterceptedGetter())
                 return true;
 
             return !_param.IsPlayStateGetter();
@@ -345,7 +371,17 @@ namespace Pinball.Ingame.Tutorial
 
         bool GetIsLaunchWaitFinished()
         {
-            return _param.HasLaunchedGetter() || GetIsFreePlayInterrupted();
+            return _param.HasLaunchedGetter() || GetIsPlayInterrupted();
+        }
+
+        bool GetIsSlingshotWaitFinished()
+        {
+            return _param.HasSlingshotHitGetter() || GetIsPlayInterrupted();
+        }
+
+        bool GetIsComboWaitFinished()
+        {
+            return _param.IsComboTriggerReachedGetter() || GetIsPlayInterrupted();
         }
 
         bool GetIsNudgeWaitFinished()
