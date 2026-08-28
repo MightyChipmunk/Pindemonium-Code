@@ -303,6 +303,7 @@ namespace Pinball.Ingame.Map
             if (IsDeactivated)
                 return;
 
+            PlayGimmickHitSound();
             ApplyDamage(damage, PoolableFX.EFXType.NonePooling);
         }
 

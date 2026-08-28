@@ -62,6 +62,16 @@ namespace Pinball.Ingame
             _isExpired = true;
         }
 
+        public Vector2 GetTargetPosition()
+        {
+            return _targetPosition;
+        }
+
+        public void SetTarget(Vector2 targetPosition)
+        {
+            _targetPosition = targetPosition;
+        }
+
         public override void OnReturn()
         {
             base.OnReturn();

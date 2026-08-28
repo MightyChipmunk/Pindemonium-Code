@@ -27,6 +27,8 @@ namespace Pinball.Ingame
         const int HOLE_CAPACITY = 2;
         const float MIN_HOLE_DISTANCE = 0.35f;
         const float RIFT_DURATION_SECONDS = 0.4f;
+        const float TARGET_MATCH_SQR_DISTANCE = 0.04f;
+        const int NO_TARGET_COUNT = 0;
 
         static readonly Vector2[] MISSILE_LAUNCH_DIRECTIONS = { Vector2.up, Vector2.down, Vector2.left, Vector2.right };
 
@@ -178,9 +180,12 @@ namespace Pinball.Ingame
 
         void TickMissiles(float deltaTime)
         {
+            int aliveTargetCount = _missiles.Count > 0 ? _bumperPositionCollector(_bumperPositionBuffer) : NO_TARGET_COUNT;
+
             for (int i = _missiles.Count - 1; i >= 0; --i)
             {
                 MissileBody missile = _missiles[i];
+                RetargetMissile(missile, aliveTargetCount);
                 missile.Tick(deltaTime);
                 _missileLifeRemains[i] -= deltaTime;
 
@@ -230,6 +235,44 @@ namespace Pinball.Ingame
                 _missiles.Add(missile);
                 _missileLifeRemains.Add(MISSILE_LIFETIME);
             }
+        }
+
+        void RetargetMissile(MissileBody missile, int aliveTargetCount)
+        {
+            if (aliveTargetCount <= NO_TARGET_COUNT || missile.IsExpired)
+                return;
+
+            if (HasAliveTarget(missile.GetTargetPosition(), aliveTargetCount))
+                return;
+
+            missile.SetTarget(FindNearestTarget(missile.transform.position, aliveTargetCount));
+        }
+
+        bool HasAliveTarget(Vector2 targetPosition, int aliveTargetCount)
+        {
+            for (int i = 0; i < aliveTargetCount; ++i)
+                if ((_bumperPositionBuffer[i] - targetPosition).sqrMagnitude <= TARGET_MATCH_SQR_DISTANCE)
+                    return true;
+
+            return false;
+        }
+
+        Vector2 FindNearestTarget(Vector2 origin, int aliveTargetCount)
+        {
+            Vector2 nearest = _bumperPositionBuffer[0];
+            float nearestSqrDistance = (nearest - origin).sqrMagnitude;
+
+            for (int i = 1; i < aliveTargetCount; ++i)
+            {
+                float sqrDistance = (_bumperPositionBuffer[i] - origin).sqrMagnitude;
+                if (sqrDistance >= nearestSqrDistance)
+                    continue;
+
+                nearest = _bumperPositionBuffer[i];
+                nearestSqrDistance = sqrDistance;
+            }
+
+            return nearest;
         }
 
         void HandleMissileContact(MissileBody missile, Collider2D hitCollider)

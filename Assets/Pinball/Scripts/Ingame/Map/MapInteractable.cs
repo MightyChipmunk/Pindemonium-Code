@@ -301,11 +301,16 @@ namespace Pinball.Ingame.Map
 
         protected void PlayGimmickHit()
         {
+            PlayGimmickHitSound();
+            PlayGimmickHitPresentation();
+        }
+
+        protected void PlayGimmickHitSound()
+        {
             if (_isDeactivated)
                 return;
 
             AudioManager.Play(GetHitClipType());
-            PlayGimmickHitPresentation();
         }
 
         protected void PlayGimmickHitPresentation()
