@@ -11,6 +11,7 @@ namespace Pinball.Ingame.Stat
         const int MIN_LAMP_REQUIRED_COUNT = 1;
         const int MIN_LAMP_IGNITE_COUNT = 1;
         const float DEFAULT_SCALE = 1f;
+        const float NO_RATIO = 0f;
         const float MIN_FLIP_POWER_SCALE = 0f;
         const float MIN_SAUCER_COOLDOWN_SCALE = 0.1f;
         const string NOT_INITIALIZED_MESSAGE = "[StatProvider] 珥덇린?붾릺吏 ?딆? ?곹깭?먯꽌 ?ㅽ꺈??議고쉶?덉뒿?덈떎.";
@@ -295,17 +296,22 @@ namespace Pinball.Ingame.Stat
             return Mathf.Clamp(DEFAULT_SCALE - GetEffectSum(ShopItemData.EEffectType.SaucerCooldownRatio), MIN_SAUCER_COOLDOWN_SCALE, DEFAULT_SCALE);
         }
 
-        public static float GetLampWarmupMultiplier(float warmupElapsedSeconds)
+        public static float GetLampWarmupRatio(float warmupElapsedSeconds)
         {
             if (!HasEffect(ShopItemData.EEffectType.LampWarmup))
-                return DEFAULT_SCALE;
+                return NO_RATIO;
 
             float warmupDuration = GetEffectValue(ShopItemData.EEffectType.LampWarmup, ShopItemData.SUB_VALUE_INDEX);
             if (warmupDuration <= 0f)
-                return DEFAULT_SCALE;
+                return NO_RATIO;
 
+            return Mathf.Clamp01(warmupElapsedSeconds / warmupDuration);
+        }
+
+        public static float GetLampWarmupMultiplier(float warmupElapsedSeconds)
+        {
             float maxMultiplier = Mathf.Max(DEFAULT_SCALE, GetEffectValue(ShopItemData.EEffectType.LampWarmup, ShopItemData.MAIN_VALUE_INDEX));
-            return Mathf.Lerp(DEFAULT_SCALE, maxMultiplier, Mathf.Clamp01(warmupElapsedSeconds / warmupDuration));
+            return Mathf.Lerp(DEFAULT_SCALE, maxMultiplier, GetLampWarmupRatio(warmupElapsedSeconds));
         }
 
         public static float GetLampCompletionGrowth()
@@ -313,25 +319,25 @@ namespace Pinball.Ingame.Stat
             return GetEffectSum(ShopItemData.EEffectType.LampCompletionGrowth);
         }
 
-        public static int GetLampIgniteCount(float attackPower)
+        public static int GetLampIgniteCount(float impact)
         {
             if (!HasEffect(ShopItemData.EEffectType.LampMultiIgnite))
                 return MIN_LAMP_IGNITE_COUNT;
 
-            float attackPerExtraLamp = GetEffectValue(ShopItemData.EEffectType.LampMultiIgnite, ShopItemData.SUB_VALUE_INDEX);
-            if (attackPerExtraLamp <= 0f)
+            float impactPerExtraLamp = GetEffectValue(ShopItemData.EEffectType.LampMultiIgnite, ShopItemData.SUB_VALUE_INDEX);
+            if (impactPerExtraLamp <= 0f)
                 return MIN_LAMP_IGNITE_COUNT;
 
             int maxCount = Mathf.Max(MIN_LAMP_IGNITE_COUNT, Mathf.RoundToInt(GetEffectValue(ShopItemData.EEffectType.LampMultiIgnite, ShopItemData.MAIN_VALUE_INDEX)));
-            return Mathf.Clamp(MIN_LAMP_IGNITE_COUNT + Mathf.FloorToInt(attackPower / attackPerExtraLamp), MIN_LAMP_IGNITE_COUNT, maxCount);
+            return Mathf.Clamp(MIN_LAMP_IGNITE_COUNT + Mathf.FloorToInt(impact / impactPerExtraLamp), MIN_LAMP_IGNITE_COUNT, maxCount);
         }
 
-        public static float GetLampAttackScore(float attackPower)
+        public static float GetLampAttackScore(float impact)
         {
             if (!HasEffect(ShopItemData.EEffectType.LampAttackScore))
                 return 0f;
 
-            return attackPower * GetEffectValue(ShopItemData.EEffectType.LampAttackScore, ShopItemData.MAIN_VALUE_INDEX);
+            return impact * GetEffectValue(ShopItemData.EEffectType.LampAttackScore, ShopItemData.MAIN_VALUE_INDEX);
         }
 
         public static float GetSaucerTargetBonus(bool isStrongTarget)

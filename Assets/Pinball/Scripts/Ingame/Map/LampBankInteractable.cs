@@ -17,8 +17,14 @@ namespace Pinball.Ingame.Map
         const int ROW_REFERENCE_INDEX = 0;
         const float ROW_CENTER_RATIO = 0.5f;
         const float FULL_LAMP_SCALE_RATIO = 1f;
+        const float NO_WARMUP_RATIO = 0f;
+        const float BASE_CLEAR_MULTIPLIER = 1f;
+
+        static readonly Color WARMUP_TINT = new Color(1f, 0.18f, 0.16f, 1f);
 
         [SerializeField] Lamp[] _lamps = null;
+        [SerializeField] SpriteRenderer _background = null;
+        [SerializeField] LampMultiplierIndicator _multiplierIndicator = null;
         [SerializeField] int _baseRequiredCount = 3;
         [SerializeField] float _baseLampSpacing = 0.38f;
         [SerializeField] int _clearScoreReward = 0;
@@ -28,13 +34,14 @@ namespace Pinball.Ingame.Map
         CancellationTokenSource _cancellationTokenSource = null;
         Vector3 _lampBasePosition = Vector3.zero;
         Vector3 _lampBaseScale = Vector3.one;
+        Color _backgroundBaseColor = Color.white;
         bool _hasCapturedLampBase = false;
+        bool _hasCapturedBackgroundColor = false;
         int _hitCount = 0;
         int _requiredCount = 0;
         int _litLampCount = NO_LIT_LAMP;
         int _clearCount = 0;
         float _warmupElapsed = 0f;
-        float _pendingAttackScore = 0f;
         bool _isPlayingSiren = false;
 
         public override EGimmickType GimmickType => EGimmickType.LampBank;
@@ -46,8 +53,16 @@ namespace Pinball.Ingame.Map
             _litLampCount = NO_LIT_LAMP;
             _clearCount = 0;
             _warmupElapsed = 0f;
-            _pendingAttackScore = 0f;
             _isPlayingSiren = false;
+
+            CaptureBackgroundBaseColor();
+            ApplyWarmupTint(NO_WARMUP_RATIO);
+
+            if (null != _multiplierIndicator)
+            {
+                _multiplierIndicator.Init();
+                RefreshMultiplierIndicator();
+            }
 
             if (null == _lamps)
                 return;
@@ -58,6 +73,38 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < _lamps.Length; ++i)
                 _lamps[i].Init();
+        }
+
+        void CaptureBackgroundBaseColor()
+        {
+            if (_hasCapturedBackgroundColor || null == _background)
+                return;
+
+            _hasCapturedBackgroundColor = true;
+            _backgroundBaseColor = _background.color;
+        }
+
+        void ApplyWarmupTint(float warmupRatio)
+        {
+            if (null == _background)
+                return;
+
+            Color color = Color.Lerp(_backgroundBaseColor, WARMUP_TINT, warmupRatio);
+            color.a = _backgroundBaseColor.a;
+            _background.color = color;
+        }
+
+        void RefreshMultiplierIndicator()
+        {
+            if (null == _multiplierIndicator)
+                return;
+
+            _multiplierIndicator.SetMultiplier(GetCompletionMultiplier());
+        }
+
+        float GetCompletionMultiplier()
+        {
+            return BASE_CLEAR_MULTIPLIER + _clearCount * StatProvider.GetLampCompletionGrowth();
         }
 
         void CaptureLampBaseTransforms()
@@ -101,6 +148,10 @@ namespace Pinball.Ingame.Map
 
             _isPlayingSiren = false;
             _requiredCount = 0;
+            ApplyWarmupTint(NO_WARMUP_RATIO);
+
+            if (null != _multiplierIndicator)
+                _multiplierIndicator.Release();
 
             if (null == _lamps)
                 return;
@@ -115,11 +166,12 @@ namespace Pinball.Ingame.Map
                 return;
 
             _warmupElapsed += deltaTime;
+            ApplyWarmupTint(StatProvider.GetLampWarmupRatio(_warmupElapsed));
         }
 
         public void TakeHit(float damage, Vector2 worldPoint)
         {
-            ApplyLampHit(damage);
+            ApplyLampHit(damage, worldPoint);
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -127,10 +179,14 @@ namespace Pinball.Ingame.Map
             if (!IsBallLayer(other.gameObject.layer))
                 return;
 
-            ApplyLampHit(EvaluateAttackPower(other));
+            Rigidbody2D body = other.attachedRigidbody;
+            if (null == body || body.bodyType != RigidbodyType2D.Dynamic)
+                return;
+
+            ApplyLampHit(EvaluateAttackPower(other) * body.linearVelocity.magnitude, other.bounds.center);
         }
 
-        void ApplyLampHit(float attackPower)
+        void ApplyLampHit(float impact, Vector2 worldPoint)
         {
             if (_isPlayingSiren || IsDeactivated)
                 return;
@@ -138,8 +194,8 @@ namespace Pinball.Ingame.Map
             if (null == _lamps || _lamps.Length == 0)
                 return;
 
-            _hitCount += StatProvider.GetLampIgniteCount(attackPower);
-            _pendingAttackScore += StatProvider.GetLampAttackScore(attackPower);
+            _hitCount += StatProvider.GetLampIgniteCount(impact);
+            GainScore(Mathf.RoundToInt(StatProvider.GetLampAttackScore(impact)), worldPoint, EScoreSource.PassiveEffect);
             LightUpProgressLamps();
             PlayGimmickHit();
 
@@ -164,12 +220,13 @@ namespace Pinball.Ingame.Map
         void Clear()
         {
             _isPlayingSiren = true;
-            float baseScore = _clearScoreReward * StatProvider.GetLampScoreMultiplier() + _pendingAttackScore;
-            float clearMultiplier = StatProvider.GetLampWarmupMultiplier(_warmupElapsed) * (1f + _clearCount * StatProvider.GetLampCompletionGrowth());
+            float baseScore = _clearScoreReward * StatProvider.GetLampScoreMultiplier();
+            float clearMultiplier = StatProvider.GetLampWarmupMultiplier(_warmupElapsed) * GetCompletionMultiplier();
             GainScore(Mathf.RoundToInt(baseScore * clearMultiplier));
             ++_clearCount;
             _warmupElapsed = 0f;
-            _pendingAttackScore = 0f;
+            ApplyWarmupTint(NO_WARMUP_RATIO);
+            RefreshMultiplierIndicator();
             PlayFX(_clearFX, transform.position);
             PlayBankClearedSound();
 
@@ -204,10 +261,16 @@ namespace Pinball.Ingame.Map
         }
 
 #if UNITY_EDITOR
+        const string BACKGROUND_NODE_NAME = "BG";
+
         protected override void OnBindSerializedField()
         {
             base.OnBindSerializedField();
             _lamps = GetComponentsInChildren<Lamp>(true);
+            _multiplierIndicator = GetComponentInChildren<LampMultiplierIndicator>(true);
+
+            Transform backgroundTransform = transform.Find(BACKGROUND_NODE_NAME);
+            _background = null == backgroundTransform ? null : backgroundTransform.GetComponent<SpriteRenderer>();
         }
 #endif // UNITY_EDITOR
     }
