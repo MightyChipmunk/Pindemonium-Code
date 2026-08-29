@@ -27,14 +27,9 @@ namespace Pinball.Ingame.Map
         const float SNIPER_MARK_SPIN_SPEED = 90f;
         const float DEFAULT_HEALTH_MULTIPLIER = 1f;
         const float MIN_HEALTH_MULTIPLIER = 0.1f;
-        const float FORGE_FLASH_DURATION = 0.45f;
 
         static readonly Color BURNING_TINT = new Color(1f, 0.55f, 0.25f, 1f);
         static readonly Color FROZEN_TINT = new Color(0.5f, 0.85f, 1f, 1f);
-        static readonly Color FORTIFY_RING_COLOR = new Color(0.75f, 0.80f, 0.87f, 1f);
-        static readonly Color FORGE_RING_COLOR = new Color(1f, 0.82f, 0.35f, 1f);
-        static readonly Color FORGE_HEAT_COLOR = new Color(1f, 0.45f, 0.15f, 1f);
-        static readonly Color FORGE_RESET_COLOR = new Color(0.55f, 0.57f, 0.62f, 1f);
 
         [SerializeField] BumperGradeData _gradeData = null;
         [SerializeField] BumperGradeData.EGrade _grade = BumperGradeData.EGrade.Yellow;
@@ -42,19 +37,17 @@ namespace Pinball.Ingame.Map
         [SerializeField] Transform _visual = null;
         [SerializeField] SpriteRenderer _visualRenderer = null;
         [SerializeField] Transform _sniperMark = null;
-        [SerializeField] SpriteRenderer _passiveRing = null;
+        [SerializeField] SpriteRenderer _fortifyRing = null;
 
         CancellationTokenSource _cancellationTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
         PoolableFX.EFXType _burnFX = PoolableFX.EFXType.NonePooling;
         PoolableFX.EFXType _shatterFX = PoolableFX.EFXType.NonePooling;
         Tween _visualTween = null;
-        Tween _ringFlashTween = null;
         BumperGradeData.GradeSpec _spec = default;
         BumperGradeData.EGrade _baseGrade = BumperGradeData.EGrade.Yellow;
         Vector3 _visualBaseScale = Vector3.one;
         Color _visualBaseColor = Color.white;
-        Color _passiveRingBaseColor = Color.white;
         float _currentHealth = 0f;
         float _healthMultiplier = DEFAULT_HEALTH_MULTIPLIER;
         float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
@@ -91,7 +84,7 @@ namespace Pinball.Ingame.Map
                 _visualBaseColor = _visualRenderer.color;
 
             ApplyGradeVisual();
-            RefreshPassiveRing();
+            RefreshFortifyRing();
 
             _currentHealth = GetMaxHealth();
             _isBroken = false;
@@ -118,7 +111,6 @@ namespace Pinball.Ingame.Map
             }
 
             KillVisualTween(false);
-            KillRingFlashTween();
             _isBroken = false;
         }
 
@@ -206,42 +198,14 @@ namespace Pinball.Ingame.Map
 
             ApplyGrade(_baseGrade);
             _currentHealth = Mathf.Min(_currentHealth, GetMaxHealth());
-            PlayForgeFlash(FORGE_RESET_COLOR);
         }
 
-        void RefreshPassiveRing()
+        void RefreshFortifyRing()
         {
-            if (null == _passiveRing)
+            if (null == _fortifyRing)
                 return;
 
-            KillRingFlashTween();
-
-            if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperFortify))
-                _passiveRingBaseColor = FORTIFY_RING_COLOR;
-            else
-                _passiveRingBaseColor = FORGE_RING_COLOR;
-
-            _passiveRing.color = _passiveRingBaseColor;
-            _passiveRing.gameObject.SetActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperFortify) || StatProvider.HasEffect(ShopItemData.EEffectType.BumperForge));
-        }
-
-        void PlayForgeFlash(Color flashColor)
-        {
-            if (null == _passiveRing || !_passiveRing.gameObject.activeSelf)
-                return;
-
-            KillRingFlashTween();
-            _passiveRing.color = flashColor;
-            _ringFlashTween = _passiveRing.DOColor(_passiveRingBaseColor, FORGE_FLASH_DURATION);
-        }
-
-        void KillRingFlashTween()
-        {
-            if (null == _ringFlashTween)
-                return;
-
-            _ringFlashTween.Kill(false);
-            _ringFlashTween = null;
+            _fortifyRing.gameObject.SetActive(StatProvider.HasEffect(ShopItemData.EEffectType.BumperFortify));
         }
 
         bool TryPromoteGrade()
@@ -568,7 +532,6 @@ namespace Pinball.Ingame.Map
             PlayFX(_spec.HitFX, transform.position);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
             PlayVisualPunch(PROMOTE_PUNCH_RATIO, PROMOTE_PUNCH_DURATION, PROMOTE_PUNCH_VIBRATO);
-            PlayForgeFlash(FORGE_HEAT_COLOR);
         }
 
         void PlayVisualPunch(float punchRatio, float duration, int vibrato)
