@@ -1,6 +1,5 @@
 using Pinball.Localization;
 using Pinball.Settings;
-using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
@@ -17,8 +16,6 @@ namespace Pinball.UI
 
         const string CAPTURE_WAITING_LABEL = "PRESS ANY KEY";
         const string CAPTURE_WAITING_KEY = "ui.settings.press_any_key";
-        const int PREV_DIRECTION = -1;
-        const int NEXT_DIRECTION = 1;
         const string FULLSCREEN_LABEL = "FULLSCREEN";
         const string FULLSCREEN_KEY = "ui.settings.fullscreen";
         const string WINDOWED_LABEL = "WINDOWED";
@@ -27,98 +24,35 @@ namespace Pinball.UI
         const string ON_KEY = "ui.settings.on";
         const string OFF_LABEL = "OFF";
         const string OFF_KEY = "ui.settings.off";
-        const float ROW_ENABLED_ALPHA = 1f;
-        const float ROW_DISABLED_ALPHA = 0.35f;
 
-        [SerializeField] Button _flipperLeftButton = null;
-        [SerializeField] TMP_Text _flipperLeftLabel = null;
-        [SerializeField] Button _flipperRightButton = null;
-        [SerializeField] TMP_Text _flipperRightLabel = null;
-        [SerializeField] Button _launchButton = null;
-        [SerializeField] TMP_Text _launchLabel = null;
-        [SerializeField] Button _nudgeButton = null;
-        [SerializeField] TMP_Text _nudgeLabel = null;
-        [SerializeField] Button _resolutionPrevButton = null;
-        [SerializeField] Button _resolutionNextButton = null;
-        [SerializeField] TMP_Text _resolutionLabel = null;
-        [SerializeField] CanvasGroup _refreshRateGroup = null;
-        [SerializeField] Button _refreshRatePrevButton = null;
-        [SerializeField] Button _refreshRateNextButton = null;
-        [SerializeField] TMP_Text _refreshRateLabel = null;
-        [SerializeField] Button _vSyncPrevButton = null;
-        [SerializeField] Button _vSyncNextButton = null;
-        [SerializeField] TMP_Text _vSyncLabel = null;
-        [SerializeField] Button _fullscreenPrevButton = null;
-        [SerializeField] Button _fullscreenNextButton = null;
-        [SerializeField] TMP_Text _fullscreenLabel = null;
-        [SerializeField] Button _masterVolumePrevButton = null;
-        [SerializeField] Button _masterVolumeNextButton = null;
-        [SerializeField] TMP_Text _masterVolumeLabel = null;
-        [SerializeField] Button _sfxVolumePrevButton = null;
-        [SerializeField] Button _sfxVolumeNextButton = null;
-        [SerializeField] TMP_Text _sfxVolumeLabel = null;
-        [SerializeField] Button _bgmVolumePrevButton = null;
-        [SerializeField] Button _bgmVolumeNextButton = null;
-        [SerializeField] TMP_Text _bgmVolumeLabel = null;
-        [SerializeField] Button _languagePrevButton = null;
-        [SerializeField] Button _languageNextButton = null;
-        [SerializeField] TMP_Text _languageLabel = null;
+        [SerializeField] SettingsKeyRowView[] _keyRows = null;
+        [SerializeField] SettingsOptionRowView[] _optionRows = null;
         [SerializeField] Button _closeButton = null;
         [SerializeField] UIScrollView _systemScroll = null;
 
-        TMP_Text _capturingLabel = null;
-        string _capturingLabelBackup = string.Empty;
         EKeyAction _capturingAction = EKeyAction.FlipperLeft;
         bool _isCapturing = false;
         bool _isOpened = false;
 
         public override void OnGenerate()
         {
-            _flipperLeftButton.onClick.AddListener(OnFlipperLeftClicked);
-            _flipperRightButton.onClick.AddListener(OnFlipperRightClicked);
-            _launchButton.onClick.AddListener(OnLaunchClicked);
-            _nudgeButton.onClick.AddListener(OnNudgeClicked);
-            _resolutionPrevButton.onClick.AddListener(OnResolutionPrevClicked);
-            _resolutionNextButton.onClick.AddListener(OnResolutionNextClicked);
-            _refreshRatePrevButton.onClick.AddListener(OnRefreshRatePrevClicked);
-            _refreshRateNextButton.onClick.AddListener(OnRefreshRateNextClicked);
-            _vSyncPrevButton.onClick.AddListener(OnVSyncClicked);
-            _vSyncNextButton.onClick.AddListener(OnVSyncClicked);
-            _fullscreenPrevButton.onClick.AddListener(OnFullscreenClicked);
-            _fullscreenNextButton.onClick.AddListener(OnFullscreenClicked);
-            _masterVolumePrevButton.onClick.AddListener(OnMasterVolumePrevClicked);
-            _masterVolumeNextButton.onClick.AddListener(OnMasterVolumeNextClicked);
-            _sfxVolumePrevButton.onClick.AddListener(OnSfxVolumePrevClicked);
-            _sfxVolumeNextButton.onClick.AddListener(OnSfxVolumeNextClicked);
-            _bgmVolumePrevButton.onClick.AddListener(OnBgmVolumePrevClicked);
-            _bgmVolumeNextButton.onClick.AddListener(OnBgmVolumeNextClicked);
-            _languagePrevButton.onClick.AddListener(OnLanguagePrevClicked);
-            _languageNextButton.onClick.AddListener(OnLanguageNextClicked);
+            for (int i = 0; i < _keyRows.Length; ++i)
+                _keyRows[i].Init(OnKeyRowClicked);
+
+            for (int i = 0; i < _optionRows.Length; ++i)
+                _optionRows[i].Init(OnOptionShifted);
+
             _closeButton.onClick.AddListener(OnCloseClicked);
         }
 
         public override void OnTerminate()
         {
-            _flipperLeftButton.onClick.RemoveListener(OnFlipperLeftClicked);
-            _flipperRightButton.onClick.RemoveListener(OnFlipperRightClicked);
-            _launchButton.onClick.RemoveListener(OnLaunchClicked);
-            _nudgeButton.onClick.RemoveListener(OnNudgeClicked);
-            _resolutionPrevButton.onClick.RemoveListener(OnResolutionPrevClicked);
-            _resolutionNextButton.onClick.RemoveListener(OnResolutionNextClicked);
-            _refreshRatePrevButton.onClick.RemoveListener(OnRefreshRatePrevClicked);
-            _refreshRateNextButton.onClick.RemoveListener(OnRefreshRateNextClicked);
-            _vSyncPrevButton.onClick.RemoveListener(OnVSyncClicked);
-            _vSyncNextButton.onClick.RemoveListener(OnVSyncClicked);
-            _fullscreenPrevButton.onClick.RemoveListener(OnFullscreenClicked);
-            _fullscreenNextButton.onClick.RemoveListener(OnFullscreenClicked);
-            _masterVolumePrevButton.onClick.RemoveListener(OnMasterVolumePrevClicked);
-            _masterVolumeNextButton.onClick.RemoveListener(OnMasterVolumeNextClicked);
-            _sfxVolumePrevButton.onClick.RemoveListener(OnSfxVolumePrevClicked);
-            _sfxVolumeNextButton.onClick.RemoveListener(OnSfxVolumeNextClicked);
-            _bgmVolumePrevButton.onClick.RemoveListener(OnBgmVolumePrevClicked);
-            _bgmVolumeNextButton.onClick.RemoveListener(OnBgmVolumeNextClicked);
-            _languagePrevButton.onClick.RemoveListener(OnLanguagePrevClicked);
-            _languageNextButton.onClick.RemoveListener(OnLanguageNextClicked);
+            for (int i = 0; i < _keyRows.Length; ++i)
+                _keyRows[i].Release();
+
+            for (int i = 0; i < _optionRows.Length; ++i)
+                _optionRows[i].Release();
+
             _closeButton.onClick.RemoveListener(OnCloseClicked);
         }
 
@@ -140,37 +74,70 @@ namespace Pinball.UI
             _systemScroll.ResetPosition();
         }
 
+        public override bool TryCloseByEscape()
+        {
+            if (_isCapturing)
+            {
+                CancelCapture();
+                return true;
+            }
+
+            OnCloseClicked();
+            return true;
+        }
+
         void RefreshLabels()
         {
-            _languageLabel.text = LocalizationManager.GetDisplayName(LocalizationManager.CurrentLanguage);
+            for (int i = 0; i < _optionRows.Length; ++i)
+                RefreshOptionRow(_optionRows[i]);
 
             if (!GameSettings.IsInitialized)
                 return;
 
-            SetKeyLabel(_flipperLeftLabel, GameSettings.GetKey(EKeyAction.FlipperLeft));
-            SetKeyLabel(_flipperRightLabel, GameSettings.GetKey(EKeyAction.FlipperRight));
-            SetKeyLabel(_launchLabel, GameSettings.GetKey(EKeyAction.Launch));
-            SetKeyLabel(_nudgeLabel, GameSettings.GetKey(EKeyAction.Nudge));
-            _resolutionLabel.text = GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
-            _refreshRateLabel.text = GameSettings.GetRefreshRateLabel(GameSettings.RefreshRateIndex);
-            _vSyncLabel.text = GameSettings.IsVSyncEnabled ? LocalizationTable.Get(ON_KEY, ON_LABEL) : LocalizationTable.Get(OFF_KEY, OFF_LABEL);
-            SetRefreshRateInteractable(!GameSettings.IsVSyncEnabled);
-            _masterVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.MasterVolume);
-            _sfxVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.SfxVolume);
-            _bgmVolumeLabel.text = GameSettings.GetVolumeLabel(GameSettings.BgmVolume);
-            _fullscreenLabel.text = GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
+            for (int i = 0; i < _keyRows.Length; ++i)
+                _keyRows[i].SetValue(GetKeyLabel(_keyRows[i].KeyAction));
         }
 
-        void SetRefreshRateInteractable(bool isInteractable)
+        static void RefreshOptionRow(SettingsOptionRowView row)
         {
-            _refreshRatePrevButton.interactable = isInteractable;
-            _refreshRateNextButton.interactable = isInteractable;
-            _refreshRateGroup.alpha = isInteractable ? ROW_ENABLED_ALPHA : ROW_DISABLED_ALPHA;
+            SettingsOptionRowView.EOptionType optionType = row.OptionType;
+            if (!GameSettings.IsInitialized && optionType != SettingsOptionRowView.EOptionType.Language)
+                return;
+
+            row.SetValue(GetOptionLabel(optionType));
+
+            if (optionType == SettingsOptionRowView.EOptionType.RefreshRate)
+                row.SetInteractable(!GameSettings.IsVSyncEnabled);
         }
 
-        static void SetKeyLabel(TMP_Text label, Key key)
+        static string GetOptionLabel(SettingsOptionRowView.EOptionType optionType)
         {
-            label.text = key.ToString().ToUpperInvariant();
+            switch (optionType)
+            {
+                case SettingsOptionRowView.EOptionType.Resolution:
+                    return GameSettings.GetResolutionLabel(GameSettings.ResolutionIndex);
+                case SettingsOptionRowView.EOptionType.Fullscreen:
+                    return GameSettings.IsFullscreen ? LocalizationTable.Get(FULLSCREEN_KEY, FULLSCREEN_LABEL) : LocalizationTable.Get(WINDOWED_KEY, WINDOWED_LABEL);
+                case SettingsOptionRowView.EOptionType.RefreshRate:
+                    return GameSettings.GetRefreshRateLabel(GameSettings.RefreshRateIndex);
+                case SettingsOptionRowView.EOptionType.VSync:
+                    return GameSettings.IsVSyncEnabled ? LocalizationTable.Get(ON_KEY, ON_LABEL) : LocalizationTable.Get(OFF_KEY, OFF_LABEL);
+                case SettingsOptionRowView.EOptionType.MasterVolume:
+                    return GameSettings.GetVolumeLabel(GameSettings.MasterVolume);
+                case SettingsOptionRowView.EOptionType.SfxVolume:
+                    return GameSettings.GetVolumeLabel(GameSettings.SfxVolume);
+                case SettingsOptionRowView.EOptionType.BgmVolume:
+                    return GameSettings.GetVolumeLabel(GameSettings.BgmVolume);
+                case SettingsOptionRowView.EOptionType.Language:
+                    return LocalizationManager.GetDisplayName(LocalizationManager.CurrentLanguage);
+                default:
+                    return string.Empty;
+            }
+        }
+
+        static string GetKeyLabel(EKeyAction action)
+        {
+            return KeyLabel.Get(GameSettings.GetKey(action));
         }
 
         void Update()
@@ -182,12 +149,6 @@ namespace Pinball.UI
             if (null == keyboard)
                 return;
 
-            if (keyboard.escapeKey.wasPressedThisFrame)
-            {
-                CancelCapture();
-                return;
-            }
-
             Key capturedKey = FindPressedKey(keyboard);
             if (capturedKey == Key.None)
                 return;
@@ -195,113 +156,60 @@ namespace Pinball.UI
             FinishCapture(capturedKey);
         }
 
-        void OnFlipperLeftClicked()
+        void OnKeyRowClicked(EKeyAction action)
         {
-            StartCapture(EKeyAction.FlipperLeft, _flipperLeftLabel);
+            if (_isCapturing)
+                return;
+
+            _isCapturing = true;
+            _capturingAction = action;
+            SetKeyRowValue(action, LocalizationTable.Get(CAPTURE_WAITING_KEY, CAPTURE_WAITING_LABEL));
         }
 
-        void OnFlipperRightClicked()
+        void SetKeyRowValue(EKeyAction action, string value)
         {
-            StartCapture(EKeyAction.FlipperRight, _flipperRightLabel);
+            for (int i = 0; i < _keyRows.Length; ++i)
+                if (_keyRows[i].KeyAction == action)
+                    _keyRows[i].SetValue(value);
         }
 
-        void OnLaunchClicked()
+        void OnOptionShifted(SettingsOptionRowView.EOptionType optionType, int direction)
         {
-            StartCapture(EKeyAction.Launch, _launchLabel);
-        }
+            switch (optionType)
+            {
+                case SettingsOptionRowView.EOptionType.Resolution:
+                    GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + direction);
+                    break;
+                case SettingsOptionRowView.EOptionType.Fullscreen:
+                    GameSettings.SetFullscreen(!GameSettings.IsFullscreen);
+                    break;
+                case SettingsOptionRowView.EOptionType.RefreshRate:
+                    GameSettings.SetRefreshRateIndex(GameSettings.RefreshRateIndex + direction);
+                    break;
+                case SettingsOptionRowView.EOptionType.VSync:
+                    GameSettings.SetVSync(!GameSettings.IsVSyncEnabled);
+                    break;
+                case SettingsOptionRowView.EOptionType.MasterVolume:
+                    GameSettings.ShiftMasterVolume(direction);
+                    break;
+                case SettingsOptionRowView.EOptionType.SfxVolume:
+                    GameSettings.ShiftSfxVolume(direction);
+                    break;
+                case SettingsOptionRowView.EOptionType.BgmVolume:
+                    GameSettings.ShiftBgmVolume(direction);
+                    break;
+                case SettingsOptionRowView.EOptionType.Language:
+                    ShiftLanguage(direction);
+                    break;
+            }
 
-        void OnNudgeClicked()
-        {
-            StartCapture(EKeyAction.Nudge, _nudgeLabel);
-        }
-
-        void OnResolutionPrevClicked()
-        {
-            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + PREV_DIRECTION);
             RefreshLabels();
         }
 
-        void OnResolutionNextClicked()
-        {
-            GameSettings.SetResolutionIndex(GameSettings.ResolutionIndex + NEXT_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnRefreshRatePrevClicked()
-        {
-            GameSettings.SetRefreshRateIndex(GameSettings.RefreshRateIndex + PREV_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnRefreshRateNextClicked()
-        {
-            GameSettings.SetRefreshRateIndex(GameSettings.RefreshRateIndex + NEXT_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnVSyncClicked()
-        {
-            GameSettings.SetVSync(!GameSettings.IsVSyncEnabled);
-            RefreshLabels();
-        }
-
-        void OnMasterVolumePrevClicked()
-        {
-            GameSettings.ShiftMasterVolume(PREV_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnMasterVolumeNextClicked()
-        {
-            GameSettings.ShiftMasterVolume(NEXT_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnSfxVolumePrevClicked()
-        {
-            GameSettings.ShiftSfxVolume(PREV_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnSfxVolumeNextClicked()
-        {
-            GameSettings.ShiftSfxVolume(NEXT_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnBgmVolumePrevClicked()
-        {
-            GameSettings.ShiftBgmVolume(PREV_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnBgmVolumeNextClicked()
-        {
-            GameSettings.ShiftBgmVolume(NEXT_DIRECTION);
-            RefreshLabels();
-        }
-
-        void OnLanguagePrevClicked()
-        {
-            ShiftLanguage(PREV_DIRECTION);
-        }
-
-        void OnLanguageNextClicked()
-        {
-            ShiftLanguage(NEXT_DIRECTION);
-        }
-
-        void ShiftLanguage(int direction)
+        static void ShiftLanguage(int direction)
         {
             int index = LocalizationManager.GetLanguageIndex(LocalizationManager.CurrentLanguage) + direction;
             LocalizationManager.SetLanguage(LocalizationManager.GetLanguage(index));
-            RefreshLabels();
-        }
-
-        void OnFullscreenClicked()
-        {
-            GameSettings.SetFullscreen(!GameSettings.IsFullscreen);
-            RefreshLabels();
         }
 
         void OnCloseClicked()
@@ -309,22 +217,9 @@ namespace Pinball.UI
             UIManager.Hide(UIViewCatalogData.EViewType.Settings);
         }
 
-        void StartCapture(EKeyAction action, TMP_Text label)
-        {
-            if (_isCapturing)
-                return;
-
-            _isCapturing = true;
-            _capturingAction = action;
-            _capturingLabel = label;
-            _capturingLabelBackup = label.text;
-            label.text = LocalizationTable.Get(CAPTURE_WAITING_KEY, CAPTURE_WAITING_LABEL);
-        }
-
         void FinishCapture(Key capturedKey)
         {
             _isCapturing = false;
-            _capturingLabel = null;
             GameSettings.SetKey(_capturingAction, capturedKey);
             RefreshLabels();
         }
@@ -335,11 +230,7 @@ namespace Pinball.UI
                 return;
 
             _isCapturing = false;
-
-            if (null != _capturingLabel)
-                _capturingLabel.text = _capturingLabelBackup;
-
-            _capturingLabel = null;
+            RefreshLabels();
         }
 
         static Key FindPressedKey(Keyboard keyboard)

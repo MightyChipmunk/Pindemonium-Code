@@ -514,7 +514,7 @@ namespace Pinball.Ingame.Tutorial
 
         static string GetKeyName(EKeyAction action)
         {
-            return GameSettings.GetKey(action).ToString().ToUpperInvariant();
+            return KeyLabel.Get(GameSettings.GetKey(action));
         }
 
         static string GetGimmickKey(MapInteractable.EGimmickType gimmickType)
