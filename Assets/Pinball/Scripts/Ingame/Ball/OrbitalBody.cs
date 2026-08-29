@@ -10,6 +10,7 @@ namespace Pinball.Ingame
         const float FULL_CIRCLE_DEGREE = 360f;
 
         [SerializeField] Rigidbody2D _rigidbody = null;
+        [SerializeField] TrailRenderer _trail = null;
 
         float _angleDegree = 0f;
 
@@ -22,6 +23,9 @@ namespace Pinball.Ingame
             Vector2 position = centerPosition + GetOrbitOffset();
             _rigidbody.position = position;
             MoveTo(position);
+
+            if (null != _trail)
+                _trail.Clear();
         }
 
         public void Tick(Vector2 centerPosition, float deltaTime)
