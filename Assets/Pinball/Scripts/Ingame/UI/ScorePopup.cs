@@ -50,6 +50,11 @@ namespace Pinball.Ingame.UI
             SetFadeRatio(START_RATIO);
         }
 
+        public Vector2 GetAnchoredPosition()
+        {
+            return _rectTransform.anchoredPosition;
+        }
+
         public float GetScaleRatio()
         {
             return _scaleRatio;
