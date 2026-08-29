@@ -19,15 +19,14 @@ namespace Pinball.Ingame.Map
         const int KICK_PUNCH_VIBRATO = 6;
         const float DEFAULT_HIT_SCORE_MULTIPLIER = 1f;
         const int FIRST_GROWTH_TIER = 0;
-        const float GROWTH_PUNCH_RATIO = 0.25f;
-        const float GROWTH_PUNCH_DURATION = 0.3f;
-        const int GROWTH_PUNCH_VIBRATO = 8;
+        const float GROWTH_FLASH_DURATION = 0.35f;
         const float RALLY_ACTIVE_ALPHA = 1f;
         const float RALLY_IDLE_ALPHA = 0.18f;
         const float RALLY_FADE_DURATION = 0.15f;
 
+        static readonly Color GROWTH_FLASH_COLOR = Color.white;
+
         [SerializeField] Transform _visual = null;
-        [SerializeField] SpriteRenderer _visualRenderer = null;
         [SerializeField] Transform _directionTransform = null;
         [SerializeField] ESide _side = ESide.Left;
         [SerializeField] SpriteRenderer _growthOutline = null;
@@ -36,12 +35,10 @@ namespace Pinball.Ingame.Map
         [SerializeField] SpriteRenderer _rallyIcon = null;
 
         Tween _kickTween = null;
-        Tween _growthPunchTween = null;
+        Tween _growthFlashTween = null;
         Tween _rallyTween = null;
         Func<ESide, float> _hitScoreMultiplierConsumer = null;
-        Vector3 _growthOutlineBaseScale = Vector3.one;
         int _growthTier = FIRST_GROWTH_TIER;
-        bool _hasCapturedGrowthBase = false;
         bool _hasAppliedGrowthTier = false;
 
         public override EGimmickType GimmickType => EGimmickType.Slingshot;
@@ -70,14 +67,6 @@ namespace Pinball.Ingame.Map
         {
             _growthTier = FIRST_GROWTH_TIER;
             _hasAppliedGrowthTier = false;
-
-            if (null != _growthOutline && !_hasCapturedGrowthBase)
-            {
-                _hasCapturedGrowthBase = true;
-                _growthOutlineBaseScale = _growthOutline.transform.localScale;
-            }
-
-            SyncGrowthOutlineShape();
             RefreshPassiveOverlay();
         }
 
@@ -86,7 +75,7 @@ namespace Pinball.Ingame.Map
             OnBallBounced = null;
             _hitScoreMultiplierConsumer = null;
             KillKickTween();
-            KillGrowthPunchTween();
+            KillGrowthFlashTween();
             KillRallyTween();
         }
 
@@ -108,10 +97,16 @@ namespace Pinball.Ingame.Map
             bool isPromoted = _hasAppliedGrowthTier && tier > _growthTier;
             _hasAppliedGrowthTier = true;
             _growthTier = tier;
-            _growthOutline.color = _growthTierColors[tier];
+            KillGrowthFlashTween();
 
-            if (isPromoted)
-                PlayGrowthPunch();
+            if (!isPromoted)
+            {
+                _growthOutline.color = _growthTierColors[tier];
+                return;
+            }
+
+            _growthOutline.color = GROWTH_FLASH_COLOR;
+            _growthFlashTween = _growthOutline.DOColor(_growthTierColors[tier], GROWTH_FLASH_DURATION);
         }
 
         public void SetRallyActive(bool isActive)
@@ -123,26 +118,13 @@ namespace Pinball.Ingame.Map
             _rallyTween = _rallyIcon.DOFade(isActive ? RALLY_ACTIVE_ALPHA : RALLY_IDLE_ALPHA, RALLY_FADE_DURATION);
         }
 
-        void SyncGrowthOutlineShape()
-        {
-            if (null == _growthOutline || null == _visualRenderer)
-                return;
-
-            _growthOutline.sprite = _visualRenderer.sprite;
-            _growthOutline.flipX = _visualRenderer.flipX;
-            _growthOutline.flipY = _visualRenderer.flipY;
-        }
-
         void RefreshPassiveOverlay()
         {
-            KillGrowthPunchTween();
+            KillGrowthFlashTween();
             KillRallyTween();
 
             if (null != _growthOutline)
-            {
                 _growthOutline.gameObject.SetActive(StatProvider.HasEffect(ShopItemData.EEffectType.SlingshotScoreGrowth));
-                _growthOutline.transform.localScale = _growthOutlineBaseScale;
-            }
 
             if (null == _rallyIcon)
                 return;
@@ -152,13 +134,6 @@ namespace Pinball.Ingame.Map
             Color color = _rallyIcon.color;
             color.a = RALLY_ACTIVE_ALPHA;
             _rallyIcon.color = color;
-        }
-
-        void PlayGrowthPunch()
-        {
-            KillGrowthPunchTween();
-            _growthOutline.transform.localScale = _growthOutlineBaseScale;
-            _growthPunchTween = _growthOutline.transform.DOPunchScale(_growthOutlineBaseScale * GROWTH_PUNCH_RATIO, GROWTH_PUNCH_DURATION, GROWTH_PUNCH_VIBRATO);
         }
 
         protected override Vector2 GetBounceDirection(Collision2D collision)
@@ -198,13 +173,13 @@ namespace Pinball.Ingame.Map
             _kickTween = null;
         }
 
-        void KillGrowthPunchTween()
+        void KillGrowthFlashTween()
         {
-            if (null == _growthPunchTween)
+            if (null == _growthFlashTween)
                 return;
 
-            _growthPunchTween.Kill(true);
-            _growthPunchTween = null;
+            _growthFlashTween.Kill(false);
+            _growthFlashTween = null;
         }
 
         void KillRallyTween()
