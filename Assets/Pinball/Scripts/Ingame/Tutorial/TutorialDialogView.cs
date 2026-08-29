@@ -18,17 +18,6 @@ namespace Pinball.Ingame.Tutorial
             Center = 2,
         }
 
-        public enum EIcon
-        {
-            Flipper = 0,
-            Launch = 1,
-            Nudge = 2,
-            Combo = 3,
-            BallLost = 4,
-            Score = 5,
-            Bumper = 6,
-        }
-
         const string CONTINUE_HINT_TEXT = "SPACE OR CLICK TO CONTINUE";
         const string CONTINUE_HINT_KEY = "ui.tutorial.continue";
         const Key CONTINUE_KEY = Key.Space;
@@ -42,8 +31,7 @@ namespace Pinball.Ingame.Tutorial
         [SerializeField] RectTransform _panel = null;
         [SerializeField] TMP_Text _bodyLabel = null;
         [SerializeField] TMP_Text _continueHintLabel = null;
-        [SerializeField] Image _iconImage = null;
-        [SerializeField] Sprite[] _iconSprites = null;
+        [SerializeField] Image _mascotImage = null;
 
         LocalizedTextRef _currentBody = default;
         bool _isClicked = false;
@@ -69,16 +57,16 @@ namespace Pinball.Ingame.Tutorial
             return gameObject.activeSelf;
         }
 
-        public async UniTask ShowAndWaitClickAsync(LocalizedTextRef body, EPlacement placement, CancellationToken cancellationToken, EIcon icon = EIcon.Flipper)
+        public async UniTask ShowAndWaitClickAsync(LocalizedTextRef body, EPlacement placement, Sprite mascot, CancellationToken cancellationToken)
         {
             await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
-            Show(body, placement, true, icon);
+            Show(body, placement, true, mascot);
             await UniTask.WaitUntil(GetIsClicked, cancellationToken: cancellationToken);
         }
 
-        public void ShowGuide(LocalizedTextRef body, EPlacement placement, EIcon icon = EIcon.Flipper)
+        public void ShowGuide(LocalizedTextRef body, EPlacement placement, Sprite mascot)
         {
-            Show(body, placement, false, icon);
+            Show(body, placement, false, mascot);
         }
 
         public void Hide()
@@ -87,7 +75,7 @@ namespace Pinball.Ingame.Tutorial
             gameObject.SetActive(false);
         }
 
-        void Show(LocalizedTextRef body, EPlacement placement, bool waitsClick, EIcon icon)
+        void Show(LocalizedTextRef body, EPlacement placement, bool waitsClick, Sprite mascot)
         {
             gameObject.SetActive(true);
             _currentBody = body;
@@ -95,20 +83,17 @@ namespace Pinball.Ingame.Tutorial
             _waitsClick = waitsClick;
             _panel.anchoredPosition = GetPlacementPosition(placement);
             _clickCatcher.gameObject.SetActive(waitsClick);
-            ApplyIcon(icon);
+            ApplyMascot(mascot);
             RefreshTexts();
         }
 
-        void ApplyIcon(EIcon icon)
+        void ApplyMascot(Sprite mascot)
         {
-            if (null == _iconImage || null == _iconSprites)
+            if (null == _mascotImage)
                 return;
 
-            int index = (int)icon;
-            if (index < 0 || index >= _iconSprites.Length || null == _iconSprites[index])
-                return;
-
-            _iconImage.sprite = _iconSprites[index];
+            _mascotImage.sprite = mascot;
+            _mascotImage.enabled = null != mascot;
         }
 
         void Update()

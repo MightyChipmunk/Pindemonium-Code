@@ -1,24 +1,20 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.UI;
-using UnityEngine;
 
 namespace Pinball.Ingame.Tutorial
 {
     public class StageGimmickTutorialBlock
     {
-        const string GIMMICK_KEY = "ui.tutorial.stage_select.gimmick";
-        const string REROLL_KEY = "ui.tutorial.stage_select.reroll";
-
-        readonly TutorialDimmer _dimmer;
+        readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
-        readonly TutorialHighlightLayer _highlightLayer;
+        readonly TutorialHighlighter _highlighter;
 
-        public StageGimmickTutorialBlock(TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
+        public StageGimmickTutorialBlock(TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
-            _dimmer = dimmer;
+            _catalog = catalog;
             _dialog = dialog;
-            _highlightLayer = highlightLayer;
+            _highlighter = highlighter;
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -31,22 +27,19 @@ namespace Pinball.Ingame.Tutorial
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
-            FocusUI(view.GetCurrentGimmickAnchor());
-            await _dialog.ShowAndWaitClickAsync(GIMMICK_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.StageSelectGimmick, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.StageSelectReroll, cancellationToken);
 
-            FocusUI(view.GetCurrentRerollAnchor());
-            await _dialog.ShowAndWaitClickAsync(REROLL_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            _highlightLayer.Clear();
-            _dimmer.Hide();
+            _highlighter.Clear();
             _dialog.Hide();
             return true;
         }
 
-        void FocusUI(RectTransform target)
+        async UniTask ShowStepAsync(TutorialStepCatalogData.EStep id, CancellationToken cancellationToken)
         {
-            _dimmer.ShowFull();
-            _highlightLayer.ShowUITarget(target);
+            TutorialStepCatalogData.Step step = _catalog.GetStep(id);
+            _highlighter.Apply(step.Highlight);
+            await _dialog.ShowAndWaitClickAsync(step.Key, step.Placement, step.Mascot, cancellationToken);
         }
     }
 }

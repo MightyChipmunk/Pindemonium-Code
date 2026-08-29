@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Ingame.Map;
 using Pinball.Localization;
 using Pinball.Settings;
 using Pinball.UI;
-using UnityEngine;
 
 namespace Pinball.Ingame.Tutorial
 {
@@ -31,71 +29,39 @@ namespace Pinball.Ingame.Tutorial
             Action FlipWaitPreparer,
             Action LaunchWaitPreparer,
             Action ComboWaitPreparer,
-            float ComboTimeoutSeconds,
-            Func<RectTransform> ScoreAnchorGetter,
-            Func<RectTransform> ComboAnchorGetter);
+            float ComboTimeoutSeconds);
 
-        const float WORLD_FOCUS_PADDING = 14f;
         const float NUDGE_SETTLE_SECONDS = 1f;
         const float SLINGSHOT_HIT_DELAY_SECONDS = 0.3f;
         const string SECOND_PAGE_SUFFIX = ".2";
-        const string WELCOME_KEY = "ui.tutorial.play.welcome";
-        const string STAGE_SELECT_KEY = "ui.tutorial.play.stage_select";
-        const string STAGE_START_KEY = "ui.tutorial.play.stage_start";
-        const string SCORE_KEY = "ui.tutorial.play.score";
-        const string FLIPPER_KEY = "ui.tutorial.play.flipper";
-        const string PARRY_KEY = "ui.tutorial.play.parry";
-        const string SPRING_KEY = "ui.tutorial.play.spring";
-        const string LAUNCH_GUIDE_KEY = "ui.tutorial.play.launch_guide";
-        const string COMBO_KEY = "ui.tutorial.play.combo";
-        const string NUDGE_KEY = "ui.tutorial.play.nudge";
-        const string NUDGE_TRY_KEY = "ui.tutorial.play.nudge_try";
-        const string FREE_PLAY_KEY = "ui.tutorial.play.free_play";
-        const string BALL_LOST_KEY = "ui.tutorial.play.ball_lost";
-        const string BALL_LOST_NOTICE_KEY = "ui.tutorial.play.ball_lost_notice";
-        const string GIMMICK_BUMPER_KEY = "ui.tutorial.play.gimmick.bumper";
-        const string GIMMICK_SLINGSHOT_KEY = "ui.tutorial.play.gimmick.slingshot";
-        const string GIMMICK_SPINNER_KEY = "ui.tutorial.play.gimmick.spinner";
-        const string GIMMICK_DROP_TARGET_KEY = "ui.tutorial.play.gimmick.drop_target";
-        const string GIMMICK_STANDUP_TARGET_KEY = "ui.tutorial.play.gimmick.standup_target";
-        const string GIMMICK_LAMP_BANK_KEY = "ui.tutorial.play.gimmick.lamp_bank";
-        const string GIMMICK_LANE_KEY = "ui.tutorial.play.gimmick.lane";
-        const string GIMMICK_SAUCER_KEY = "ui.tutorial.play.gimmick.saucer";
 
-        static readonly MapInteractable.EGimmickType[] TOUR_ORDER =
+        static readonly TutorialStepCatalogData.EStep[] TOUR_ORDER =
         {
-            MapInteractable.EGimmickType.Bumper,
-            MapInteractable.EGimmickType.Slingshot,
-            MapInteractable.EGimmickType.Spinner,
-            MapInteractable.EGimmickType.DropTarget,
-            MapInteractable.EGimmickType.StandupTarget,
-            MapInteractable.EGimmickType.LampBank,
-            MapInteractable.EGimmickType.Lane,
-            MapInteractable.EGimmickType.Saucer,
+            TutorialStepCatalogData.EStep.PlayGimmickBumper,
+            TutorialStepCatalogData.EStep.PlayGimmickSlingshot,
+            TutorialStepCatalogData.EStep.PlayGimmickSpinner,
+            TutorialStepCatalogData.EStep.PlayGimmickDropTarget,
+            TutorialStepCatalogData.EStep.PlayGimmickStandupTarget,
+            TutorialStepCatalogData.EStep.PlayGimmickLampBank,
+            TutorialStepCatalogData.EStep.PlayGimmickLane,
+            TutorialStepCatalogData.EStep.PlayGimmickSaucer,
         };
 
-        static readonly Vector2 FALLBACK_FLIPPER_EXTENTS = new Vector2(1.1f, 0.6f);
-        static readonly Vector2 FALLBACK_SPRING_EXTENTS = new Vector2(0.5f, 1.2f);
-        static readonly Vector2 FALLBACK_GIMMICK_EXTENTS = new Vector2(0.6f, 0.6f);
-
         readonly InitParam _param;
-        readonly TutorialDimmer _dimmer;
+        readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
-        readonly TutorialHighlightLayer _highlightLayer;
-        readonly List<Bounds> _worldBoundsBuffer = new List<Bounds>();
-        readonly List<MapInteractable.SpriteSnapshot> _spriteBuffer = new List<MapInteractable.SpriteSnapshot>();
-        readonly List<MapInteractable.LineSnapshot> _lineBuffer = new List<MapInteractable.LineSnapshot>();
+        readonly TutorialHighlighter _highlighter;
         bool _isNudgeGuidePending = false;
         bool _isFlipperGuidePending = false;
         bool _hasSlingshot = false;
         bool _hasBallLostGuideShown = false;
 
-        public PlayIntroTutorialBlock(InitParam param, TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
+        public PlayIntroTutorialBlock(InitParam param, TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
             _param = param;
-            _dimmer = dimmer;
+            _catalog = catalog;
             _dialog = dialog;
-            _highlightLayer = highlightLayer;
+            _highlighter = highlighter;
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -107,8 +73,9 @@ namespace Pinball.Ingame.Tutorial
             await UniTask.NextFrame(cancellationToken);
 
             _param.ModalSetter(true);
-            FocusUI(_param.ScoreAnchorGetter());
-            await _dialog.ShowAndWaitClickAsync(SCORE_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken, TutorialDialogView.EIcon.Score);
+            TutorialStepCatalogData.Step scoreStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayScore);
+            _highlighter.Apply(scoreStep.Highlight);
+            await _dialog.ShowAndWaitClickAsync(scoreStep.Key, scoreStep.Placement, scoreStep.Mascot, cancellationToken);
 
             await RunGimmickTourAsync(cancellationToken);
             await RunControlIntroAsync(cancellationToken);
@@ -134,53 +101,63 @@ namespace Pinball.Ingame.Tutorial
             }
 
             _param.ModalSetter(true);
+            TutorialStepCatalogData.Step comboStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayCombo);
             if (_param.IsComboTriggerReachedGetter())
-                FocusUI(_param.ComboAnchorGetter());
+                _highlighter.Apply(comboStep.Highlight);
             else
-                ShowFullDim();
+                _highlighter.Apply(TutorialStepCatalogData.EHighlight.FullScreen);
 
-            LocalizedTextRef comboText = new LocalizedTextRef(COMBO_KEY, new object[] { _param.ComboTimeoutSeconds });
-            await _dialog.ShowAndWaitClickAsync(comboText, TutorialDialogView.EPlacement.Center, cancellationToken, TutorialDialogView.EIcon.Combo);
-            HideOverlay();
+            LocalizedTextRef comboText = new LocalizedTextRef(comboStep.Key, new object[] { _param.ComboTimeoutSeconds });
+            await _dialog.ShowAndWaitClickAsync(comboText, comboStep.Placement, comboStep.Mascot, cancellationToken);
+            _highlighter.Clear();
 
             if (!_hasBallLostGuideShown)
             {
-                LocalizedTextRef noticeText = new LocalizedTextRef(BALL_LOST_NOTICE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-                await _dialog.ShowAndWaitClickAsync(noticeText, TutorialDialogView.EPlacement.Center, cancellationToken, TutorialDialogView.EIcon.BallLost);
+                TutorialStepCatalogData.Step noticeStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayBallLostNotice);
+                _highlighter.Apply(noticeStep.Highlight);
+                LocalizedTextRef noticeText = new LocalizedTextRef(noticeStep.Key, new object[] { GetKeyName(EKeyAction.Launch) });
+                await _dialog.ShowAndWaitClickAsync(noticeText, noticeStep.Placement, noticeStep.Mascot, cancellationToken);
             }
 
             if (!_param.IsStageClearInterceptedGetter())
-                await _dialog.ShowAndWaitClickAsync(FREE_PLAY_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+            {
+                TutorialStepCatalogData.Step freePlayStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayFreePlay);
+                _highlighter.Apply(freePlayStep.Highlight);
+                await _dialog.ShowAndWaitClickAsync(freePlayStep.Key, freePlayStep.Placement, freePlayStep.Mascot, cancellationToken);
+            }
 
             _param.ModalSetter(false);
 
-            HideOverlay();
+            _highlighter.Clear();
             _dialog.Hide();
             return true;
         }
 
         async UniTask RunStageSelectIntroAsync(CancellationToken cancellationToken)
         {
-            ShowFullDim();
-            await _dialog.ShowAndWaitClickAsync(WELCOME_KEY, TutorialDialogView.EPlacement.Center, cancellationToken);
+            TutorialStepCatalogData.Step welcomeStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayWelcome);
+            _highlighter.Apply(welcomeStep.Highlight);
+            await _dialog.ShowAndWaitClickAsync(welcomeStep.Key, welcomeStep.Placement, welcomeStep.Mascot, cancellationToken);
 
             StageSelectView view = UIManager.GetActive(UIViewCatalogData.EViewType.StageSelect) as StageSelectView;
             if (null == view)
             {
-                HideOverlay();
+                _highlighter.Clear();
                 _dialog.Hide();
                 return;
             }
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
-            FocusUI(view.GetCurrentCardAnchor());
-            await _dialog.ShowAndWaitClickAsync(STAGE_SELECT_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
+            TutorialStepCatalogData.Step cardStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayStageSelectCard);
+            _highlighter.Apply(cardStep.Highlight);
+            await _dialog.ShowAndWaitClickAsync(cardStep.Key, cardStep.Placement, cardStep.Mascot, cancellationToken);
 
-            FocusUI(view.GetCurrentStartAnchor());
-            await _dialog.ShowAndWaitClickAsync(STAGE_START_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
+            TutorialStepCatalogData.Step startStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayStageSelectStart);
+            _highlighter.Apply(startStep.Highlight);
+            await _dialog.ShowAndWaitClickAsync(startStep.Key, startStep.Placement, startStep.Mascot, cancellationToken);
 
-            HideOverlay();
+            _highlighter.Clear();
             _dialog.Hide();
         }
 
@@ -191,51 +168,37 @@ namespace Pinball.Ingame.Tutorial
 
         async UniTask RunGimmickTourAsync(CancellationToken cancellationToken)
         {
-            MapRoot map = _param.MapGetter();
-            if (null == map)
-                return;
-
             for (int i = 0; i < TOUR_ORDER.Length; ++i)
             {
-                MapInteractable.EGimmickType gimmickType = TOUR_ORDER[i];
-                CollectGimmickTargets(map, gimmickType);
-                if (_worldBoundsBuffer.Count <= 0 && _spriteBuffer.Count <= 0)
+                TutorialStepCatalogData.Step step = _catalog.GetStep(TOUR_ORDER[i]);
+                if (!_highlighter.Apply(step.Highlight))
                     continue;
 
-                FocusWorldTargets();
+                await _dialog.ShowAndWaitClickAsync(step.Key, step.Placement, step.Mascot, cancellationToken);
 
-                TutorialDialogView.EPlacement placement;
-                if (gimmickType == MapInteractable.EGimmickType.Slingshot)
-                    placement = TutorialDialogView.EPlacement.Top;
-                else
-                    placement = TutorialDialogView.EPlacement.Bottom;
-
-                string gimmickKey = GetGimmickKey(gimmickType);
-                await _dialog.ShowAndWaitClickAsync(gimmickKey, placement, cancellationToken, TutorialDialogView.EIcon.Bumper);
-
-                string secondPageKey = gimmickKey + SECOND_PAGE_SUFFIX;
+                string secondPageKey = step.Key + SECOND_PAGE_SUFFIX;
                 if (!string.IsNullOrEmpty(LocalizationTable.Get(secondPageKey, string.Empty)))
-                    await _dialog.ShowAndWaitClickAsync(secondPageKey, placement, cancellationToken, TutorialDialogView.EIcon.Bumper);
+                    await _dialog.ShowAndWaitClickAsync(secondPageKey, step.Placement, step.Mascot, cancellationToken);
             }
         }
 
         async UniTask RunControlIntroAsync(CancellationToken cancellationToken)
         {
-            MapRoot map = _param.MapGetter();
-            if (null == map)
+            TutorialStepCatalogData.Step step = _catalog.GetStep(TutorialStepCatalogData.EStep.PlaySpring);
+            if (!_highlighter.Apply(step.Highlight))
                 return;
 
-            FocusSpring(map);
-            LocalizedTextRef springText = new LocalizedTextRef(SPRING_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-            await _dialog.ShowAndWaitClickAsync(springText, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Launch);
+            LocalizedTextRef springText = new LocalizedTextRef(step.Key, new object[] { GetKeyName(EKeyAction.Launch) });
+            await _dialog.ShowAndWaitClickAsync(springText, step.Placement, step.Mascot, cancellationToken);
         }
 
         async UniTask RunLaunchGuideAsync(CancellationToken cancellationToken)
         {
-            HideOverlay();
+            TutorialStepCatalogData.Step step = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayLaunchGuide);
+            _highlighter.Apply(step.Highlight);
 
-            LocalizedTextRef guideText = new LocalizedTextRef(LAUNCH_GUIDE_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-            _dialog.ShowGuide(guideText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Launch);
+            LocalizedTextRef guideText = new LocalizedTextRef(step.Key, new object[] { GetKeyName(EKeyAction.Launch) });
+            _dialog.ShowGuide(guideText, step.Placement, step.Mascot);
             await UniTask.WaitUntil(GetIsLaunchWaitFinished, cancellationToken: cancellationToken);
             _dialog.Hide();
         }
@@ -280,10 +243,11 @@ namespace Pinball.Ingame.Tutorial
         async UniTask RunBallLostGuideAsync(CancellationToken cancellationToken)
         {
             _hasBallLostGuideShown = true;
-            HideOverlay();
+            TutorialStepCatalogData.Step step = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayBallLost);
+            _highlighter.Apply(step.Highlight);
             _param.LaunchWaitPreparer();
-            LocalizedTextRef lostText = new LocalizedTextRef(BALL_LOST_KEY, new object[] { GetKeyName(EKeyAction.Launch) });
-            _dialog.ShowGuide(lostText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.BallLost);
+            LocalizedTextRef lostText = new LocalizedTextRef(step.Key, new object[] { GetKeyName(EKeyAction.Launch) });
+            _dialog.ShowGuide(lostText, step.Placement, step.Mascot);
             await UniTask.WaitUntil(GetIsRelaunchWaitFinished, cancellationToken: cancellationToken);
             _dialog.Hide();
         }
@@ -302,136 +266,53 @@ namespace Pinball.Ingame.Tutorial
             if (null == map)
                 return;
 
-            _worldBoundsBuffer.Clear();
-            _worldBoundsBuffer.Add(GetFlipperBounds(map, true));
-            _worldBoundsBuffer.Add(GetFlipperBounds(map, false));
-            _spriteBuffer.Clear();
-            _lineBuffer.Clear();
-            map.CollectLeftFlipperSprites(_spriteBuffer);
-            map.CollectRightFlipperSprites(_spriteBuffer);
-            FocusWorldTargets();
+            TutorialStepCatalogData.Step flipperStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayFlipper);
+            _highlighter.Apply(flipperStep.Highlight);
 
             _param.FlipWaitPreparer();
-            LocalizedTextRef flipperText = new LocalizedTextRef(FLIPPER_KEY, new object[] { GetKeyName(EKeyAction.FlipperLeft), GetKeyName(EKeyAction.FlipperRight) });
-            _dialog.ShowGuide(flipperText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Flipper);
+            LocalizedTextRef flipperText = new LocalizedTextRef(flipperStep.Key, new object[] { GetKeyName(EKeyAction.FlipperLeft), GetKeyName(EKeyAction.FlipperRight) });
+            _dialog.ShowGuide(flipperText, flipperStep.Placement, flipperStep.Mascot);
             await UniTask.WaitUntil(GetIsFlipWaitFinished, cancellationToken: cancellationToken);
             map.DisarmFlipperApproachZone();
             _dialog.Hide();
-            HideOverlay();
+            _highlighter.Clear();
 
             if (!_param.IsPlayStateGetter())
                 return;
 
+            TutorialStepCatalogData.Step parryStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayParry);
             _param.ModalSetter(true);
-            await _dialog.ShowAndWaitClickAsync(PARRY_KEY, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Flipper);
+            _highlighter.Apply(parryStep.Highlight);
+            await _dialog.ShowAndWaitClickAsync(parryStep.Key, parryStep.Placement, parryStep.Mascot, cancellationToken);
             _param.ModalSetter(false);
             _dialog.Hide();
         }
 
         async UniTask RunNudgeGuideAsync(CancellationToken cancellationToken)
         {
+            TutorialStepCatalogData.Step nudgeStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayNudge);
             _param.ModalSetter(true);
-            LocalizedTextRef nudgeText = new LocalizedTextRef(NUDGE_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            await _dialog.ShowAndWaitClickAsync(nudgeText, TutorialDialogView.EPlacement.Top, cancellationToken, TutorialDialogView.EIcon.Nudge);
+            _highlighter.Apply(nudgeStep.Highlight);
+            LocalizedTextRef nudgeText = new LocalizedTextRef(nudgeStep.Key, new object[] { GetKeyName(EKeyAction.Nudge) });
+            await _dialog.ShowAndWaitClickAsync(nudgeText, nudgeStep.Placement, nudgeStep.Mascot, cancellationToken);
             _param.ModalSetter(false);
             _dialog.Hide();
 
             if (!_param.CanNudgeGetter() || !_param.IsPlayStateGetter())
                 return;
 
+            TutorialStepCatalogData.Step tryStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayNudgeTry);
             _param.NudgeWaitPreparer();
             _param.TimeFreezeSetter(true);
-            LocalizedTextRef tryText = new LocalizedTextRef(NUDGE_TRY_KEY, new object[] { GetKeyName(EKeyAction.Nudge) });
-            _dialog.ShowGuide(tryText, TutorialDialogView.EPlacement.Top, TutorialDialogView.EIcon.Nudge);
+            _highlighter.Apply(tryStep.Highlight);
+            LocalizedTextRef tryText = new LocalizedTextRef(tryStep.Key, new object[] { GetKeyName(EKeyAction.Nudge) });
+            _dialog.ShowGuide(tryText, tryStep.Placement, tryStep.Mascot);
             await UniTask.WaitUntil(GetIsNudgeWaitFinished, cancellationToken: cancellationToken);
             _param.TimeFreezeSetter(false);
             _dialog.Hide();
 
             if (_param.HasNudgedGetter() && _param.IsPlayStateGetter())
                 await UniTask.Delay(TimeSpan.FromSeconds(NUDGE_SETTLE_SECONDS), cancellationToken: cancellationToken);
-        }
-
-        void FocusSpring(MapRoot map)
-        {
-            _worldBoundsBuffer.Clear();
-            if (map.TryGetSpringBounds(out Bounds springBounds))
-                _worldBoundsBuffer.Add(springBounds);
-            else
-                _worldBoundsBuffer.Add(CreateFallbackBounds(map.GetSpringPosition(), FALLBACK_SPRING_EXTENTS));
-
-            _spriteBuffer.Clear();
-            _lineBuffer.Clear();
-            map.CollectSpringSprites(_spriteBuffer);
-            FocusWorldTargets();
-        }
-
-        void CollectGimmickTargets(MapRoot map, MapInteractable.EGimmickType gimmickType)
-        {
-            _worldBoundsBuffer.Clear();
-            _spriteBuffer.Clear();
-            _lineBuffer.Clear();
-            for (int i = 0, count = map.GetInteractableCount(); i < count; ++i)
-            {
-                MapInteractable interactable = map.GetInteractable(i);
-                if (null == interactable || interactable.GimmickType != gimmickType)
-                    continue;
-
-                if (interactable.IsDeactivated)
-                    continue;
-
-                if (gimmickType == MapInteractable.EGimmickType.Lane)
-                    interactable.CollectHighlightLines(_lineBuffer);
-                else
-                    interactable.CollectHighlightSprites(_spriteBuffer);
-
-                if (interactable.TryGetWorldBounds(out Bounds worldBounds))
-                    _worldBoundsBuffer.Add(worldBounds);
-                else
-                    _worldBoundsBuffer.Add(CreateFallbackBounds(interactable.transform.position, FALLBACK_GIMMICK_EXTENTS));
-            }
-        }
-
-        void FocusWorldTargets()
-        {
-            if (_spriteBuffer.Count > 0 || _lineBuffer.Count > 0)
-            {
-                _dimmer.ShowFull();
-                _highlightLayer.ShowWorldTargets(_spriteBuffer, _lineBuffer);
-                return;
-            }
-
-            _highlightLayer.Clear();
-            _dimmer.FocusWorldBounds(_worldBoundsBuffer, WORLD_FOCUS_PADDING);
-        }
-
-        void FocusUI(RectTransform target)
-        {
-            _dimmer.ShowFull();
-            _highlightLayer.ShowUITarget(target);
-        }
-
-        void ShowFullDim()
-        {
-            _highlightLayer.Clear();
-            _dimmer.ShowFull();
-        }
-
-        void HideOverlay()
-        {
-            _highlightLayer.Clear();
-            _dimmer.Hide();
-        }
-
-        static Bounds GetFlipperBounds(MapRoot map, bool isLeft)
-        {
-            if (isLeft && map.TryGetLeftFlipperBounds(out Bounds leftBounds))
-                return leftBounds;
-
-            if (!isLeft && map.TryGetRightFlipperBounds(out Bounds rightBounds))
-                return rightBounds;
-
-            Vector2 fallbackCenter = isLeft ? map.GetLeftFlipperPosition() : map.GetRightFlipperPosition();
-            return CreateFallbackBounds(fallbackCenter, FALLBACK_FLIPPER_EXTENTS);
         }
 
         static bool HasActiveGimmick(MapRoot map, MapInteractable.EGimmickType gimmickType)
@@ -447,11 +328,6 @@ namespace Pinball.Ingame.Tutorial
             }
 
             return false;
-        }
-
-        static Bounds CreateFallbackBounds(Vector2 worldCenter, Vector2 worldExtents)
-        {
-            return new Bounds(worldCenter, worldExtents * 2f);
         }
 
         bool GetIsPlayInterrupted()
@@ -515,29 +391,6 @@ namespace Pinball.Ingame.Tutorial
         static string GetKeyName(EKeyAction action)
         {
             return KeyLabel.Get(GameSettings.GetKey(action));
-        }
-
-        static string GetGimmickKey(MapInteractable.EGimmickType gimmickType)
-        {
-            switch (gimmickType)
-            {
-                case MapInteractable.EGimmickType.Bumper:
-                    return GIMMICK_BUMPER_KEY;
-                case MapInteractable.EGimmickType.Slingshot:
-                    return GIMMICK_SLINGSHOT_KEY;
-                case MapInteractable.EGimmickType.Spinner:
-                    return GIMMICK_SPINNER_KEY;
-                case MapInteractable.EGimmickType.DropTarget:
-                    return GIMMICK_DROP_TARGET_KEY;
-                case MapInteractable.EGimmickType.StandupTarget:
-                    return GIMMICK_STANDUP_TARGET_KEY;
-                case MapInteractable.EGimmickType.LampBank:
-                    return GIMMICK_LAMP_BANK_KEY;
-                case MapInteractable.EGimmickType.Lane:
-                    return GIMMICK_LANE_KEY;
-                default:
-                    return GIMMICK_SAUCER_KEY;
-            }
         }
     }
 }

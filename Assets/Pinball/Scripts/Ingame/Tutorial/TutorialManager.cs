@@ -34,9 +34,11 @@ namespace Pinball.Ingame.Tutorial
         [SerializeField] TutorialDimmer _dimmer = null;
         [SerializeField] TutorialHighlightLayer _highlightLayer = null;
         [SerializeField] TutorialDialogView _dialog = null;
+        [SerializeField] TutorialStepCatalogData _stepCatalog = null;
 
         InitParam _param = null;
         TutorialProgress _progress = null;
+        TutorialHighlighter _highlighter = null;
         PlayIntroTutorialBlock _playIntroBlock = null;
         ShopTutorialBlock _shopBlock = null;
         StageGimmickTutorialBlock _stageGimmickBlock = null;
@@ -60,6 +62,10 @@ namespace Pinball.Ingame.Tutorial
             _param = param;
             _progress = new TutorialProgress();
             _dialog.Init();
+            _highlighter = new TutorialHighlighter(new TutorialHighlighter.InitParam(
+                MapGetter: GetCurrentMap,
+                ScoreAnchorGetter: param.ScoreAnchorGetter,
+                ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _highlightLayer);
 
             _playIntroBlock = new PlayIntroTutorialBlock(new PlayIntroTutorialBlock.InitParam(
                 MapGetter: GetCurrentMap,
@@ -80,11 +86,9 @@ namespace Pinball.Ingame.Tutorial
                 FlipWaitPreparer: PrepareFlipWait,
                 LaunchWaitPreparer: PrepareLaunchWait,
                 ComboWaitPreparer: PrepareComboWait,
-                ComboTimeoutSeconds: param.ComboTimeoutSeconds,
-                ScoreAnchorGetter: param.ScoreAnchorGetter,
-                ComboAnchorGetter: param.ComboAnchorGetter), _dimmer, _dialog, _highlightLayer);
-            _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _dimmer, _dialog, _highlightLayer);
-            _stageGimmickBlock = new StageGimmickTutorialBlock(_dimmer, _dialog, _highlightLayer);
+                ComboTimeoutSeconds: param.ComboTimeoutSeconds), _stepCatalog, _dialog, _highlighter);
+            _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _stepCatalog, _dialog, _highlighter);
+            _stageGimmickBlock = new StageGimmickTutorialBlock(_stepCatalog, _dialog, _highlighter);
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             WatchPlayIntroAsync(_cancellationTokenSource.Token).Forget();
@@ -101,6 +105,7 @@ namespace Pinball.Ingame.Tutorial
             _stageGimmickBlock = null;
             _shopBlock = null;
             _playIntroBlock = null;
+            _highlighter = null;
             _progress = null;
             _currentMap = null;
             _param = null;

@@ -1,9 +1,7 @@
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Localization;
 using Pinball.UI;
-using UnityEngine;
 
 namespace Pinball.Ingame.Tutorial
 {
@@ -11,26 +9,17 @@ namespace Pinball.Ingame.Tutorial
     {
         public record InitParam(int InterestPerAmount, int InterestMax, int PassiveSlotCount);
 
-        const string OFFERS_KEY = "ui.tutorial.shop.offers";
-        const string PASSIVE_LIMIT_KEY = "ui.tutorial.shop.passive_limit";
-        const string PACKS_KEY = "ui.tutorial.shop.packs";
-        const string VOUCHER_KEY = "ui.tutorial.shop.voucher";
-        const string REROLL_KEY = "ui.tutorial.shop.reroll";
-        const string INTEREST_KEY = "ui.tutorial.shop.interest";
-        const string START_KEY = "ui.tutorial.shop.start";
-
         readonly InitParam _param;
-        readonly TutorialDimmer _dimmer;
+        readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
-        readonly TutorialHighlightLayer _highlightLayer;
-        readonly List<RectTransform> _anchorBuffer = new List<RectTransform>();
+        readonly TutorialHighlighter _highlighter;
 
-        public ShopTutorialBlock(InitParam param, TutorialDimmer dimmer, TutorialDialogView dialog, TutorialHighlightLayer highlightLayer)
+        public ShopTutorialBlock(InitParam param, TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
             _param = param;
-            _dimmer = dimmer;
+            _catalog = catalog;
             _dialog = dialog;
-            _highlightLayer = highlightLayer;
+            _highlighter = highlighter;
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -43,43 +32,25 @@ namespace Pinball.Ingame.Tutorial
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
-            FocusUI(view.GetOfferRowAnchor());
-            await _dialog.ShowAndWaitClickAsync(OFFERS_KEY, TutorialDialogView.EPlacement.Bottom, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopOffers, null, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopPassiveLimit, new object[] { _param.PassiveSlotCount }, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopPacks, null, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopVoucher, null, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopReroll, null, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopInterest, new object[] { _param.InterestPerAmount, _param.InterestMax }, cancellationToken);
+            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopStart, null, cancellationToken);
 
-            LocalizedTextRef passiveLimitText = new LocalizedTextRef(PASSIVE_LIMIT_KEY, new object[] { _param.PassiveSlotCount });
-            await _dialog.ShowAndWaitClickAsync(passiveLimitText, TutorialDialogView.EPlacement.Bottom, cancellationToken);
-
-            _anchorBuffer.Clear();
-            for (int i = 0, count = view.GetPackSlotCount(); i < count; ++i)
-                _anchorBuffer.Add(view.GetPackSlotAnchor(i));
-
-            _dimmer.ShowFull();
-            _highlightLayer.ShowUITargets(_anchorBuffer);
-            await _dialog.ShowAndWaitClickAsync(PACKS_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            FocusUI(view.GetVoucherAnchor());
-            await _dialog.ShowAndWaitClickAsync(VOUCHER_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            FocusUI(view.GetRerollAnchor());
-            await _dialog.ShowAndWaitClickAsync(REROLL_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            FocusUI(view.GetMoneyAnchor());
-            LocalizedTextRef interestText = new LocalizedTextRef(INTEREST_KEY, new object[] { _param.InterestPerAmount, _param.InterestMax });
-            await _dialog.ShowAndWaitClickAsync(interestText, TutorialDialogView.EPlacement.Bottom, cancellationToken);
-
-            FocusUI(view.GetStartAnchor());
-            await _dialog.ShowAndWaitClickAsync(START_KEY, TutorialDialogView.EPlacement.Top, cancellationToken);
-
-            _highlightLayer.Clear();
-            _dimmer.Hide();
+            _highlighter.Clear();
             _dialog.Hide();
             return true;
         }
 
-        void FocusUI(RectTransform target)
+        async UniTask ShowStepAsync(TutorialStepCatalogData.EStep id, object[] argArr, CancellationToken cancellationToken)
         {
-            _dimmer.ShowFull();
-            _highlightLayer.ShowUITarget(target);
+            TutorialStepCatalogData.Step step = _catalog.GetStep(id);
+            _highlighter.Apply(step.Highlight);
+            LocalizedTextRef body = new LocalizedTextRef(step.Key, argArr);
+            await _dialog.ShowAndWaitClickAsync(body, step.Placement, step.Mascot, cancellationToken);
         }
     }
 }
