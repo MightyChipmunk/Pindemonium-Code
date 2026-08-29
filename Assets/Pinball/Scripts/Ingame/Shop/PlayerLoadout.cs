@@ -320,6 +320,20 @@ namespace Pinball.Ingame.Shop
             return sum;
         }
 
+        public void CollectEffectSourceNames(ShopItemData.EEffectType effectType, List<string> names)
+        {
+            if (null == names)
+                return;
+
+            for (int i = 0; i < PassiveCount; ++i)
+                if (_passives[i].EffectType == effectType)
+                    names.Add(_passives[i].GetDisplayName());
+
+            for (int i = 0; i < UpgradeKindCount; ++i)
+                if (_upgrades[i].EffectType == effectType)
+                    names.Add(_upgrades[i].GetDisplayName());
+        }
+
         public float GetEffectValue(ShopItemData.EEffectType effectType, int valueIndex)
         {
             if (null == _passives)

@@ -117,6 +117,17 @@ namespace Pinball.Ingame.State
             return Mathf.Min(interest, cap);
         }
 
+        public int GetInterestMax()
+        {
+            if (_isInterestDisabled)
+                return 0;
+
+            if (null == _config)
+                return 0;
+
+            return _vouchers.BoostInterestCap(_config.InterestMax);
+        }
+
         public void RefreshOpenedView()
         {
             if (null == _session)

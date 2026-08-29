@@ -21,6 +21,7 @@ using Pinball.Ingame.Stat;
 using Pinball.Ingame.State;
 using Pinball.Ingame.Tutorial;
 using Pinball.Ingame.UI;
+using Pinball.Localization;
 using Pinball.Save;
 using Pinball.UI;
 using Pinball.Util;
@@ -33,6 +34,7 @@ namespace Pinball.Ingame
         const int DEFAULT_MAP_INDEX = 0;
         const int DEFAULT_PASSIVE_SLOT_COUNT = 3;
         const float DEFAULT_COMBO_TIMEOUT_SECONDS = 3f;
+        const string REWARD_SOURCE_SEPARATOR = ", ";
 
         [SerializeField] IngameInputRouter _inputRouter = null;
         [SerializeField] BallSpawner _ballSpawner = null;
@@ -61,6 +63,7 @@ namespace Pinball.Ingame
 #endif
 
         readonly List<Action> _releaseActions = new List<Action>();
+        readonly List<string> _rewardSourceNames = new List<string>();
 
         IngameStateMachine _stateMachine = null;
         StageSelectState _stageSelectState = null;
@@ -128,6 +131,7 @@ namespace Pinball.Ingame
                 _releaseActions[i]();
 
             _releaseActions.Clear();
+            _rewardSourceNames.Clear();
             _selectedFlipper = null;
             _runSetup = null;
             _saveHandler = null;
@@ -514,12 +518,15 @@ namespace Pinball.Ingame
             _ballFlow.RefillStock();
         }
 
-        void SettleStageClear()
+        StageClearReward SettleStageClear()
         {
             int remainingBalls = _ballFlow.RemainingBalls;
             int resupplyMoney = Mathf.RoundToInt(remainingBalls * StatProvider.GetBallResupplyMoney());
             int stageClearMoney = StageData.CalculateClearMoney(_stageTracker.GetCurrentStage(), _runSetup.StageClearMoneyAdd);
-            _wallet.Add(remainingBalls + stageClearMoney + _shopState.CalculateInterest() + resupplyMoney);
+            int remainingBallMoney = remainingBalls + resupplyMoney;
+            int interestMoney = _shopState.CalculateInterest();
+            StageClearReward reward = BuildStageClearReward(stageClearMoney, remainingBalls, remainingBallMoney, interestMoney);
+            _wallet.Add(stageClearMoney + remainingBallMoney + interestMoney);
             _isRoundRewardPending = StageCatalogData.IsRoundLastStage(_stageTracker.StageNumber - 1);
             if (_stageTracker.IsEndless && _stageTracker.EndlessStageNumber > 0)
                 _saveHandler.UpdateBestEndlessStage(GetFlipperId(), _stageTracker.EndlessStageNumber);
@@ -527,6 +534,64 @@ namespace Pinball.Ingame
             _stageTracker.AdvanceToNextStage();
             _gimmickRoller.SetBaseGimmicks(_stageTracker.GetCurrentStage(), GetEndlessRoundLastGimmick());
             SaveProgress(true);
+            return reward;
+        }
+
+        StageClearReward BuildStageClearReward(int stageClearMoney, int remainingBalls, int remainingBallMoney, int interestMoney)
+        {
+            return new StageClearReward(
+                stageClearMoney,
+                BuildClearMoneySourceNames(),
+                remainingBalls,
+                remainingBallMoney,
+                BuildRemainingBallSourceNames(),
+                interestMoney,
+                _shopState.GetInterestMax(),
+                BuildInterestSourceNames());
+        }
+
+        string BuildClearMoneySourceNames()
+        {
+            _rewardSourceNames.Clear();
+            AddFlipperSourceName(_runSetup.StageClearMoneyAdd != 0);
+            return JoinRewardSourceNames();
+        }
+
+        string BuildRemainingBallSourceNames()
+        {
+            _rewardSourceNames.Clear();
+            _loadout.CollectEffectSourceNames(ShopItemData.EEffectType.BallResupplyMoney, _rewardSourceNames);
+            _vouchers.CollectEffectSourceNames(VoucherData.EEffect.BallResupplyMoney, _rewardSourceNames);
+            AddFlipperSourceName(_runSetup.BallResupplyMoneyAdd != 0);
+            return JoinRewardSourceNames();
+        }
+
+        string BuildInterestSourceNames()
+        {
+            _rewardSourceNames.Clear();
+            _vouchers.CollectEffectSourceNames(VoucherData.EEffect.InterestRateBoost, _rewardSourceNames);
+            _vouchers.CollectEffectSourceNames(VoucherData.EEffect.InterestCapBoost, _rewardSourceNames);
+            AddFlipperSourceName(_runSetup.IsInterestDisabled);
+            return JoinRewardSourceNames();
+        }
+
+        void AddFlipperSourceName(bool isApplied)
+        {
+            if (!isApplied)
+                return;
+
+            if (null == _selectedFlipper)
+                return;
+
+            _rewardSourceNames.Add(LocalizationTable.GetOrKey(_selectedFlipper.GetNameKey()));
+        }
+
+        string JoinRewardSourceNames()
+        {
+            if (_rewardSourceNames.Count <= 0)
+                return string.Empty;
+
+            return string.Join(REWARD_SOURCE_SEPARATOR, _rewardSourceNames);
         }
 
         bool GetIsRoundRewardPending()

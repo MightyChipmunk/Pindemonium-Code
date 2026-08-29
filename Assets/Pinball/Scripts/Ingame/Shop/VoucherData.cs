@@ -49,6 +49,11 @@ namespace Pinball.Ingame.Shop
             return name;
         }
 
+        public string GetDisplayName()
+        {
+            return GetNameRef().Resolve();
+        }
+
         public LocalizedTextRef GetNameRef()
         {
             return new LocalizedTextRef(_nameKey, GetTextArgArr());

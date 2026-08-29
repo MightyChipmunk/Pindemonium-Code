@@ -5,6 +5,7 @@ using Pinball.FX;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Player;
 using Pinball.Ingame.Presentation;
+using Pinball.Ingame.Reward;
 using Pinball.Ingame.Score;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
@@ -28,7 +29,7 @@ namespace Pinball.Ingame.State
             Action OnGimmickBroken,
             Action OnSlingshotHit,
             Action OnFlipperBallStruck,
-            Action StageClearSettler,
+            Func<StageClearReward> StageClearSettler,
             Func<UniTask> StageClearInterceptorAsync,
             int MapIndex);
 
@@ -237,8 +238,8 @@ namespace Pinball.Ingame.State
             int displayStageNumber = isEndless ? _stageTracker.EndlessStageNumber : stageNumber;
             StopPlay();
             _director.PlayStageClear();
-            _param.StageClearSettler?.Invoke();
-            UIManager.Show(new StageClearView.Args(displayStageNumber, isEndless));
+            StageClearReward reward = null == _param.StageClearSettler ? null : _param.StageClearSettler();
+            UIManager.Show(new StageClearView.Args(displayStageNumber, isEndless, reward));
             ChangeState(EIngameState.Shop, new ShopState.EnterParam(OpensImmediately: false));
         }
 
@@ -247,7 +248,7 @@ namespace Pinball.Ingame.State
             StopPlay();
             _isGameClearPending = true;
             _director.PlayStageClear();
-            UIManager.Show(new StageClearView.Args(_stageTracker.StageNumber, IsEndless: false));
+            UIManager.Show(new StageClearView.Args(_stageTracker.StageNumber, IsEndless: false, Reward: null));
         }
 
         void HandleUIEvent(UIManager.EEvent uiEvent, int payload)

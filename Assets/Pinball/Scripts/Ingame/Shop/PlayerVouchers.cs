@@ -93,6 +93,16 @@ namespace Pinball.Ingame.Shop
             return 0f;
         }
 
+        public void CollectEffectSourceNames(VoucherData.EEffect effect, List<string> names)
+        {
+            if (null == names)
+                return;
+
+            for (int i = 0; i < OwnedCount; ++i)
+                if (_owned[i].Effect == effect)
+                    names.Add(_owned[i].GetDisplayName());
+        }
+
         public float GetEffectSum(VoucherData.EEffect effect)
         {
             float sum = 0f;
