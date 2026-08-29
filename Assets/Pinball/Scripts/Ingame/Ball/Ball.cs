@@ -151,10 +151,15 @@ namespace Pinball.Ingame
             }
         }
 
-        public void MoveTo(Vector3 position)
+        public void SetPosition(Vector3 position)
         {
             _rigidbody.position = position;
             transform.position = position;
+        }
+
+        public void MoveTo(Vector3 position)
+        {
+            SetPosition(position);
             _trail.Clear();
             _auraController.ClearParticles();
         }

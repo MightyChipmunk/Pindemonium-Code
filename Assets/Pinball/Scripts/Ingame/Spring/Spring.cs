@@ -25,18 +25,26 @@ namespace Pinball.Ingame
         const float FULL_SCALE_Y = 1f;
         const float MIN_DURATION = 0.0001f;
         const float EMPTY_CHARGE_RATIO = 0f;
+        const float FULL_RATIO = 1f;
+        const float NO_IMPULSE = 0f;
+        const float NO_OFFSET = 0f;
         const float CANCEL_PUNCH_SCALE = 0.35f;
         const float CANCEL_PUNCH_DURATION = 0.4f;
         const int CANCEL_PUNCH_VIBRATO = 8;
 
         [SerializeField] Transform _ballAnchor = null;
         [SerializeField] Transform _visual = null;
+        [SerializeField] SpriteRenderer _visualRenderer = null;
         [SerializeField] SpringConfigData _config = null;
 
         Action<EChargeEvent, Vector2> _chargeEventPlayer = null;
         int _chargeLoopId = AudioManager.INVALID_LOOP_ID;
         Ball _loadedBall = null;
+        Ball _launchingBall = null;
         Tween _launchTween = null;
+        float _visualTopOffset = NO_OFFSET;
+        float _launchAccelForce = NO_IMPULSE;
+        float _launchAccelRemainTime = 0f;
         float _chargeElapsed = 0f;
         bool _isCharging = false;
         bool _isPeakReached = false;
@@ -47,6 +55,9 @@ namespace Pinball.Ingame
             _chargeEventPlayer = chargeEventPlayer;
             _loadedBall = null;
             ResetCharge();
+            StopLaunchAccel();
+            ApplyChargeVisual(EMPTY_CHARGE_RATIO);
+            _visualTopOffset = CalculateVisualTopOffset();
         }
 
         public void Release()
@@ -54,6 +65,7 @@ namespace Pinball.Ingame
             _chargeEventPlayer = null;
             _loadedBall = null;
             ResetCharge();
+            StopLaunchAccel();
             KillLaunchTween(false);
         }
 
@@ -65,7 +77,7 @@ namespace Pinball.Ingame
             _loadedBall = ball;
             ResetCharge();
             ball.SetKinematic(true);
-            ball.MoveTo(_ballAnchor.position);
+            ball.MoveTo(GetBallHoldPosition());
         }
 
         public void SetCharging(bool isCharging)
@@ -119,8 +131,15 @@ namespace Pinball.Ingame
             launchPowerRatio = Mathf.Lerp(_config.MinPowerRatio, 1f, GetChargeRatio());
             _loadedBall = null;
             ResetCharge();
+
+            float totalImpulse = _config.LaunchImpulse * launchPowerRatio;
+            float accelDuration = _config.LaunchAccelDuration;
+            float initialRatio = accelDuration < MIN_DURATION ? FULL_RATIO : Mathf.Clamp01(_config.LaunchInitialImpulseRatio);
+
             ball.SetKinematic(false);
-            ball.AddImpulse(Vector2.up * (_config.LaunchImpulse * launchPowerRatio));
+            ball.AddImpulse(Vector2.up * (totalImpulse * initialRatio));
+            StartLaunchAccel(ball, totalImpulse * (FULL_RATIO - initialRatio), accelDuration);
+
             PlayLaunchMotion();
             AudioManager.Play(AudioStorage.EAudioClipType.SpringLaunch);
             return true;
@@ -151,6 +170,45 @@ namespace Pinball.Ingame
             float visualChargeRatio = GetVisualChargeRatio();
             ApplyChargeVisual(visualChargeRatio);
             AudioManager.SetLoopVolumeRatio(_chargeLoopId, visualChargeRatio);
+        }
+
+        void FixedUpdate()
+        {
+            if (null == _launchingBall)
+                return;
+
+            if (!_launchingBall.IsSimulated())
+            {
+                StopLaunchAccel();
+                return;
+            }
+
+            float step = Mathf.Min(Time.fixedDeltaTime, _launchAccelRemainTime);
+            _launchAccelRemainTime -= step;
+            _launchingBall.AddImpulse(Vector2.up * (_launchAccelForce * step));
+
+            if (_launchAccelRemainTime <= 0f)
+                StopLaunchAccel();
+        }
+
+        void StartLaunchAccel(Ball ball, float impulse, float duration)
+        {
+            if (duration < MIN_DURATION || impulse <= NO_IMPULSE)
+            {
+                StopLaunchAccel();
+                return;
+            }
+
+            _launchingBall = ball;
+            _launchAccelForce = impulse / duration;
+            _launchAccelRemainTime = duration;
+        }
+
+        void StopLaunchAccel()
+        {
+            _launchingBall = null;
+            _launchAccelForce = NO_IMPULSE;
+            _launchAccelRemainTime = 0f;
         }
 
         void StartChargeLoop()
@@ -217,6 +275,37 @@ namespace Pinball.Ingame
             Vector3 scale = _visual.localScale;
             scale.y = Mathf.Lerp(FULL_SCALE_Y, COMPRESS_SCALE_Y, chargeRatio);
             _visual.localScale = scale;
+            FollowBallToVisualTop();
+        }
+
+        void FollowBallToVisualTop()
+        {
+            if (null == _loadedBall)
+                return;
+
+            _loadedBall.SetPosition(GetBallHoldPosition());
+        }
+
+        Vector3 GetBallHoldPosition()
+        {
+            Vector3 position = _ballAnchor.position;
+            if (null == _visual)
+                return position;
+
+            position.y -= _visualTopOffset * (FULL_SCALE_Y - _visual.localScale.y);
+            return position;
+        }
+
+        float CalculateVisualTopOffset()
+        {
+            if (null == _visual)
+                return NO_OFFSET;
+
+            if (null == _visualRenderer || null == _visualRenderer.sprite)
+                return NO_OFFSET;
+
+            Vector3 topLocalPoint = new Vector3(0f, _visualRenderer.sprite.bounds.max.y, 0f);
+            return _visualRenderer.transform.TransformPoint(topLocalPoint).y - _visual.position.y;
         }
 
         void PlayLaunchMotion()
