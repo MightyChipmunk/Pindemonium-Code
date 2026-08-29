@@ -209,9 +209,27 @@ namespace Pinball.Ingame.Tutorial
             _hasSlingshot = null != map && HasActiveGimmick(map, MapInteractable.EGimmickType.Slingshot);
             _isNudgeGuidePending = true;
             _isFlipperGuidePending = null != map;
-            if (null != map)
-                map.ArmFlipperApproachZone();
+            SetFlipperApproachArmed(true);
 
+            await RunPlayGuideLoopAsync(cancellationToken);
+
+            SetFlipperApproachArmed(false);
+        }
+
+        void SetFlipperApproachArmed(bool isArmed)
+        {
+            MapRoot map = _param.MapGetter();
+            if (null == map)
+                return;
+
+            if (isArmed)
+                map.ArmFlipperApproachZone();
+            else
+                map.DisarmFlipperApproachZone();
+        }
+
+        async UniTask RunPlayGuideLoopAsync(CancellationToken cancellationToken)
+        {
             while (_isNudgeGuidePending || _isFlipperGuidePending)
             {
                 await UniTask.WaitUntil(GetIsPlayGuideWaitFinished, cancellationToken: cancellationToken);
@@ -230,8 +248,10 @@ namespace Pinball.Ingame.Tutorial
                 if (_isNudgeGuidePending && GetIsNudgeTriggerReached())
                 {
                     _isNudgeGuidePending = false;
+                    SetFlipperApproachArmed(false);
                     await DelayAfterSlingshotHitAsync(cancellationToken);
                     await RunNudgeGuideAsync(cancellationToken);
+                    SetFlipperApproachArmed(true);
                     continue;
                 }
 

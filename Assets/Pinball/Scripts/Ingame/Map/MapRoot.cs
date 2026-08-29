@@ -266,7 +266,10 @@ namespace Pinball.Ingame.Map
             _onScoreGained = null;
 
             if (null != _flipperApproachZone)
+            {
+                _flipperApproachZone.Disarm();
                 _flipperApproachZone.SetHoldPredicate(null);
+            }
 
             _onBumperDamaged = null;
             _onBumperBroken = null;

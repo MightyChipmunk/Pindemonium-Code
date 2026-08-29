@@ -7,12 +7,18 @@ namespace Pinball.Ingame.Map
     public class BallHoldZone : MonoBehaviour
     {
         const float HELD_GRAVITY_SCALE = 0f;
+        // A held ball sits at zero velocity with gravity off, so any speed it regains
+        // came from outside the zone — a flipper strike or a nudge. Without releasing
+        // it there, the ball keeps drifting weightlessly and the zone goes on
+        // reporting a ball it no longer holds.
+        const float RELEASE_SPEED_SQR = 0.04f;
 
         [SerializeField] Collider2D[] _colliders = null;
         [SerializeField] LayerMask _ballLayerMask = default;
 
         Func<Vector2, bool> _holdPredicate = null;
         Rigidbody2D _heldBody = null;
+        Rigidbody2D _knockedOutBody = null;
         float _baseGravityScale = 0f;
 
         public void SetHoldPredicate(Func<Vector2, bool> holdPredicate)
@@ -23,12 +29,14 @@ namespace Pinball.Ingame.Map
         public void Arm()
         {
             ReleaseHold();
+            _knockedOutBody = null;
             SetCollidersEnabled(true);
         }
 
         public void Disarm()
         {
             ReleaseHold();
+            _knockedOutBody = null;
             SetCollidersEnabled(false);
         }
 
@@ -46,6 +54,18 @@ namespace Pinball.Ingame.Map
             _heldBody = null;
         }
 
+        void FixedUpdate()
+        {
+            if (null == _heldBody)
+                return;
+
+            if (_heldBody.linearVelocity.sqrMagnitude < RELEASE_SPEED_SQR)
+                return;
+
+            _knockedOutBody = _heldBody;
+            ReleaseHold();
+        }
+
         void OnTriggerEnter2D(Collider2D other)
         {
             TryHold(other);
@@ -54,6 +74,26 @@ namespace Pinball.Ingame.Map
         void OnTriggerStay2D(Collider2D other)
         {
             TryHold(other);
+        }
+
+        // Re-holding the ball the player just knocked away would freeze it again on
+        // its way out, so it stays ignored until it has actually left the zone.
+        void OnTriggerExit2D(Collider2D other)
+        {
+            if (null == other)
+                return;
+
+            Rigidbody2D body = other.attachedRigidbody;
+            if (null == body)
+                return;
+
+            if (body == _knockedOutBody)
+                _knockedOutBody = null;
+
+            if (body != _heldBody)
+                return;
+
+            ReleaseHold();
         }
 
         void TryHold(Collider2D other)
@@ -65,7 +105,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             Rigidbody2D body = other.attachedRigidbody;
-            if (null == body || body.bodyType != RigidbodyType2D.Dynamic)
+            if (null == body || body == _knockedOutBody || body.bodyType != RigidbodyType2D.Dynamic)
                 return;
 
             if (null != _holdPredicate && !_holdPredicate(body.position))
@@ -76,7 +116,6 @@ namespace Pinball.Ingame.Map
             body.linearVelocity = Vector2.zero;
             body.angularVelocity = 0f;
             body.gravityScale = HELD_GRAVITY_SCALE;
-            SetCollidersEnabled(false);
         }
 
         void SetCollidersEnabled(bool isEnabled)
