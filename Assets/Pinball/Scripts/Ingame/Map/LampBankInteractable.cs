@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using Pinball.FX;
+using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
 using UnityEngine;
 
@@ -19,12 +21,20 @@ namespace Pinball.Ingame.Map
         const float FULL_LAMP_SCALE_RATIO = 1f;
         const float NO_WARMUP_RATIO = 0f;
         const float BASE_CLEAR_MULTIPLIER = 1f;
+        const float GAUGE_IDLE_SCALE_RATIO = 0.7f;
+        const float GAUGE_PEAK_SCALE_RATIO = 1.35f;
+        const float GAUGE_DECAY_DURATION = 0.5f;
 
         static readonly Color WARMUP_TINT = new Color(1f, 0.18f, 0.16f, 1f);
+        static readonly Color GAUGE_PEAK_TINT = new Color(1f, 0.85f, 0.35f, 1f);
 
         [SerializeField] Lamp[] _lamps = null;
         [SerializeField] SpriteRenderer _background = null;
         [SerializeField] LampMultiplierIndicator _multiplierIndicator = null;
+        [SerializeField] Sprite _multiIgniteBackgroundSprite = null;
+        [SerializeField] float _multiIgniteBackgroundAlpha = 0.5f;
+        [SerializeField] SpriteRenderer _impactGauge = null;
+        [SerializeField] float _impactGaugeReference = 30f;
         [SerializeField] int _baseRequiredCount = 3;
         [SerializeField] float _baseLampSpacing = 0.38f;
         [SerializeField] int _clearScoreReward = 0;
@@ -32,11 +42,17 @@ namespace Pinball.Ingame.Map
         [SerializeField] PoolableFX.EFXType _clearFX = PoolableFX.EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
+        Tween _gaugeTween = null;
+        Sprite _backgroundBaseSprite = null;
+        float _backgroundAlpha = 1f;
         Vector3 _lampBasePosition = Vector3.zero;
         Vector3 _lampBaseScale = Vector3.one;
+        Vector3 _gaugeBaseScale = Vector3.one;
         Color _backgroundBaseColor = Color.white;
+        Color _gaugeBaseColor = Color.white;
         bool _hasCapturedLampBase = false;
         bool _hasCapturedBackgroundColor = false;
+        bool _hasCapturedOverlayBase = false;
         int _hitCount = 0;
         int _requiredCount = 0;
         int _litLampCount = NO_LIT_LAMP;
@@ -56,6 +72,8 @@ namespace Pinball.Ingame.Map
             _isPlayingSiren = false;
 
             CaptureBackgroundBaseColor();
+            CaptureOverlayBase();
+            RefreshPassiveOverlay();
             ApplyWarmupTint(NO_WARMUP_RATIO);
 
             if (null != _multiplierIndicator)
@@ -82,6 +100,69 @@ namespace Pinball.Ingame.Map
 
             _hasCapturedBackgroundColor = true;
             _backgroundBaseColor = _background.color;
+            _backgroundBaseSprite = _background.sprite;
+        }
+
+        void CaptureOverlayBase()
+        {
+            if (_hasCapturedOverlayBase)
+                return;
+
+            _hasCapturedOverlayBase = true;
+
+            if (null == _impactGauge)
+                return;
+
+            _gaugeBaseColor = _impactGauge.color;
+            _gaugeBaseScale = _impactGauge.transform.localScale;
+        }
+
+        void RefreshPassiveOverlay()
+        {
+            KillGaugeTween();
+            RefreshBackgroundSprite();
+
+            if (null == _impactGauge)
+                return;
+
+            _impactGauge.gameObject.SetActive(StatProvider.HasEffect(ShopItemData.EEffectType.LampAttackScore));
+            _impactGauge.color = _gaugeBaseColor;
+            _impactGauge.transform.localScale = _gaugeBaseScale * GAUGE_IDLE_SCALE_RATIO;
+        }
+
+        void RefreshBackgroundSprite()
+        {
+            if (null == _background)
+                return;
+
+            bool hasMultiIgnite = null != _multiIgniteBackgroundSprite && StatProvider.HasEffect(ShopItemData.EEffectType.LampMultiIgnite);
+            _background.sprite = hasMultiIgnite ? _multiIgniteBackgroundSprite : _backgroundBaseSprite;
+            _backgroundAlpha = hasMultiIgnite ? _multiIgniteBackgroundAlpha : _backgroundBaseColor.a;
+        }
+
+        void PlayImpactGauge(float impact)
+        {
+            if (null == _impactGauge || !_impactGauge.gameObject.activeSelf)
+                return;
+
+            float impactRatio = _impactGaugeReference <= 0f ? 0f : Mathf.Clamp01(impact / _impactGaugeReference);
+            KillGaugeTween();
+            _impactGauge.color = Color.Lerp(_gaugeBaseColor, GAUGE_PEAK_TINT, impactRatio);
+            _impactGauge.transform.localScale = _gaugeBaseScale * Mathf.Lerp(GAUGE_IDLE_SCALE_RATIO, GAUGE_PEAK_SCALE_RATIO, impactRatio);
+
+            Sequence decaySequence = DOTween.Sequence();
+            decaySequence.Join(_impactGauge.transform.DOScale(_gaugeBaseScale * GAUGE_IDLE_SCALE_RATIO, GAUGE_DECAY_DURATION).SetEase(Ease.OutCubic));
+            decaySequence.Join(_impactGauge.DOColor(_gaugeBaseColor, GAUGE_DECAY_DURATION));
+            _gaugeTween = decaySequence;
+        }
+
+        void KillGaugeTween()
+        {
+            if (null == _gaugeTween)
+                return;
+
+            _gaugeTween.Kill(false);
+            _gaugeTween = null;
         }
 
         void ApplyWarmupTint(float warmupRatio)
@@ -90,7 +171,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             Color color = Color.Lerp(_backgroundBaseColor, WARMUP_TINT, warmupRatio);
-            color.a = _backgroundBaseColor.a;
+            color.a = _backgroundAlpha;
             _background.color = color;
         }
 
@@ -148,6 +229,7 @@ namespace Pinball.Ingame.Map
 
             _isPlayingSiren = false;
             _requiredCount = 0;
+            KillGaugeTween();
             ApplyWarmupTint(NO_WARMUP_RATIO);
 
             if (null != _multiplierIndicator)
@@ -196,6 +278,7 @@ namespace Pinball.Ingame.Map
 
             _hitCount += StatProvider.GetLampIgniteCount(impact);
             GainScore(Mathf.RoundToInt(StatProvider.GetLampAttackScore(impact)), worldPoint, EScoreSource.PassiveEffect);
+            PlayImpactGauge(impact);
             LightUpProgressLamps();
             PlayGimmickHit();
 
