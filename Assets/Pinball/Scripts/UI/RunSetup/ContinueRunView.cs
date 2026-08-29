@@ -53,6 +53,12 @@ namespace Pinball.UI
             _backButton.onClick.RemoveListener(OnBackClicked);
         }
 
+        public override bool TryCloseByEscape()
+        {
+            OnBackClicked();
+            return true;
+        }
+
         public override void Bind(UIViewArgs args)
         {
             Args viewArgs = args as Args;

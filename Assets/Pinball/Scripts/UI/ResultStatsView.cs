@@ -79,6 +79,12 @@ namespace Pinball.UI
             UITooltip.Hide();
         }
 
+        public override bool TryCloseByEscape()
+        {
+            OnCloseClicked();
+            return true;
+        }
+
         public override void Bind(UIViewArgs args)
         {
             Args viewArgs = args as Args;

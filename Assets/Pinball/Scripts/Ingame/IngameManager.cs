@@ -235,7 +235,6 @@ namespace Pinball.Ingame
         {
             _inputRouter.Init();
             Track(_inputRouter.Release);
-            _inputRouter.OnEscapePressed += OnPauseToggleRequested;
 
             _ballSpawner.Init();
             Track(_ballSpawner.Release);
@@ -748,6 +747,9 @@ namespace Pinball.Ingame
                     break;
                 case UIManager.EEvent.EndlessStartRequested:
                     OnEndlessStartRequested();
+                    break;
+                case UIManager.EEvent.EscapeUnhandled:
+                    OnPauseToggleRequested();
                     break;
             }
         }

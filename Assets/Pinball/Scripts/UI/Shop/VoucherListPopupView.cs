@@ -56,6 +56,12 @@ namespace Pinball.UI
             ReturnCards();
         }
 
+        public override bool TryCloseByEscape()
+        {
+            OnCloseClicked();
+            return true;
+        }
+
         public override void Bind(UIViewArgs args)
         {
             Args viewArgs = args as Args;

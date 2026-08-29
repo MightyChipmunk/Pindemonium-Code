@@ -12,7 +12,6 @@ namespace Pinball.Ingame.Input
         public event Action<bool> OnFlipperRightChanged;
         public event Action<bool> OnLaunchChanged;
         public event Action<bool> OnNudgeChanged;
-        public event Action OnEscapePressed;
 
         bool _isInited = false;
         bool _isFlipperLeftHeld = false;
@@ -31,7 +30,6 @@ namespace Pinball.Ingame.Input
             OnFlipperRightChanged = null;
             OnLaunchChanged = null;
             OnNudgeChanged = null;
-            OnEscapePressed = null;
             ClearHeldKeys();
             _isInited = false;
         }
@@ -55,9 +53,6 @@ namespace Pinball.Ingame.Input
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.FlipperRight), ref _isFlipperRightHeld, OnFlipperRightChanged);
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Launch), ref _isLaunchHeld, OnLaunchChanged);
             CheckKey(keyboard, GameSettings.GetKey(EKeyAction.Nudge), ref _isNudgeHeld, OnNudgeChanged);
-
-            if (keyboard.escapeKey.wasPressedThisFrame)
-                OnEscapePressed?.Invoke();
         }
 
         void ClearHeldKeys()

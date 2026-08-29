@@ -30,6 +30,12 @@ namespace Pinball.UI
 
         public override void Bind(UIViewArgs args) { }
 
+        public override bool TryCloseByEscape()
+        {
+            OnResumeClicked();
+            return true;
+        }
+
         void OnSettingsClicked()
         {
             UIManager.Show(new SettingsView.Args());

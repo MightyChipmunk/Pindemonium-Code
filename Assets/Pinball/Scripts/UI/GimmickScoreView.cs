@@ -29,6 +29,12 @@ namespace Pinball.UI
             _closeButton.onClick.RemoveListener(OnCloseClicked);
         }
 
+        public override bool TryCloseByEscape()
+        {
+            OnCloseClicked();
+            return true;
+        }
+
         public override void Bind(UIViewArgs args)
         {
             Args viewArgs = args as Args;
