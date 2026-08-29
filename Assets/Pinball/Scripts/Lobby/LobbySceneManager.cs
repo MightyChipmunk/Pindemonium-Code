@@ -40,7 +40,7 @@ namespace Pinball.Lobby
                 EndlessConfig: _endlessConfig));
             _runSetupController.OnPlayRequested += OnPlayRequested;
             _runSetupController.OnContinueRequested += OnContinueConfirmed;
-            _uiRoot.Init(OnContinueRequested, OnNewGameRequested, OnSettingsRequested);
+            _uiRoot.Init(OnContinueRequested, OnNewGameRequested, OnSettingsRequested, OnQuitRequested);
             _uiRoot.SetContinueInteractable(SaveManager.HasIngameSave);
             RefreshLobbyLabels();
             LocalizationManager.OnLanguageChanged += RefreshLobbyLabels;
@@ -125,6 +125,18 @@ namespace Pinball.Lobby
         void OnSettingsRequested()
         {
             UIManager.Show(new SettingsView.Args());
+        }
+
+        void OnQuitRequested()
+        {
+            if (_isLoadingIngame)
+                return;
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif // UNITY_EDITOR
         }
 
 #if UNITY_EDITOR

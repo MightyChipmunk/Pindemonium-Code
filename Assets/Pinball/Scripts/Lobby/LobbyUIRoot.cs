@@ -22,6 +22,7 @@ namespace Pinball.Lobby
         [SerializeField] CanvasGroup _continueGroup = null;
         [SerializeField] Button _newGameButton = null;
         [SerializeField] Button _settingsButton = null;
+        [SerializeField] Button _quitButton = null;
         [SerializeField] GameObject _continueStageChip = null;
         [SerializeField] TMP_Text _continueStageLabel = null;
         [SerializeField] RectTransform _continueLabelRect = null;
@@ -29,16 +30,19 @@ namespace Pinball.Lobby
         Action _onContinueClicked = null;
         Action _onNewGameClicked = null;
         Action _onSettingsClicked = null;
+        Action _onQuitClicked = null;
 
-        public void Init(Action onContinueClicked, Action onNewGameClicked, Action onSettingsClicked)
+        public void Init(Action onContinueClicked, Action onNewGameClicked, Action onSettingsClicked, Action onQuitClicked)
         {
             _onContinueClicked = onContinueClicked;
             _onNewGameClicked = onNewGameClicked;
             _onSettingsClicked = onSettingsClicked;
+            _onQuitClicked = onQuitClicked;
 
             _continueButton.onClick.AddListener(OnContinueClicked);
             _newGameButton.onClick.AddListener(OnNewGameClicked);
             _settingsButton.onClick.AddListener(OnSettingsClicked);
+            _quitButton.onClick.AddListener(OnQuitClicked);
         }
 
         public void SetContinueInteractable(bool isInteractable)
@@ -71,10 +75,12 @@ namespace Pinball.Lobby
             _continueButton.onClick.RemoveListener(OnContinueClicked);
             _newGameButton.onClick.RemoveListener(OnNewGameClicked);
             _settingsButton.onClick.RemoveListener(OnSettingsClicked);
+            _quitButton.onClick.RemoveListener(OnQuitClicked);
 
             _onContinueClicked = null;
             _onNewGameClicked = null;
             _onSettingsClicked = null;
+            _onQuitClicked = null;
         }
 
         void OnContinueClicked()
@@ -90,6 +96,11 @@ namespace Pinball.Lobby
         void OnSettingsClicked()
         {
             _onSettingsClicked?.Invoke();
+        }
+
+        void OnQuitClicked()
+        {
+            _onQuitClicked?.Invoke();
         }
     }
 }
