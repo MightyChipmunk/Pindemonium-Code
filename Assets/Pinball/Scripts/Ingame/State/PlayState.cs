@@ -29,6 +29,7 @@ namespace Pinball.Ingame.State
             Action OnGimmickBroken,
             Action OnSlingshotHit,
             Action OnFlipperBallStruck,
+            Func<int> SlingshotGrowthHitCountGetter,
             Func<StageClearReward> StageClearSettler,
             Func<UniTask> StageClearInterceptorAsync,
             int MapIndex);
@@ -206,6 +207,7 @@ namespace Pinball.Ingame.State
                 OnBumperBroken: OnBumperBroken,
                 OnSlingshotBallHit: OnSlingshotBallHit,
                 SlingshotHitScoreMultiplierConsumer: _slingshotAlternateTracker.ConsumeHit,
+                SlingshotGrowthHitCountGetter: _param.SlingshotGrowthHitCountGetter,
                 OnSpringChargeEvent: _director.PlaySpringCharge,
                 FXPlayer: _director.PlayFX,
                 LineFXPlayer: _director.PlayLineFX,

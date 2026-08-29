@@ -352,6 +352,7 @@ namespace Pinball.Ingame
                 OnGimmickBroken: _breakMoneyGranter.HandleGimmickBroken,
                 OnSlingshotHit: _tutorialManager.NotifySlingshotHit,
                 OnFlipperBallStruck: _tutorialManager.NotifyBallStruck,
+                SlingshotGrowthHitCountGetter: GetSlingshotGrowthHitCount,
                 StageClearSettler: SettleStageClear,
                 StageClearInterceptorAsync: _tutorialManager.RunPendingPlayStepsAsync,
                 MapIndex: DEFAULT_MAP_INDEX), _stageTracker, _ballFlow, _playerController, _scoreCounter, _director, _gimmickResolver);
@@ -744,6 +745,14 @@ namespace Pinball.Ingame
                 return false;
 
             return _playState.IsPlaying;
+        }
+
+        int GetSlingshotGrowthHitCount()
+        {
+            if (null == _slingshotGrowth)
+                return 0;
+
+            return _slingshotGrowth.HitCount;
         }
 
         int GetRemainingBallCount()

@@ -28,6 +28,7 @@ namespace Pinball.Ingame.Map
             Action OnBumperBroken,
             Action<Collider2D> OnSlingshotBallHit,
             Func<SlingshotInteractable.ESide, float> SlingshotHitScoreMultiplierConsumer,
+            Func<int> SlingshotGrowthHitCountGetter,
             Action<Spring.EChargeEvent, Vector2> OnSpringChargeEvent,
             Action<PoolableFX.EFXType, Vector2> FXPlayer,
             Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
@@ -53,6 +54,7 @@ namespace Pinball.Ingame.Map
         Action<BumperInteractable, float, Collider2D> _onBumperDamaged = null;
         Action _onBumperBroken = null;
         Action<Collider2D> _onSlingshotBallHit = null;
+        Func<int> _slingshotGrowthHitCountGetter = null;
         Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
         Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
         List<MapInteractable> _activeInteractables = null;
@@ -65,8 +67,10 @@ namespace Pinball.Ingame.Map
         List<LampBankInteractable> _lampBanks = null;
         List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
+        SlingshotInteractable.ESide _lastRallySide = SlingshotInteractable.ESide.Left;
         float _sniperMarkElapsed = 0f;
         bool _isSweepArmed = true;
+        bool _hasRallySide = false;
 
         public void Init(InitParam param)
         {
@@ -80,7 +84,9 @@ namespace Pinball.Ingame.Map
             _onScoreGained = param.OnScoreGained;
             _onBumperDamaged = param.OnBumperDamaged;
             _onBumperBroken = param.OnBumperBroken;
+            _hasRallySide = false;
             _onSlingshotBallHit = param.OnSlingshotBallHit;
+            _slingshotGrowthHitCountGetter = param.SlingshotGrowthHitCountGetter;
             _fxPlayer = param.FXPlayer;
             _lineFXPlayer = param.LineFXPlayer;
 
@@ -135,6 +141,10 @@ namespace Pinball.Ingame.Map
                 if (null != lampBank)
                     _lampBanks.Add(lampBank);
             }
+
+
+            RefreshSlingshotGrowthTier();
+            RefreshRallyIndicators();
 
             _onBallStruck = param.OnBallStruck;
             _leftFlipper.Init();
@@ -261,6 +271,7 @@ namespace Pinball.Ingame.Map
             _onBumperDamaged = null;
             _onBumperBroken = null;
             _onSlingshotBallHit = null;
+            _slingshotGrowthHitCountGetter = null;
 
             if (null != _bumpers)
             {
@@ -577,9 +588,32 @@ namespace Pinball.Ingame.Map
                 _bumpers[i].ResetGrade();
         }
 
-        void HandleSlingshotBallBounced(Collider2D ballCollider)
+        void HandleSlingshotBallBounced(SlingshotInteractable.ESide side, Collider2D ballCollider)
         {
             _onSlingshotBallHit?.Invoke(ballCollider);
+            _hasRallySide = true;
+            _lastRallySide = side;
+            RefreshRallyIndicators();
+            RefreshSlingshotGrowthTier();
+        }
+
+        void RefreshSlingshotGrowthTier()
+        {
+            if (null == _slingshots || null == _slingshotGrowthHitCountGetter)
+                return;
+
+            int hitCount = _slingshotGrowthHitCountGetter();
+            for (int i = 0; i < _slingshots.Count; ++i)
+                _slingshots[i].SetGrowthHitCount(hitCount);
+        }
+
+        void RefreshRallyIndicators()
+        {
+            if (null == _slingshots)
+                return;
+
+            for (int i = 0; i < _slingshots.Count; ++i)
+                _slingshots[i].SetRallyActive(!_hasRallySide || _slingshots[i].GetSide() != _lastRallySide);
         }
 
         public int CollectAliveBumperPositions(List<Vector2> buffer)
