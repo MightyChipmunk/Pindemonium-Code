@@ -85,6 +85,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             _remainingRevolutions += revolutions;
+            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
             _hasPendingBallHit = true;
             PlayGimmickHitPresentation();
             PlaySpinTick();
@@ -121,7 +122,6 @@ namespace Pinball.Ingame.Map
         async UniTaskVoid SpinAsync(CancellationToken cancellationToken)
         {
             _isSpinning = true;
-            _spinScoreMultiplier = BASE_SCORE_MULTIPLIER;
 
             while (_remainingRevolutions > 0f)
             {
