@@ -9,11 +9,13 @@ namespace Pinball.Ingame.Tutorial
             PlayIntro = 0,
             Shop = 1,
             StageGimmick = 2,
+            BallLost = 3,
         }
 
         const string PLAY_INTRO_ID = "play_intro";
         const string SHOP_ID = "shop";
         const string STAGE_GIMMICK_ID = "stage_gimmick";
+        const string BALL_LOST_ID = "ball_lost";
 
         public bool IsCompleted(EBlock block)
         {
@@ -30,6 +32,7 @@ namespace Pinball.Ingame.Tutorial
             SaveManager.CompleteTutorial(PLAY_INTRO_ID);
             SaveManager.CompleteTutorial(SHOP_ID);
             SaveManager.CompleteTutorial(STAGE_GIMMICK_ID);
+            SaveManager.CompleteTutorial(BALL_LOST_ID);
         }
 
         public void ResetAll()
@@ -45,8 +48,10 @@ namespace Pinball.Ingame.Tutorial
                     return PLAY_INTRO_ID;
                 case EBlock.Shop:
                     return SHOP_ID;
-                default:
+                case EBlock.StageGimmick:
                     return STAGE_GIMMICK_ID;
+                default:
+                    return BALL_LOST_ID;
             }
         }
     }

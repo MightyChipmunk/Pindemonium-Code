@@ -1,6 +1,5 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Localization;
 using Pinball.UI;
 
 namespace Pinball.Ingame.Tutorial
@@ -13,6 +12,7 @@ namespace Pinball.Ingame.Tutorial
         readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
         readonly TutorialHighlighter _highlighter;
+        readonly TutorialStepRunner _runner;
 
         public ShopTutorialBlock(InitParam param, TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
@@ -20,6 +20,7 @@ namespace Pinball.Ingame.Tutorial
             _catalog = catalog;
             _dialog = dialog;
             _highlighter = highlighter;
+            _runner = new TutorialStepRunner(dialog, highlighter);
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -32,25 +33,28 @@ namespace Pinball.Ingame.Tutorial
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopOffers, null, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopPassiveLimit, new object[] { _param.PassiveSlotCount }, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopPacks, null, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopVoucher, null, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopReroll, null, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopInterest, new object[] { _param.InterestPerAmount, _param.InterestMax }, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.ShopStart, null, cancellationToken);
+            for (int i = 0, count = _catalog.GetFlowStepCount(TutorialStepCatalogData.EFlow.Shop); i < count; ++i)
+            {
+                TutorialStepCatalogData.Step step = _catalog.GetFlowStep(TutorialStepCatalogData.EFlow.Shop, i);
+                await _runner.ShowAsync(step, GetStepArgs(step.Id), cancellationToken);
+            }
 
             _highlighter.Clear();
             _dialog.Hide();
             return true;
         }
 
-        async UniTask ShowStepAsync(TutorialStepCatalogData.EStep id, object[] argArr, CancellationToken cancellationToken)
+        object[] GetStepArgs(TutorialStepCatalogData.EStep id)
         {
-            TutorialStepCatalogData.Step step = _catalog.GetStep(id);
-            _highlighter.Apply(step.Highlight);
-            LocalizedTextRef body = new LocalizedTextRef(step.Key, argArr);
-            await _dialog.ShowAndWaitClickAsync(body, step.Placement, step.Mascot, cancellationToken);
+            switch (id)
+            {
+                case TutorialStepCatalogData.EStep.ShopPassiveLimit:
+                    return new object[] { _param.PassiveSlotCount };
+                case TutorialStepCatalogData.EStep.ShopInterest:
+                    return new object[] { _param.InterestPerAmount, _param.InterestMax };
+                default:
+                    return null;
+            }
         }
     }
 }

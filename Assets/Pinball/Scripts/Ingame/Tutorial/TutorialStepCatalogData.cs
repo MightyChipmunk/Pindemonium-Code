@@ -28,7 +28,6 @@ namespace Pinball.Ingame.Tutorial
             PlayNudge = 16,
             PlayNudgeTry = 17,
             PlayBallLost = 18,
-            PlayBallLostNotice = 19,
             PlayCombo = 20,
             PlayFreePlay = 21,
             ShopOffers = 22,
@@ -40,6 +39,19 @@ namespace Pinball.Ingame.Tutorial
             ShopStart = 28,
             StageSelectGimmick = 29,
             StageSelectReroll = 30,
+        }
+
+        // Ordered flows play their steps in the order they appear in _steps, so the
+        // inspector can reorder them. Triggered steps are driven by gameplay events
+        // and their run order is decided by the tutorial block that owns them.
+        public enum EFlow
+        {
+            Unassigned = 0,
+            Triggered = 1,
+            PlayStageSelectIntro = 2,
+            PlayBriefing = 3,
+            Shop = 4,
+            StageGimmick = 5,
         }
 
         public enum EHighlight
@@ -74,18 +86,37 @@ namespace Pinball.Ingame.Tutorial
         public struct Step
         {
             public EStep Id;
+            public EFlow Flow;
             public string Key;
             public Sprite Mascot;
             public EHighlight Highlight;
             public TutorialDialogView.EPlacement Placement;
         }
 
+        const string SECOND_PAGE_SUFFIX = ".2";
+
         static readonly int STEP_COUNT = Enum.GetValues(typeof(EStep)).Length;
+        static readonly int FLOW_COUNT = Enum.GetValues(typeof(EFlow)).Length;
 
         [SerializeField]
         List<Step> _steps = new List<Step>();
 
         public static int StepCount => STEP_COUNT;
+
+        public static int FlowCount => FLOW_COUNT;
+
+        public static bool IsOrderedFlow(EFlow flow)
+        {
+            return flow != EFlow.Unassigned && flow != EFlow.Triggered;
+        }
+
+        public static string GetSecondPageKey(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                return string.Empty;
+
+            return key + SECOND_PAGE_SUFFIX;
+        }
 
         public Step GetStep(EStep id)
         {
@@ -97,6 +128,42 @@ namespace Pinball.Ingame.Tutorial
                 return _steps[i];
             }
 
+            return CreateFallback(id);
+        }
+
+        public int GetFlowStepCount(EFlow flow)
+        {
+            int matched = 0;
+            for (int i = 0, count = null == _steps ? 0 : _steps.Count; i < count; ++i)
+            {
+                if (_steps[i].Flow != flow)
+                    continue;
+
+                ++matched;
+            }
+
+            return matched;
+        }
+
+        public Step GetFlowStep(EFlow flow, int index)
+        {
+            int matched = 0;
+            for (int i = 0, count = null == _steps ? 0 : _steps.Count; i < count; ++i)
+            {
+                if (_steps[i].Flow != flow)
+                    continue;
+
+                if (matched == index)
+                    return _steps[i];
+
+                ++matched;
+            }
+
+            return CreateFallback(EStep.PlayWelcome);
+        }
+
+        static Step CreateFallback(EStep id)
+        {
             Step fallback = new Step();
             fallback.Id = id;
             fallback.Placement = TutorialDialogView.EPlacement.Bottom;

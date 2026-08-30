@@ -9,12 +9,14 @@ namespace Pinball.Ingame.Tutorial
         readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
         readonly TutorialHighlighter _highlighter;
+        readonly TutorialStepRunner _runner;
 
         public StageGimmickTutorialBlock(TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
             _catalog = catalog;
             _dialog = dialog;
             _highlighter = highlighter;
+            _runner = new TutorialStepRunner(dialog, highlighter);
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -27,19 +29,15 @@ namespace Pinball.Ingame.Tutorial
 
             await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
 
-            await ShowStepAsync(TutorialStepCatalogData.EStep.StageSelectGimmick, cancellationToken);
-            await ShowStepAsync(TutorialStepCatalogData.EStep.StageSelectReroll, cancellationToken);
+            for (int i = 0, count = _catalog.GetFlowStepCount(TutorialStepCatalogData.EFlow.StageGimmick); i < count; ++i)
+            {
+                TutorialStepCatalogData.Step step = _catalog.GetFlowStep(TutorialStepCatalogData.EFlow.StageGimmick, i);
+                await _runner.ShowAsync(step, null, cancellationToken);
+            }
 
             _highlighter.Clear();
             _dialog.Hide();
             return true;
-        }
-
-        async UniTask ShowStepAsync(TutorialStepCatalogData.EStep id, CancellationToken cancellationToken)
-        {
-            TutorialStepCatalogData.Step step = _catalog.GetStep(id);
-            _highlighter.Apply(step.Highlight);
-            await _dialog.ShowAndWaitClickAsync(step.Key, step.Placement, step.Mascot, cancellationToken);
         }
     }
 }

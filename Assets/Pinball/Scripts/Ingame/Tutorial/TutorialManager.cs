@@ -42,6 +42,7 @@ namespace Pinball.Ingame.Tutorial
         PlayIntroTutorialBlock _playIntroBlock = null;
         ShopTutorialBlock _shopBlock = null;
         StageGimmickTutorialBlock _stageGimmickBlock = null;
+        BallLostTutorialBlock _ballLostBlock = null;
         CancellationTokenSource _cancellationTokenSource = null;
         MapRoot _currentMap = null;
         bool _hasStageStarted = false;
@@ -54,6 +55,7 @@ namespace Pinball.Ingame.Tutorial
         bool _hasNudged = false;
         bool _isStageClearIntercepted = false;
         bool _isPlayIntroRunning = false;
+        bool _isBallLostGuideRunning = false;
         bool _isModalActive = false;
         bool _isTimeFreezeActive = false;
 
@@ -77,6 +79,7 @@ namespace Pinball.Ingame.Tutorial
                 HasSlingshotHitGetter: GetHasSlingshotHit,
                 HasBallStruckGetter: GetHasBallStruck,
                 IsBallLostGetter: GetIsBallLostPending,
+                IsBallLostGuideRunningGetter: GetIsBallLostGuideRunning,
                 IsComboTriggerReachedGetter: GetIsComboTriggerReached,
                 IsLastBallLostGetter: GetIsLastBallLost,
                 IsStageClearInterceptedGetter: GetIsStageClearIntercepted,
@@ -84,16 +87,21 @@ namespace Pinball.Ingame.Tutorial
                 CanNudgeGetter: param.CanNudgeGetter,
                 NudgeWaitPreparer: PrepareNudgeWait,
                 FlipWaitPreparer: PrepareFlipWait,
-                LaunchWaitPreparer: PrepareLaunchWait,
                 ComboWaitPreparer: PrepareComboWait,
                 ComboTimeoutSeconds: param.ComboTimeoutSeconds), _stepCatalog, _dialog, _highlighter);
             _shopBlock = new ShopTutorialBlock(new ShopTutorialBlock.InitParam(param.InterestPerAmount, param.InterestMax, param.PassiveSlotCount), _stepCatalog, _dialog, _highlighter);
             _stageGimmickBlock = new StageGimmickTutorialBlock(_stepCatalog, _dialog, _highlighter);
+            _ballLostBlock = new BallLostTutorialBlock(new BallLostTutorialBlock.InitParam(
+                LaunchWaitPreparer: PrepareLaunchWait,
+                HasLaunchedGetter: GetHasLaunched,
+                IsPlayStateGetter: param.IsPlayStateGetter,
+                IsStageClearInterceptedGetter: GetIsStageClearIntercepted), _stepCatalog, _dialog, _highlighter);
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             WatchPlayIntroAsync(_cancellationTokenSource.Token).Forget();
             WatchShopAsync(_cancellationTokenSource.Token).Forget();
             WatchStageGimmickAsync(_cancellationTokenSource.Token).Forget();
+            WatchBallLostAsync(_cancellationTokenSource.Token).Forget();
         }
 
         public void Release()
@@ -102,6 +110,8 @@ namespace Pinball.Ingame.Tutorial
             ClearOverlay();
             _dialog.Release();
             _isPlayIntroRunning = false;
+            _isBallLostGuideRunning = false;
+            _ballLostBlock = null;
             _stageGimmickBlock = null;
             _shopBlock = null;
             _playIntroBlock = null;
@@ -192,6 +202,7 @@ namespace Pinball.Ingame.Tutorial
             CancelWatchers();
             ClearOverlay();
             _isPlayIntroRunning = false;
+            _isBallLostGuideRunning = false;
         }
 
         async UniTaskVoid WatchPlayIntroAsync(CancellationToken cancellationToken)
@@ -228,6 +239,38 @@ namespace Pinball.Ingame.Tutorial
             bool isCompleted = await _stageGimmickBlock.RunAsync(cancellationToken);
             if (isCompleted)
                 _progress.Complete(TutorialProgress.EBlock.StageGimmick);
+        }
+
+        async UniTaskVoid WatchBallLostAsync(CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                await UniTask.WaitUntil(GetIsBallLostGuideReady, cancellationToken: cancellationToken);
+
+                bool isFirstTime = !_progress.IsCompleted(TutorialProgress.EBlock.BallLost);
+                _isBallLostGuideRunning = true;
+                bool isCompleted = await _ballLostBlock.RunAsync(isFirstTime, cancellationToken);
+                _isBallLostGuideRunning = false;
+
+                if (isFirstTime && isCompleted)
+                    _progress.Complete(TutorialProgress.EBlock.BallLost);
+            }
+        }
+
+        bool GetIsBallLostGuideReady()
+        {
+            if (_isBallLostGuideRunning || !_isBallLostPending)
+                return false;
+
+            if (!_param.IsPlayStateGetter())
+                return false;
+
+            return _isPlayIntroRunning || !_progress.IsCompleted(TutorialProgress.EBlock.BallLost);
+        }
+
+        bool GetIsBallLostGuideRunning()
+        {
+            return _isBallLostGuideRunning;
         }
 
         bool GetIsPlayIntroReady()

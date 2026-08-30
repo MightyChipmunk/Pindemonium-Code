@@ -20,6 +20,7 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> HasSlingshotHitGetter,
             Func<bool> HasBallStruckGetter,
             Func<bool> IsBallLostGetter,
+            Func<bool> IsBallLostGuideRunningGetter,
             Func<bool> IsComboTriggerReachedGetter,
             Func<bool> IsLastBallLostGetter,
             Func<bool> IsStageClearInterceptedGetter,
@@ -27,34 +28,20 @@ namespace Pinball.Ingame.Tutorial
             Func<bool> CanNudgeGetter,
             Action NudgeWaitPreparer,
             Action FlipWaitPreparer,
-            Action LaunchWaitPreparer,
             Action ComboWaitPreparer,
             float ComboTimeoutSeconds);
 
         const float NUDGE_SETTLE_SECONDS = 1f;
         const float SLINGSHOT_HIT_DELAY_SECONDS = 0.3f;
-        const string SECOND_PAGE_SUFFIX = ".2";
-
-        static readonly TutorialStepCatalogData.EStep[] TOUR_ORDER =
-        {
-            TutorialStepCatalogData.EStep.PlayGimmickBumper,
-            TutorialStepCatalogData.EStep.PlayGimmickSlingshot,
-            TutorialStepCatalogData.EStep.PlayGimmickSpinner,
-            TutorialStepCatalogData.EStep.PlayGimmickDropTarget,
-            TutorialStepCatalogData.EStep.PlayGimmickStandupTarget,
-            TutorialStepCatalogData.EStep.PlayGimmickLampBank,
-            TutorialStepCatalogData.EStep.PlayGimmickLane,
-            TutorialStepCatalogData.EStep.PlayGimmickSaucer,
-        };
 
         readonly InitParam _param;
         readonly TutorialStepCatalogData _catalog;
         readonly TutorialDialogView _dialog;
         readonly TutorialHighlighter _highlighter;
+        readonly TutorialStepRunner _runner;
         bool _isNudgeGuidePending = false;
         bool _isFlipperGuidePending = false;
         bool _hasSlingshot = false;
-        bool _hasBallLostGuideShown = false;
 
         public PlayIntroTutorialBlock(InitParam param, TutorialStepCatalogData catalog, TutorialDialogView dialog, TutorialHighlighter highlighter)
         {
@@ -62,6 +49,7 @@ namespace Pinball.Ingame.Tutorial
             _catalog = catalog;
             _dialog = dialog;
             _highlighter = highlighter;
+            _runner = new TutorialStepRunner(dialog, highlighter);
         }
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
@@ -73,12 +61,7 @@ namespace Pinball.Ingame.Tutorial
             await UniTask.NextFrame(cancellationToken);
 
             _param.ModalSetter(true);
-            TutorialStepCatalogData.Step scoreStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayScore);
-            _highlighter.Apply(scoreStep.Highlight);
-            await _dialog.ShowAndWaitClickAsync(scoreStep.Key, scoreStep.Placement, scoreStep.Mascot, cancellationToken);
-
-            await RunGimmickTourAsync(cancellationToken);
-            await RunControlIntroAsync(cancellationToken);
+            await RunBriefingAsync(cancellationToken);
             _param.ModalSetter(false);
 
             await RunLaunchGuideAsync(cancellationToken);
@@ -94,10 +77,10 @@ namespace Pinball.Ingame.Tutorial
                 if (!_param.IsPlayStateGetter())
                     return false;
 
-                if (!_param.IsBallLostGetter())
+                if (!_param.IsBallLostGetter() || GetIsPlayInterrupted())
                     break;
 
-                await RunBallLostGuideAsync(cancellationToken);
+                await WaitBallLostHandledAsync(cancellationToken);
             }
 
             _param.ModalSetter(true);
@@ -110,14 +93,6 @@ namespace Pinball.Ingame.Tutorial
             LocalizedTextRef comboText = new LocalizedTextRef(comboStep.Key, new object[] { _param.ComboTimeoutSeconds });
             await _dialog.ShowAndWaitClickAsync(comboText, comboStep.Placement, comboStep.Mascot, cancellationToken);
             _highlighter.Clear();
-
-            if (!_hasBallLostGuideShown)
-            {
-                TutorialStepCatalogData.Step noticeStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayBallLostNotice);
-                _highlighter.Apply(noticeStep.Highlight);
-                LocalizedTextRef noticeText = new LocalizedTextRef(noticeStep.Key, new object[] { GetKeyName(EKeyAction.Launch) });
-                await _dialog.ShowAndWaitClickAsync(noticeText, noticeStep.Placement, noticeStep.Mascot, cancellationToken);
-            }
 
             if (!_param.IsStageClearInterceptedGetter())
             {
@@ -135,27 +110,23 @@ namespace Pinball.Ingame.Tutorial
 
         async UniTask RunStageSelectIntroAsync(CancellationToken cancellationToken)
         {
-            TutorialStepCatalogData.Step welcomeStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayWelcome);
-            _highlighter.Apply(welcomeStep.Highlight);
-            await _dialog.ShowAndWaitClickAsync(welcomeStep.Key, welcomeStep.Placement, welcomeStep.Mascot, cancellationToken);
-
             StageSelectView view = UIManager.GetActive(UIViewCatalogData.EViewType.StageSelect) as StageSelectView;
-            if (null == view)
+            bool hasWaitedTransition = false;
+
+            for (int i = 0, count = _catalog.GetFlowStepCount(TutorialStepCatalogData.EFlow.PlayStageSelectIntro); i < count; ++i)
             {
-                _highlighter.Clear();
-                _dialog.Hide();
-                return;
+                TutorialStepCatalogData.Step step = _catalog.GetFlowStep(TutorialStepCatalogData.EFlow.PlayStageSelectIntro, i);
+                if (!hasWaitedTransition && step.Highlight != TutorialStepCatalogData.EHighlight.FullScreen)
+                {
+                    if (null == view)
+                        break;
+
+                    hasWaitedTransition = true;
+                    await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
+                }
+
+                await _runner.ShowAsync(step, null, cancellationToken);
             }
-
-            await UniTask.WaitWhile(view.IsTransitionPlaying, cancellationToken: cancellationToken);
-
-            TutorialStepCatalogData.Step cardStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayStageSelectCard);
-            _highlighter.Apply(cardStep.Highlight);
-            await _dialog.ShowAndWaitClickAsync(cardStep.Key, cardStep.Placement, cardStep.Mascot, cancellationToken);
-
-            TutorialStepCatalogData.Step startStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayStageSelectStart);
-            _highlighter.Apply(startStep.Highlight);
-            await _dialog.ShowAndWaitClickAsync(startStep.Key, startStep.Placement, startStep.Mascot, cancellationToken);
 
             _highlighter.Clear();
             _dialog.Hide();
@@ -166,30 +137,21 @@ namespace Pinball.Ingame.Tutorial
             return _param.IsPlayReadyGetter();
         }
 
-        async UniTask RunGimmickTourAsync(CancellationToken cancellationToken)
+        async UniTask RunBriefingAsync(CancellationToken cancellationToken)
         {
-            for (int i = 0; i < TOUR_ORDER.Length; ++i)
+            for (int i = 0, count = _catalog.GetFlowStepCount(TutorialStepCatalogData.EFlow.PlayBriefing); i < count; ++i)
             {
-                TutorialStepCatalogData.Step step = _catalog.GetStep(TOUR_ORDER[i]);
-                if (!_highlighter.Apply(step.Highlight))
-                    continue;
-
-                await _dialog.ShowAndWaitClickAsync(step.Key, step.Placement, step.Mascot, cancellationToken);
-
-                string secondPageKey = step.Key + SECOND_PAGE_SUFFIX;
-                if (!string.IsNullOrEmpty(LocalizationTable.Get(secondPageKey, string.Empty)))
-                    await _dialog.ShowAndWaitClickAsync(secondPageKey, step.Placement, step.Mascot, cancellationToken);
+                TutorialStepCatalogData.Step step = _catalog.GetFlowStep(TutorialStepCatalogData.EFlow.PlayBriefing, i);
+                await _runner.ShowAsync(step, GetBriefingArgs(step.Id), cancellationToken);
             }
         }
 
-        async UniTask RunControlIntroAsync(CancellationToken cancellationToken)
+        static object[] GetBriefingArgs(TutorialStepCatalogData.EStep id)
         {
-            TutorialStepCatalogData.Step step = _catalog.GetStep(TutorialStepCatalogData.EStep.PlaySpring);
-            if (!_highlighter.Apply(step.Highlight))
-                return;
+            if (id != TutorialStepCatalogData.EStep.PlaySpring)
+                return null;
 
-            LocalizedTextRef springText = new LocalizedTextRef(step.Key, new object[] { GetKeyName(EKeyAction.Launch) });
-            await _dialog.ShowAndWaitClickAsync(springText, step.Placement, step.Mascot, cancellationToken);
+            return new object[] { GetKeyName(EKeyAction.Launch) };
         }
 
         async UniTask RunLaunchGuideAsync(CancellationToken cancellationToken)
@@ -236,14 +198,14 @@ namespace Pinball.Ingame.Tutorial
                 if (!_param.IsPlayStateGetter())
                     return;
 
-                if (_param.IsBallLostGetter())
-                {
-                    await RunBallLostGuideAsync(cancellationToken);
-                    continue;
-                }
-
                 if (GetIsPlayInterrupted())
                     return;
+
+                if (_param.IsBallLostGetter() || _param.IsBallLostGuideRunningGetter())
+                {
+                    await WaitBallLostHandledAsync(cancellationToken);
+                    continue;
+                }
 
                 if (_isNudgeGuidePending && GetIsNudgeTriggerReached())
                 {
@@ -260,16 +222,17 @@ namespace Pinball.Ingame.Tutorial
             }
         }
 
-        async UniTask RunBallLostGuideAsync(CancellationToken cancellationToken)
+        async UniTask WaitBallLostHandledAsync(CancellationToken cancellationToken)
         {
-            _hasBallLostGuideShown = true;
-            TutorialStepCatalogData.Step step = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayBallLost);
-            _highlighter.Apply(step.Highlight);
-            _param.LaunchWaitPreparer();
-            LocalizedTextRef lostText = new LocalizedTextRef(step.Key, new object[] { GetKeyName(EKeyAction.Launch) });
-            _dialog.ShowGuide(lostText, step.Placement, step.Mascot);
-            await UniTask.WaitUntil(GetIsRelaunchWaitFinished, cancellationToken: cancellationToken);
-            _dialog.Hide();
+            await UniTask.WaitUntil(GetIsBallLostHandled, cancellationToken: cancellationToken);
+        }
+
+        bool GetIsBallLostHandled()
+        {
+            if (GetIsPlayInterrupted())
+                return true;
+
+            return !_param.IsBallLostGetter() && !_param.IsBallLostGuideRunningGetter();
         }
 
         async UniTask DelayAfterSlingshotHitAsync(CancellationToken cancellationToken)
@@ -372,14 +335,6 @@ namespace Pinball.Ingame.Tutorial
         {
             MapRoot map = _param.MapGetter();
             return null != map && map.IsHoldingBallOnFlipperApproach();
-        }
-
-        bool GetIsRelaunchWaitFinished()
-        {
-            if (_param.HasLaunchedGetter() || _param.IsStageClearInterceptedGetter())
-                return true;
-
-            return !_param.IsPlayStateGetter();
         }
 
         bool GetIsPlayGuideWaitFinished()
