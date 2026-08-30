@@ -15,7 +15,7 @@ namespace Pinball.Ingame.Shop
         Func<ShopItemData, bool> _offerFilter = null;
         ShopItemData[] _offers = null;
         int _rerollCount = 0;
-        bool _isFirstRerollFree = false;
+        int _freeRerollCount = 0;
 
         public int OfferSlotCount => null == _offers ? 0 : _offers.Length;
 
@@ -26,21 +26,21 @@ namespace Pinball.Ingame.Shop
                 if (null == _config)
                     return 0;
 
-                if (_isFirstRerollFree && _rerollCount <= 0)
+                if (_rerollCount < _freeRerollCount)
                     return 0;
 
                 return _config.RerollBasePrice + _config.RerollPriceIncrement * _rerollCount;
             }
         }
 
-        public ShopSession(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter, int offerSlotCount, bool isFirstRerollFree)
+        public ShopSession(ShopConfigData config, ShopCatalogData catalog, Func<ShopItemData, bool> offerFilter, int offerSlotCount, int freeRerollCount)
         {
             _config = config;
             _catalog = catalog;
             _offerFilter = offerFilter;
             _offers = new ShopItemData[Mathf.Clamp(offerSlotCount, 1, MAX_OFFER_SLOT_COUNT)];
             _rerollCount = 0;
-            _isFirstRerollFree = isFirstRerollFree;
+            _freeRerollCount = freeRerollCount;
             RollOffers();
         }
 
@@ -78,9 +78,9 @@ namespace Pinball.Ingame.Shop
             _offers[slotIndex] = null;
         }
 
-        public void SetFirstRerollFree()
+        public void AddFreeRerollCount(int count)
         {
-            _isFirstRerollFree = true;
+            _freeRerollCount += count;
         }
 
         public void Reroll()

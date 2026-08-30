@@ -15,8 +15,8 @@ namespace Pinball.Ingame.Shop
             InterestRateBoost = 4,
             InterestCapBoost = 5,
             ShopDiscount = 6,
-            ShopFirstRerollFree = 7,
-            StageFirstRerollFree = 8,
+            ShopFreeReroll = 7,
+            StageFreeReroll = 8,
             BonusUpgradeOnBuy = 9,
             PassiveSellPriceBoost = 10,
         }

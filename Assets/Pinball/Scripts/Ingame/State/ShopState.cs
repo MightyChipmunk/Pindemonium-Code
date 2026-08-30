@@ -176,7 +176,7 @@ namespace Pinball.Ingame.State
         void Open()
         {
             BgmManager.Play(BgmStorage.EBgmType.Shop);
-            _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, _vouchers.Has(VoucherData.EEffect.ShopFirstRerollFree));
+            _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.ShopFreeReroll)));
             _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferPackItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
             RefreshShopView(false);
             TryShowRoundClear();
@@ -452,8 +452,8 @@ namespace Pinball.Ingame.State
                 case VoucherData.EEffect.PassiveSlotAdd:
                     _loadout.AddCommonPassiveSlot(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
                     return true;
-                case VoucherData.EEffect.ShopFirstRerollFree:
-                    _session.SetFirstRerollFree();
+                case VoucherData.EEffect.ShopFreeReroll:
+                    _session.AddFreeRerollCount(Mathf.RoundToInt(voucher.GetEffectValue(VoucherData.MAIN_VALUE_INDEX)));
                     return false;
             }
 

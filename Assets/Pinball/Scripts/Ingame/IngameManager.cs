@@ -215,13 +215,13 @@ namespace Pinball.Ingame
 
         void OnVoucherPurchased()
         {
-            _gimmickRoller.SetFirstRerollFree(_vouchers.Has(VoucherData.EEffect.StageFirstRerollFree));
+            _gimmickRoller.SetFreeRerollCount(Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.StageFreeReroll)));
         }
 
         void InitStageFlow(IngameRunSetupResolver.RunStart start)
         {
             _gimmickRoller = new StageGimmickRoller(_gimmickCatalog);
-            _gimmickRoller.SetFirstRerollFree(_vouchers.Has(VoucherData.EEffect.StageFirstRerollFree));
+            _gimmickRoller.SetFreeRerollCount(Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.StageFreeReroll)));
             _gimmickResolver = new StageGimmickResolver(_gimmickRoller);
             _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver, _endlessConfig, start.IsEndless);
             _stageTracker.OnStageStarted += OnStageStarted;
