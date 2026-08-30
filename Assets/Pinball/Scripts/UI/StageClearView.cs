@@ -34,6 +34,7 @@ namespace Pinball.UI
         const float REWARD_START_DELAY = 0.12f;
         const float REWARD_LINE_DURATION = 0.28f;
         const float REWARD_LINE_INTERVAL = 0.18f;
+        const float HINT_SHOW_DELAY = 0.2f;
         const float HINT_PULSE_DURATION = 0.65f;
         const float HINT_MIN_ALPHA = 0.35f;
         const float HINT_MAX_ALPHA = 1f;
@@ -160,6 +161,7 @@ namespace Pinball.UI
                 InsertRewardLine(sequence, _interestRewardLine, lineTime);
             }
 
+            sequence.AppendInterval(HINT_SHOW_DELAY);
             sequence.OnComplete(OnRevealCompleted);
             sequence.SetUpdate(true);
             _playTween = sequence;
