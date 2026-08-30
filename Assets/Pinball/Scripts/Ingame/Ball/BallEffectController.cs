@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Audio;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
 using UnityEngine;
@@ -126,6 +127,7 @@ namespace Pinball.Ingame
 
             _riftRemaining = RIFT_DURATION_SECONDS;
             _isRiftHiding = false;
+            AudioManager.Play(AudioStorage.EAudioClipType.EffectVoidRift);
             _boxHitApplier?.Invoke(
                 _rift.transform.position,
                 new Vector2(_rift.Length, RiftBody.RIFT_WIDTH),
