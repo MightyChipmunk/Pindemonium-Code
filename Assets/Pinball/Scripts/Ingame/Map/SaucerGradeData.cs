@@ -18,8 +18,6 @@ namespace Pinball.Ingame.Map
             public EGrade Grade;
             public float RootScale;
             public int ScoreReward;
-            public int ScoreRewardIncrement;
-            public int MaxRewardStep;
             public float HoldDuration;
             public float CooldownDuration;
             public float EjectSpeed;

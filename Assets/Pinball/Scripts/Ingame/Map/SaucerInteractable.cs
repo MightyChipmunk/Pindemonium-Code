@@ -19,7 +19,6 @@ namespace Pinball.Ingame.Map
         const float EJECT_PUNCH_RATIO = 0.3f;
         const float EJECT_PUNCH_DURATION = 0.1f;
         const int EJECT_PUNCH_VIBRATO = 6;
-        const int MIN_REWARD_STEP = 0;
         const float SPIN_STOP_LEAD_TIME = 0.3f;
         const float SPIN_BASE_INTERVAL = 0.0275f;
         const float SPIN_SLOWDOWN_RATIO = 3.5f;
@@ -47,8 +46,6 @@ namespace Pinball.Ingame.Map
         [SerializeField] Transform _visual = null;
         [SerializeField] Lamp[] _indicators = null;
         [SerializeField] int _scoreReward = 0;
-        [SerializeField] int _scoreRewardIncrement = 0;
-        [SerializeField] int _maxRewardStep = 4;
         [SerializeField] float _holdDuration = 0.75f;
         [SerializeField] float _cooldownDuration = 3f;
         [SerializeField] float _ejectSpeed = 14f;
@@ -62,7 +59,6 @@ namespace Pinball.Ingame.Map
         float _baseCaptureRadius = NO_CAPTURE_RADIUS;
         float[] _spinIntervals = null;
         int _litIndex = NO_LIT_INDEX;
-        int _captureCount = 0;
         int _bonusCenterIndex = NO_BONUS_INDEX;
 
         public override EGimmickType GimmickType => EGimmickType.Saucer;
@@ -76,7 +72,6 @@ namespace Pinball.Ingame.Map
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _heldBody = null;
-            _captureCount = 0;
             _litIndex = NO_LIT_INDEX;
 
             if (null != _gradeData)
@@ -211,12 +206,11 @@ namespace Pinball.Ingame.Map
             await SpinIndicatorsAsync(targetIndex, cancellationToken);
             await UniTask.Delay(TimeSpan.FromSeconds(SPIN_STOP_LEAD_TIME), cancellationToken: cancellationToken);
 
-            int reward = Mathf.RoundToInt(GetCurrentReward() * GetTargetBonusMultiplier(targetIndex));
+            int reward = Mathf.RoundToInt(GetScoreReward() * GetTargetBonusMultiplier(targetIndex));
             ReleaseHeldBody(GetEjectDirection(targetIndex));
             SetLitIndex(NO_LIT_INDEX);
             PlayEjectMotion();
             AudioManager.Play(AudioStorage.EAudioClipType.GimmickSaucerEject);
-            ++_captureCount;
             GainScore(reward);
 
             await CooldownAsync(cancellationToken);
@@ -369,13 +363,9 @@ namespace Pinball.Ingame.Map
             return offset.normalized;
         }
 
-        int GetCurrentReward()
+        int GetScoreReward()
         {
-            int maxRewardStep = null == _gradeData ? _maxRewardStep : _spec.MaxRewardStep;
-            int scoreReward = null == _gradeData ? _scoreReward : _spec.ScoreReward;
-            int scoreRewardIncrement = null == _gradeData ? _scoreRewardIncrement : _spec.ScoreRewardIncrement;
-            int step = Mathf.Clamp(_captureCount, MIN_REWARD_STEP, maxRewardStep);
-            return scoreReward + scoreRewardIncrement * step;
+            return null == _gradeData ? _scoreReward : _spec.ScoreReward;
         }
 
         float GetHoldDuration()
