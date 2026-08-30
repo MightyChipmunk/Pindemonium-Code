@@ -39,7 +39,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] Transform _sniperMark = null;
         [SerializeField] SpriteRenderer _fortifyRing = null;
 
-        CancellationTokenSource _cancellationTokenSource = null;
+        CancellationTokenSource _respawnTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
         PoolableFX.EFXType _burnFX = PoolableFX.EFXType.NonePooling;
         PoolableFX.EFXType _shatterFX = PoolableFX.EFXType.NonePooling;
@@ -48,6 +48,7 @@ namespace Pinball.Ingame.Map
         BumperGradeData.EGrade _baseGrade = BumperGradeData.EGrade.Yellow;
         Vector3 _visualBaseScale = Vector3.one;
         Color _visualBaseColor = Color.white;
+        float _baseRespawnDelay = 0f;
         float _currentHealth = 0f;
         float _healthMultiplier = DEFAULT_HEALTH_MULTIPLIER;
         float _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
@@ -71,11 +72,12 @@ namespace Pinball.Ingame.Map
 
         protected override void OnInit()
         {
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _baseGrade = _grade;
 
             if (null != _gradeData)
                 _spec = _gradeData.GetSpec(_grade);
+
+            _baseRespawnDelay = _spec.RespawnDelay;
 
             if (null != _visual)
                 _visualBaseScale = _visual.localScale;
@@ -100,16 +102,9 @@ namespace Pinball.Ingame.Map
             OnBallDamaged = null;
             ApplyGrade(_baseGrade);
             StopBurning();
+            StopRespawnWait();
             ClearFrozen();
             ClearSniperMark();
-
-            if (null != _cancellationTokenSource)
-            {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
-            }
-
             KillVisualTween(false);
             _isBroken = false;
         }
@@ -117,6 +112,7 @@ namespace Pinball.Ingame.Map
         protected override void OnDeactivated()
         {
             StopBurning();
+            StopRespawnWait();
             ClearFrozen();
             ClearSniperMark();
             KillVisualTween(false);
@@ -496,22 +492,48 @@ namespace Pinball.Ingame.Map
             if (null != _visual)
                 _visual.gameObject.SetActive(false);
 
-            OnBroken?.Invoke();
+            StopRespawnWait();
+            _respawnTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+            RespawnAsync(_respawnTokenSource.Token).Forget();
 
-            if (null != _cancellationTokenSource)
-                RespawnAsync(_cancellationTokenSource.Token).Forget();
+            OnBroken?.Invoke();
+        }
+
+        void StopRespawnWait()
+        {
+            if (null == _respawnTokenSource)
+                return;
+
+            _respawnTokenSource.Cancel();
+            _respawnTokenSource.Dispose();
+            _respawnTokenSource = null;
         }
 
         float GetRespawnDelay()
         {
             float scale = Mathf.Max(MIN_RESPAWN_DELAY_SCALE, 1f - StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperRespawnTimeRatio));
-            return _spec.RespawnDelay * scale * StatProvider.GetBumperRespawnDelayScale();
+            return _baseRespawnDelay * scale * StatProvider.GetBumperRespawnDelayScale();
+        }
+
+        public void RespawnImmediately()
+        {
+            if (!_isBroken || IsDeactivated)
+                return;
+
+            StopRespawnWait();
+            Respawn();
         }
 
         async UniTaskVoid RespawnAsync(CancellationToken cancellationToken)
         {
             await UniTask.Delay(TimeSpan.FromSeconds(GetRespawnDelay()), cancellationToken: cancellationToken);
 
+            StopRespawnWait();
+            Respawn();
+        }
+
+        void Respawn()
+        {
             bool isPromoted = StatProvider.HasEffect(ShopItemData.EEffectType.BumperForge) && TryPromoteGrade();
             _currentHealth = GetMaxHealth();
             _isBroken = false;
@@ -530,7 +552,6 @@ namespace Pinball.Ingame.Map
             }
 
             PlayFX(_spec.HitFX, transform.position);
-            AudioManager.Play(AudioStorage.EAudioClipType.EffectPowerSurgeCharged);
             PlayVisualPunch(PROMOTE_PUNCH_RATIO, PROMOTE_PUNCH_DURATION, PROMOTE_PUNCH_VIBRATO);
         }
 

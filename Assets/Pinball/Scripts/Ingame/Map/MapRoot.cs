@@ -592,6 +592,19 @@ namespace Pinball.Ingame.Map
             _fxPlayer?.Invoke(SWEEP_FX, centerPoint);
             AudioManager.Play(AudioStorage.EAudioClipType.GimmickBankCleared);
             _onScoreGained?.Invoke(MapInteractable.EGimmickType.Bumper, bonusScore, centerPoint, MapInteractable.EScoreSource.GimmickBreak);
+            RespawnAllBumpers();
+        }
+
+        void RespawnAllBumpers()
+        {
+            for (int i = 0; i < _bumpers.Count; ++i)
+            {
+                BumperInteractable bumper = _bumpers[i];
+                if (bumper.IsDeactivated)
+                    continue;
+
+                bumper.RespawnImmediately();
+            }
         }
 
         public void ResetBumperGrades()
