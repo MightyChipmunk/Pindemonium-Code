@@ -65,6 +65,7 @@ namespace Pinball.Ingame.Map
         List<BumperInteractable> _bumpers = null;
         List<SlingshotInteractable> _slingshots = null;
         List<LampBankInteractable> _lampBanks = null;
+        List<LaneInteractable> _lanes = null;
         List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
         SlingshotInteractable.ESide _lastRallySide = SlingshotInteractable.ESide.Left;
@@ -78,6 +79,7 @@ namespace Pinball.Ingame.Map
             _bumpers = new List<BumperInteractable>();
             _slingshots = new List<SlingshotInteractable>();
             _lampBanks = new List<LampBankInteractable>();
+            _lanes = new List<LaneInteractable>();
             _markCandidates = new List<BumperInteractable>();
             _sniperMarkElapsed = 0f;
             _isSweepArmed = true;
@@ -140,6 +142,10 @@ namespace Pinball.Ingame.Map
                 LampBankInteractable lampBank = interactable as LampBankInteractable;
                 if (null != lampBank)
                     _lampBanks.Add(lampBank);
+
+                LaneInteractable lane = interactable as LaneInteractable;
+                if (null != lane)
+                    _lanes.Add(lane);
             }
 
 
@@ -301,6 +307,12 @@ namespace Pinball.Ingame.Map
             {
                 _lampBanks.Clear();
                 _lampBanks = null;
+            }
+
+            if (null != _lanes)
+            {
+                _lanes.Clear();
+                _lanes = null;
             }
 
             if (null != _markCandidates)
@@ -775,6 +787,20 @@ namespace Pinball.Ingame.Map
         public void LoadBall(Ball ball)
         {
             _spring.LoadBall(ball);
+        }
+
+        public void UnloadBall(Ball ball)
+        {
+            _spring.UnloadBall(ball);
+        }
+
+        public void CancelBallTravel(int colliderInstanceId)
+        {
+            if (null == _lanes)
+                return;
+
+            for (int i = 0; i < _lanes.Count; ++i)
+                _lanes[i].CancelBallTravel(colliderInstanceId);
         }
 
         public void SetSpringCharging(bool isCharging)

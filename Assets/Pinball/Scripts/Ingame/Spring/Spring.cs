@@ -80,6 +80,19 @@ namespace Pinball.Ingame
             ball.MoveTo(GetBallHoldPosition());
         }
 
+        public void UnloadBall(Ball ball)
+        {
+            if (_launchingBall == ball)
+                StopLaunchAccel();
+
+            if (_loadedBall != ball)
+                return;
+
+            _loadedBall = null;
+            ResetCharge();
+            ApplyChargeVisual(EMPTY_CHARGE_RATIO);
+        }
+
         public void SetCharging(bool isCharging)
         {
             if (_isCharging == isCharging)

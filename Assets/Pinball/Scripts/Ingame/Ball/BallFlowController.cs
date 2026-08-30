@@ -234,7 +234,7 @@ namespace Pinball.Ingame
             if (IsControlBlocked())
                 return;
 
-            _spawner.Despawn(ball);
+            DespawnBall(ball);
 
             if (ball == _activeBall)
                 _activeBall = null;
@@ -304,8 +304,22 @@ namespace Pinball.Ingame
             if (null == _activeBall)
                 return;
 
-            _spawner.Despawn(_activeBall);
+            DespawnBall(_activeBall);
             _activeBall = null;
+        }
+
+        void DespawnBall(Ball ball)
+        {
+            if (null == ball)
+                return;
+
+            if (null != _map)
+            {
+                _map.CancelBallTravel(ball.ColliderInstanceID);
+                _map.UnloadBall(ball);
+            }
+
+            _spawner.Despawn(ball);
         }
 
         void DespawnCloneBalls()
@@ -314,7 +328,7 @@ namespace Pinball.Ingame
                 return;
 
             for (int i = 0; i < _cloneBalls.Count; ++i)
-                _spawner.Despawn(_cloneBalls[i]);
+                DespawnBall(_cloneBalls[i]);
 
             _cloneBalls.Clear();
             _cloneLifeRemains.Clear();
@@ -335,7 +349,7 @@ namespace Pinball.Ingame
 
         void DespawnCloneBallAt(int index)
         {
-            _spawner.Despawn(_cloneBalls[index]);
+            DespawnBall(_cloneBalls[index]);
             _cloneBalls.RemoveAt(index);
             _cloneLifeRemains.RemoveAt(index);
         }

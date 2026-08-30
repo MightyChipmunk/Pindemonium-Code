@@ -8,6 +8,8 @@ namespace Pinball.Ingame.Map
     public class LaneInteractable : MapInteractable
     {
         const int MIN_POINT_COUNT = 2;
+        const float PATH_START_DISTANCE = 0f;
+        const int NO_TRAVEL_ID = 0;
         const float MIN_SEGMENT_LENGTH = 0.0001f;
 
         [SerializeField] LaneEntrance _startEntrance = null;
@@ -22,7 +24,10 @@ namespace Pinball.Ingame.Map
         Vector2[] _pathPoints = null;
         float[] _pathDistances = null;
         List<Rigidbody2D> _travelingBodies = null;
+        List<int> _travelingColliderIds = null;
+        List<int> _travelingIds = null;
         CancellationTokenSource _cancellationTokenSource = null;
+        int _nextTravelId = NO_TRAVEL_ID;
 
         public override EGimmickType GimmickType => EGimmickType.Lane;
         public override bool IsDeactivatable => false;
@@ -31,6 +36,9 @@ namespace Pinball.Ingame.Map
         {
             LoadBakedPath();
             _travelingBodies = new List<Rigidbody2D>();
+            _travelingColliderIds = new List<int>();
+            _travelingIds = new List<int>();
+            _nextTravelId = NO_TRAVEL_ID;
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _startEntrance.Init(OnStartEntranceEntered);
 
@@ -59,6 +67,18 @@ namespace Pinball.Ingame.Map
 
                 _travelingBodies.Clear();
                 _travelingBodies = null;
+            }
+
+            if (null != _travelingColliderIds)
+            {
+                _travelingColliderIds.Clear();
+                _travelingColliderIds = null;
+            }
+
+            if (null != _travelingIds)
+            {
+                _travelingIds.Clear();
+                _travelingIds = null;
             }
 
             _pathPoints = null;
@@ -116,12 +136,33 @@ namespace Pinball.Ingame.Map
             PlayGimmickHit();
 
             float entrySpeed = body.linearVelocity.magnitude;
-            TravelAsync(body, Mathf.Clamp(entrySpeed, _minTravelSpeed, _maxTravelSpeed), isForward, _cancellationTokenSource.Token).Forget();
+            TravelAsync(body, other.GetInstanceID(), ++_nextTravelId, Mathf.Clamp(entrySpeed, _minTravelSpeed, _maxTravelSpeed), isForward, _cancellationTokenSource.Token).Forget();
         }
 
-        async UniTaskVoid TravelAsync(Rigidbody2D body, float travelSpeed, bool isForward, CancellationToken cancellationToken)
+        public void CancelBallTravel(int colliderInstanceId)
+        {
+            if (null == _travelingColliderIds)
+                return;
+
+            int index = _travelingColliderIds.IndexOf(colliderInstanceId);
+            if (index < 0)
+                return;
+
+            RemoveTravelingAt(index);
+        }
+
+        void RemoveTravelingAt(int index)
+        {
+            _travelingBodies.RemoveAt(index);
+            _travelingColliderIds.RemoveAt(index);
+            _travelingIds.RemoveAt(index);
+        }
+
+        async UniTaskVoid TravelAsync(Rigidbody2D body, int colliderInstanceId, int travelId, float travelSpeed, bool isForward, CancellationToken cancellationToken)
         {
             _travelingBodies.Add(body);
+            _travelingColliderIds.Add(colliderInstanceId);
+            _travelingIds.Add(travelId);
             body.linearVelocity = Vector2.zero;
             body.angularVelocity = 0f;
             body.bodyType = RigidbodyType2D.Kinematic;
@@ -133,12 +174,20 @@ namespace Pinball.Ingame.Map
             {
                 await UniTask.Yield(PlayerLoopTiming.FixedUpdate, cancellationToken);
 
+                if (_travelingIds.IndexOf(travelId) < 0)
+                    return;
+
                 traveledLength += travelSpeed * Time.deltaTime;
                 float sampled = Mathf.Min(traveledLength, totalLength);
                 body.MovePosition(SamplePath(isForward ? sampled : totalLength - sampled));
             }
 
-            _travelingBodies.Remove(body);
+            int index = _travelingIds.IndexOf(travelId);
+            if (index < 0)
+                return;
+
+            RemoveTravelingAt(index);
+            body.position = SamplePath(isForward ? totalLength : PATH_START_DISTANCE);
             ReleaseBody(body, GetExitDirection(isForward) * travelSpeed * _exitSpeedMultiplier);
             GainScore(_scoreReward);
         }
