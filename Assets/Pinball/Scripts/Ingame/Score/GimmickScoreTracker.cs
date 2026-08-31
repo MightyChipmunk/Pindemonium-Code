@@ -6,11 +6,11 @@ namespace Pinball.Ingame.Score
 {
     public class GimmickScoreTracker
     {
-        readonly int[] _scores = null;
+        readonly long[] _scores = null;
 
-        public GimmickScoreTracker(int[] restoredScores)
+        public GimmickScoreTracker(long[] restoredScores)
         {
-            _scores = new int[Enum.GetValues(typeof(MapInteractable.EGimmickType)).Length];
+            _scores = new long[Enum.GetValues(typeof(MapInteractable.EGimmickType)).Length];
             if (null == restoredScores)
                 return;
 
@@ -28,9 +28,9 @@ namespace Pinball.Ingame.Score
             _scores[index] += score;
         }
 
-        public int[] CollectScores()
+        public long[] CollectScores()
         {
-            int[] scores = new int[_scores.Length];
+            long[] scores = new long[_scores.Length];
             Array.Copy(_scores, scores, _scores.Length);
             return scores;
         }

@@ -11,8 +11,8 @@ namespace Pinball.Ingame.Stage
         StageGimmickResolver _gimmickResolver = null;
         EndlessConfigData _endlessConfig = null;
         int _stageIndex = 0;
-        int _stageStartScore = 0;
-        int _totalScore = 0;
+        long _stageStartScore = 0;
+        long _totalScore = 0;
         float _timeLimit = NO_TIME_LIMIT;
         float _remainingTime = NO_TIME_LIMIT;
         bool _isCleared = false;
@@ -20,7 +20,7 @@ namespace Pinball.Ingame.Stage
         bool _isEndless = false;
 
         public int StageNumber => _stageIndex + 1;
-        public int StageScore => _totalScore - _stageStartScore;
+        public long StageScore => _totalScore - _stageStartScore;
         public bool HasTimeLimit => _timeLimit > NO_TIME_LIMIT;
         public int RemainingSeconds => Mathf.CeilToInt(_remainingTime);
         public bool IsEndless => _isEndless;
@@ -53,11 +53,11 @@ namespace Pinball.Ingame.Stage
         public event Action<int, StageData> OnStageStarted;
         public event Action<int, StageData> OnStageCleared;
         public event Action OnAllStagesCleared;
-        public event Action<int> OnStageScoreChanged;
+        public event Action<long> OnStageScoreChanged;
         public event Action<int> OnRemainingSecondsChanged;
         public event Action OnTimeExpired;
 
-        public StageProgressTracker(StageCatalogData catalog, int startStageNumber, int startTotalScore, StageGimmickResolver gimmickResolver, EndlessConfigData endlessConfig, bool isEndless)
+        public StageProgressTracker(StageCatalogData catalog, int startStageNumber, long startTotalScore, StageGimmickResolver gimmickResolver, EndlessConfigData endlessConfig, bool isEndless)
         {
             _catalog = catalog;
             _gimmickResolver = gimmickResolver;
@@ -91,7 +91,7 @@ namespace Pinball.Ingame.Stage
             OnStageStarted?.Invoke(StageNumber, GetCurrentStage());
         }
 
-        public void SetTotalScore(int totalScore)
+        public void SetTotalScore(long totalScore)
         {
             _totalScore = totalScore;
 

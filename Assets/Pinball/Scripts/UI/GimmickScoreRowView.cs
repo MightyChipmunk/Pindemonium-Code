@@ -17,7 +17,7 @@ namespace Pinball.UI
         [SerializeField] Sprite _fillSprite = null;
         [SerializeField] Sprite _topFillSprite = null;
 
-        public void Bind(LocalizedTextRef nameRef, int score, float ratio, bool isTop)
+        public void Bind(LocalizedTextRef nameRef, long score, float ratio, bool isTop)
         {
             _nameLabel.text = nameRef.Resolve();
             _scoreLabel.text = score.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);

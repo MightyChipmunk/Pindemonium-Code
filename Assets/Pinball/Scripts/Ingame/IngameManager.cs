@@ -399,8 +399,8 @@ namespace Pinball.Ingame
 
         void ClearCurrentStage()
         {
-            int remainingScore = _stageTracker.TargetScore - _stageTracker.StageScore;
-            _scoreCounter.AddCheatScore(Mathf.Max(remainingScore, MIN_CHEAT_CLEAR_SCORE));
+            long remainingScore = _stageTracker.TargetScore - _stageTracker.StageScore;
+            _scoreCounter.AddCheatScore(Math.Max(remainingScore, MIN_CHEAT_CLEAR_SCORE));
         }
 
         void ClearCurrentRound()
@@ -627,7 +627,7 @@ namespace Pinball.Ingame
             return null == _selectedFlipper ? string.Empty : _selectedFlipper.GetId();
         }
 
-        void OnStageScoreChanged(int stageScore)
+        void OnStageScoreChanged(long stageScore)
         {
             ShowStageInfo();
         }

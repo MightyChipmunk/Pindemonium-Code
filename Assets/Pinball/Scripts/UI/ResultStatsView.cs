@@ -15,7 +15,7 @@ namespace Pinball.UI
         public record Args(
             int StageNumber,
             bool IsEndless,
-            int Score,
+            long Score,
             int Money,
             int UsedBallCount,
             ItemEntry[] Passives,

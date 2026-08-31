@@ -17,7 +17,7 @@ namespace Pinball.UI
             bool IsEndless,
             int TotalStageCount,
             int Money,
-            int Score,
+            long Score,
             StageGimmickData[] Gimmicks) : UIViewArgs
         {
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.ContinueRun;

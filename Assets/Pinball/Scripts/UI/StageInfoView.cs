@@ -34,7 +34,7 @@ namespace Pinball.UI
         [SerializeField] float _heightWithoutTime = 280f;
 
         int _targetScore = 0;
-        int _score = 0;
+        long _score = 0;
 
         public void SetInfo(int stageNumber, bool isEndless, int targetScore, int remainingSeconds)
         {
@@ -47,7 +47,7 @@ namespace Pinball.UI
             BindTime(remainingSeconds);
         }
 
-        public void SetScore(int score)
+        public void SetScore(long score)
         {
             _score = score;
             BindProgress();

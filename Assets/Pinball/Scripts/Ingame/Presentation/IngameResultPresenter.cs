@@ -11,7 +11,7 @@ namespace Pinball.Ingame.Presentation
 {
     public class IngameResultPresenter
     {
-        public record RunSummary(int StageNumber, bool IsEndless, int Score, int Money, int UsedBallCount, int[] GimmickScores);
+        public record RunSummary(int StageNumber, bool IsEndless, long Score, int Money, int UsedBallCount, long[] GimmickScores);
 
         const int PASSIVE_OWNED_COUNT = 1;
         const float NO_GROWTH_RATIO = 0f;
@@ -82,7 +82,7 @@ namespace Pinball.Ingame.Presentation
                 GimmickScores: BuildGimmickScores(summary.GimmickScores));
         }
 
-        static GimmickScoreView.Args BuildGimmickScores(int[] scores)
+        static GimmickScoreView.Args BuildGimmickScores(long[] scores)
         {
             Array gimmickTypes = Enum.GetValues(typeof(MapInteractable.EGimmickType));
             GimmickScoreView.Entry[] entries = new GimmickScoreView.Entry[gimmickTypes.Length];
@@ -96,7 +96,7 @@ namespace Pinball.Ingame.Presentation
             return new GimmickScoreView.Args(entries);
         }
 
-        static int GetGimmickScore(int[] scores, MapInteractable.EGimmickType gimmickType)
+        static long GetGimmickScore(long[] scores, MapInteractable.EGimmickType gimmickType)
         {
             int index = (int)gimmickType;
             if (null == scores || index < 0 || index >= scores.Length)

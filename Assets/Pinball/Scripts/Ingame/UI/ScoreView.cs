@@ -8,14 +8,14 @@ namespace Pinball.Ingame.UI
     public class ScoreView : MonoBehaviour
     {
         const string NUMBER_FORMAT = "N0";
-        const int INITIAL_VALUE = 0;
+        const long INITIAL_VALUE = 0;
 
         [SerializeField] TMP_Text _valueLabel = null;
         [SerializeField] UIScalePunch _punch = null;
 
-        int _lastValue = INITIAL_VALUE;
+        long _lastValue = INITIAL_VALUE;
 
-        public void SetValue(int value)
+        public void SetValue(long value)
         {
             _valueLabel.text = value.ToString(NUMBER_FORMAT, CultureInfo.InvariantCulture);
 

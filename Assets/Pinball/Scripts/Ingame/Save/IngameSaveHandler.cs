@@ -10,7 +10,7 @@ namespace Pinball.Ingame.Save
             bool IsShopPending,
             bool IsRoundRewardPending,
             int Money,
-            int TotalScore,
+            long TotalScore,
             int[] GimmickIndices,
             string FlipperId,
             string[] PassiveIds,
@@ -21,7 +21,7 @@ namespace Pinball.Ingame.Save
             int VoucherOfferRound,
             int VoucherPurchasedRound,
             int SlingshotHitCount,
-            int[] GimmickScores);
+            long[] GimmickScores);
 
         public bool TryLoad(bool isContinueRequested, out IngamePlayData savedData)
         {

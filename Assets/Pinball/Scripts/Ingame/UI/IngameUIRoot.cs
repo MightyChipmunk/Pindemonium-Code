@@ -21,7 +21,7 @@ namespace Pinball.Ingame.UI
 
         public event Action OnPauseClicked;
 
-        int _score = 0;
+        long _score = 0;
         int _ballCount = 0;
         int _stageNumber = NO_STAGE_NUMBER;
         bool _isEndlessStage = false;
@@ -51,7 +51,7 @@ namespace Pinball.Ingame.UI
             _scorePopupSpawner.Release();
         }
 
-        public void SetStageScore(int score)
+        public void SetStageScore(long score)
         {
             _score = score;
             _scoreView.SetValue(score);

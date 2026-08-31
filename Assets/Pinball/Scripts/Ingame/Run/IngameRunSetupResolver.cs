@@ -23,7 +23,7 @@ namespace Pinball.Ingame.Run
             int StageNumber,
             bool IsEndless,
             int Money,
-            int Score,
+            long Score,
             int[] GimmickIndices,
             bool IsShopPending,
             bool IsRoundRewardPending,
@@ -31,7 +31,7 @@ namespace Pinball.Ingame.Run
             int MapPassiveSlotCount,
             int CommonPassiveSlotCount,
             int SlingshotHitCount,
-            int[] GimmickScores);
+            long[] GimmickScores);
 
         const int FIRST_STAGE_NUMBER = 1;
         const int MIN_COMMON_PASSIVE_SLOT_COUNT = 0;

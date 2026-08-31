@@ -9,21 +9,22 @@ namespace Pinball.Ingame.Score
     public class ScoreCounter
     {
         const float DEFAULT_SCORE_MULTIPLIER = 1f;
+        const long MAX_TOTAL_SCORE = 999_999_999_999L;
 
         ComboTracker _comboTracker = null;
         SlingshotScoreGrowth _slingshotGrowth = null;
         Action<int, Vector2> _scorePopupPlayer = null;
         Func<MapInteractable.EGimmickType, float> _stageGimmickScoreMultiplierGetter = null;
         Action<MapInteractable.EGimmickType, int> _gimmickScoreReporter = null;
-        int _current = 0;
+        long _current = 0;
 
-        public int Current => _current;
+        public long Current => _current;
         public int ComboCount => null == _comboTracker ? 0 : _comboTracker.ComboCount;
-        public event Action<int> OnChanged;
+        public event Action<long> OnChanged;
         public event Action<int, float> OnComboChanged;
         public event Action OnComboEnded;
 
-        public ScoreCounter(int initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, Action<MapInteractable.EGimmickType, int> gimmickScoreReporter, SlingshotScoreGrowth slingshotGrowth)
+        public ScoreCounter(long initialScore, ComboConfigData comboConfig, Action<int, Vector2> scorePopupPlayer, Func<MapInteractable.EGimmickType, float> stageGimmickScoreMultiplierGetter, Action<MapInteractable.EGimmickType, int> gimmickScoreReporter, SlingshotScoreGrowth slingshotGrowth)
         {
             _current = initialScore;
             _slingshotGrowth = slingshotGrowth;
@@ -131,7 +132,7 @@ namespace Pinball.Ingame.Score
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        public void AddCheatScore(int amount)
+        public void AddCheatScore(long amount)
         {
             Add(amount);
         }
@@ -147,12 +148,12 @@ namespace Pinball.Ingame.Score
             OnComboEnded?.Invoke();
         }
 
-        void Add(int amount)
+        void Add(long amount)
         {
             if (amount <= 0)
                 return;
 
-            _current += amount;
+            _current = Math.Min(_current + amount, MAX_TOTAL_SCORE);
             OnChanged?.Invoke(_current);
         }
     }

@@ -6,7 +6,7 @@ namespace Pinball.UI
 {
     public class GimmickScoreView : UIViewBase
     {
-        public record Entry(LocalizedTextRef NameRef, int Score);
+        public record Entry(LocalizedTextRef NameRef, long Score);
 
         public record Args(Entry[] Entries) : UIViewArgs
         {
@@ -47,7 +47,7 @@ namespace Pinball.UI
         void BindRows(Entry[] entries)
         {
             int entryCount = null == entries ? 0 : entries.Length;
-            int maxScore = GetMaxScore(entries);
+            long maxScore = GetMaxScore(entries);
             for (int i = 0; i < _rows.Length; ++i)
             {
                 if (i >= entryCount || null == entries[i])
@@ -62,9 +62,9 @@ namespace Pinball.UI
             }
         }
 
-        static int GetMaxScore(Entry[] entries)
+        static long GetMaxScore(Entry[] entries)
         {
-            int maxScore = 0;
+            long maxScore = 0;
             int entryCount = null == entries ? 0 : entries.Length;
             for (int i = 0; i < entryCount; ++i)
             {
@@ -78,7 +78,7 @@ namespace Pinball.UI
             return maxScore;
         }
 
-        static float GetRatio(int score, int maxScore)
+        static float GetRatio(long score, long maxScore)
         {
             if (maxScore <= 0)
                 return EMPTY_RATIO;
