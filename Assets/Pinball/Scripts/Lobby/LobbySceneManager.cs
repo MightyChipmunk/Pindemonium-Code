@@ -15,6 +15,8 @@ namespace Pinball.Lobby
 {
     public class LobbySceneManager : BehaviourBase
     {
+        const int NO_SAVED_STAGE_NUMBER = 0;
+
         [SerializeField] GameBootStrapConfig _bootStrapConfig = null;
         [SerializeField] FlipperCatalogData _flipperCatalog = null;
         [SerializeField] ClearRewardCatalogData _rewardCatalog = null;
@@ -49,13 +51,10 @@ namespace Pinball.Lobby
 
         void RefreshLobbyLabels()
         {
-            _uiRoot.SetContinueStage(GetSavedStageNumber());
-        }
-
-        static int GetSavedStageNumber()
-        {
-            IngamePlayData saved = SaveManager.GetIngameData();
-            return null == saved ? 0 : saved.StageNumber;
+            if (_runSetupController.TryGetSavedStageDisplay(out int stageNumber, out bool isEndless))
+                _uiRoot.SetContinueStage(stageNumber, isEndless);
+            else
+                _uiRoot.SetContinueStage(NO_SAVED_STAGE_NUMBER, false);
         }
 
         void OnDestroy()

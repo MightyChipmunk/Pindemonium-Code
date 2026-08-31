@@ -91,17 +91,36 @@ namespace Pinball.Lobby
                 return;
 
             FlipperData flipper = ResolveSavedFlipper(saved.FlipperId);
-            int stageIndex = saved.StageNumber - 1;
-            bool isEndless = saved.IsEndless && null != _stageCatalog && _stageCatalog.IsEndlessStageIndex(stageIndex);
+            ResolveStageDisplay(saved, out int stageNumber, out bool isEndless);
             UIManager.Show(new ContinueRunView.Args(
                 FlipperNameKey: null == flipper ? string.Empty : flipper.GetNameKey(),
                 FlipperIcon: null == flipper ? null : flipper.GetIcon(),
-                StageNumber: isEndless ? _stageCatalog.GetEndlessStageNumber(stageIndex) : saved.StageNumber,
+                StageNumber: stageNumber,
                 IsEndless: isEndless,
                 TotalStageCount: null == _stageCatalog ? 0 : _stageCatalog.Count,
                 Money: saved.Money,
                 Score: saved.TotalScore,
                 Gimmicks: BuildGimmicks(saved)));
+        }
+
+        public bool TryGetSavedStageDisplay(out int stageNumber, out bool isEndless)
+        {
+            stageNumber = 0;
+            isEndless = false;
+
+            IngamePlayData saved = SaveManager.GetIngameData();
+            if (null == saved)
+                return false;
+
+            ResolveStageDisplay(saved, out stageNumber, out isEndless);
+            return true;
+        }
+
+        void ResolveStageDisplay(IngamePlayData saved, out int stageNumber, out bool isEndless)
+        {
+            int stageIndex = saved.StageNumber - 1;
+            isEndless = saved.IsEndless && null != _stageCatalog && _stageCatalog.IsEndlessStageIndex(stageIndex);
+            stageNumber = isEndless ? _stageCatalog.GetEndlessStageNumber(stageIndex) : saved.StageNumber;
         }
 
         FlipperData ResolveSavedFlipper(string flipperId)

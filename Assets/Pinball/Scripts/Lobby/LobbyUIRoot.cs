@@ -10,6 +10,8 @@ namespace Pinball.Lobby
     {
         const string STAGE_CHIP_FORMAT = "STAGE {0}";
         const string STAGE_CHIP_KEY = "ui.common.stage_number";
+        const string ENDLESS_CHIP_FORMAT = "ENDLESS {0}";
+        const string ENDLESS_CHIP_KEY = "ui.common.endless_number";
         const float CONTINUE_FULL_ALPHA = 1f;
         const float CONTINUE_DIMMED_ALPHA = 0.45f;
 
@@ -51,12 +53,14 @@ namespace Pinball.Lobby
             _continueGroup.alpha = isInteractable ? CONTINUE_FULL_ALPHA : CONTINUE_DIMMED_ALPHA;
         }
 
-        public void SetContinueStage(int stageNumber)
+        public void SetContinueStage(int stageNumber, bool isEndless)
         {
             bool hasStage = stageNumber > 0;
             _continueStageChip.SetActive(hasStage);
             if (hasStage)
-                _continueStageLabel.text = LocalizationTable.Format(STAGE_CHIP_KEY, STAGE_CHIP_FORMAT, stageNumber);
+                _continueStageLabel.text = isEndless
+                    ? LocalizationTable.Format(ENDLESS_CHIP_KEY, ENDLESS_CHIP_FORMAT, stageNumber)
+                    : LocalizationTable.Format(STAGE_CHIP_KEY, STAGE_CHIP_FORMAT, stageNumber);
 
             ApplyContinueLabelLayout(hasStage);
         }
