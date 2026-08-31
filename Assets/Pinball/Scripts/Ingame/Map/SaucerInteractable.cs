@@ -36,6 +36,7 @@ namespace Pinball.Ingame.Map
         const float STRONG_TARGET_DIM_ALPHA_RATIO = 3f;
         const float NO_CAPTURE_RADIUS = 0f;
         const float WEAK_TARGET_DIM_ALPHA_RATIO = 2f;
+        const int NO_HELD_COLLIDER_ID = 0;
 
         static readonly Color STRONG_TARGET_TINT = new Color(0.45f, 1f, 0.5f, 1f);
         static readonly Color WEAK_TARGET_TINT = new Color(0.42f, 0.78f, 0.45f, 1f);
@@ -60,6 +61,8 @@ namespace Pinball.Ingame.Map
         float[] _spinIntervals = null;
         int _litIndex = NO_LIT_INDEX;
         int _bonusCenterIndex = NO_BONUS_INDEX;
+        int _heldColliderInstanceId = NO_HELD_COLLIDER_ID;
+        int _holdSequence = 0;
 
         public override EGimmickType GimmickType => EGimmickType.Saucer;
 
@@ -72,6 +75,7 @@ namespace Pinball.Ingame.Map
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
             _heldBody = null;
+            _heldColliderInstanceId = NO_HELD_COLLIDER_ID;
             _litIndex = NO_LIT_INDEX;
 
             if (null != _gradeData)
@@ -191,20 +195,28 @@ namespace Pinball.Ingame.Map
 
         async UniTaskVoid HoldAsync(Rigidbody2D body, Collider2D ballCollider, CancellationToken cancellationToken)
         {
+            int holdSequence = ++_holdSequence;
             _heldBody = body;
+            _heldColliderInstanceId = ballCollider.GetInstanceID();
             body.linearVelocity = Vector2.zero;
             body.angularVelocity = 0f;
             body.bodyType = RigidbodyType2D.Kinematic;
             body.MovePosition(transform.position);
 
             NotifyBallHit(ballCollider);
+            if (holdSequence != _holdSequence)
+                return;
+
             PlayFX(_captureFX, transform.position);
             PlayGimmickHit();
             PlayCaptureMotion();
 
             int targetIndex = PickTargetIndex();
-            await SpinIndicatorsAsync(targetIndex, cancellationToken);
+            await SpinIndicatorsAsync(holdSequence, targetIndex, cancellationToken);
             await UniTask.Delay(TimeSpan.FromSeconds(SPIN_STOP_LEAD_TIME), cancellationToken: cancellationToken);
+
+            if (holdSequence != _holdSequence)
+                return;
 
             int reward = Mathf.RoundToInt(GetScoreReward() * GetTargetBonusMultiplier(targetIndex));
             ReleaseHeldBody(GetEjectDirection(targetIndex));
@@ -214,6 +226,22 @@ namespace Pinball.Ingame.Map
             GainScore(reward);
 
             await CooldownAsync(cancellationToken);
+        }
+
+        public void CancelBallHold(int colliderInstanceId)
+        {
+            if (null == _heldBody)
+                return;
+
+            if (_heldColliderInstanceId != colliderInstanceId)
+                return;
+
+            ++_holdSequence;
+            _heldBody = null;
+            _heldColliderInstanceId = NO_HELD_COLLIDER_ID;
+            KillVisualTween();
+            ResetVisualScale();
+            SetLitIndex(NO_LIT_INDEX);
         }
 
         async UniTask CooldownAsync(CancellationToken cancellationToken)
@@ -312,7 +340,7 @@ namespace Pinball.Ingame.Map
             return UnityEngine.Random.Range(0, _indicators.Length);
         }
 
-        async UniTask SpinIndicatorsAsync(int targetIndex, CancellationToken cancellationToken)
+        async UniTask SpinIndicatorsAsync(int holdSequence, int targetIndex, CancellationToken cancellationToken)
         {
             if (null == _spinIntervals || targetIndex == NO_LIT_INDEX)
             {
@@ -326,6 +354,9 @@ namespace Pinball.Ingame.Map
 
             for (int i = 0; i < stepCount; ++i)
             {
+                if (holdSequence != _holdSequence)
+                    return;
+
                 SetLitIndex((startIndex + i) % count);
                 PlaySpinTick(stepCount <= 1 ? SPIN_TICK_END_PROGRESS : (float)i / (stepCount - 1));
                 await UniTask.Delay(TimeSpan.FromSeconds(_spinIntervals[i]), cancellationToken: cancellationToken);
@@ -389,8 +420,10 @@ namespace Pinball.Ingame.Map
             if (null == _heldBody)
                 return;
 
+            ++_holdSequence;
             Rigidbody2D body = _heldBody;
             _heldBody = null;
+            _heldColliderInstanceId = NO_HELD_COLLIDER_ID;
             body.bodyType = RigidbodyType2D.Dynamic;
             body.linearVelocity = ejectDirection * GetEjectSpeed();
         }
@@ -420,6 +453,14 @@ namespace Pinball.Ingame.Map
             KillVisualTween();
             _visual.localScale = _visualBaseScale;
             _visualTween = _visual.DOPunchScale(_visualBaseScale * EJECT_PUNCH_RATIO, EJECT_PUNCH_DURATION, EJECT_PUNCH_VIBRATO);
+        }
+
+        void ResetVisualScale()
+        {
+            if (null == _visual)
+                return;
+
+            _visual.localScale = _visualBaseScale;
         }
 
         void KillVisualTween()

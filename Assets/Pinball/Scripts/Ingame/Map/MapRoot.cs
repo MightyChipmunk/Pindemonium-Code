@@ -66,6 +66,7 @@ namespace Pinball.Ingame.Map
         List<SlingshotInteractable> _slingshots = null;
         List<LampBankInteractable> _lampBanks = null;
         List<LaneInteractable> _lanes = null;
+        List<SaucerInteractable> _saucers = null;
         List<BumperInteractable> _markCandidates = null;
         CancellationTokenSource _cancellationTokenSource = null;
         SlingshotInteractable.ESide _lastRallySide = SlingshotInteractable.ESide.Left;
@@ -80,6 +81,7 @@ namespace Pinball.Ingame.Map
             _slingshots = new List<SlingshotInteractable>();
             _lampBanks = new List<LampBankInteractable>();
             _lanes = new List<LaneInteractable>();
+            _saucers = new List<SaucerInteractable>();
             _markCandidates = new List<BumperInteractable>();
             _sniperMarkElapsed = 0f;
             _isSweepArmed = true;
@@ -146,6 +148,10 @@ namespace Pinball.Ingame.Map
                 LaneInteractable lane = interactable as LaneInteractable;
                 if (null != lane)
                     _lanes.Add(lane);
+
+                SaucerInteractable saucer = interactable as SaucerInteractable;
+                if (null != saucer)
+                    _saucers.Add(saucer);
             }
 
 
@@ -313,6 +319,12 @@ namespace Pinball.Ingame.Map
             {
                 _lanes.Clear();
                 _lanes = null;
+            }
+
+            if (null != _saucers)
+            {
+                _saucers.Clear();
+                _saucers = null;
             }
 
             if (null != _markCandidates)
@@ -809,11 +821,26 @@ namespace Pinball.Ingame.Map
 
         public void CancelBallTravel(int colliderInstanceId)
         {
+            CancelLaneTravels(colliderInstanceId);
+            CancelSaucerHolds(colliderInstanceId);
+        }
+
+        void CancelLaneTravels(int colliderInstanceId)
+        {
             if (null == _lanes)
                 return;
 
             for (int i = 0; i < _lanes.Count; ++i)
                 _lanes[i].CancelBallTravel(colliderInstanceId);
+        }
+
+        void CancelSaucerHolds(int colliderInstanceId)
+        {
+            if (null == _saucers)
+                return;
+
+            for (int i = 0; i < _saucers.Count; ++i)
+                _saucers[i].CancelBallHold(colliderInstanceId);
         }
 
         public void SetSpringCharging(bool isCharging)
