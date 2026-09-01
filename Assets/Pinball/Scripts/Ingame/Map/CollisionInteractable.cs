@@ -1,4 +1,5 @@
 using Pinball.FX;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -34,7 +35,7 @@ namespace Pinball.Ingame.Map
 
         protected virtual void GainHitScore(float damage, Vector2 worldPoint)
         {
-            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), worldPoint);
+            GainScore(ScoreMath.RoundToScore(damage * GetScoreMultiplier()), worldPoint);
         }
 
         protected virtual PoolableFX.EFXType GetBallHitFX()

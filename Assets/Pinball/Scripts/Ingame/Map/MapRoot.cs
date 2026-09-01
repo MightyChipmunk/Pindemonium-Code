@@ -575,7 +575,7 @@ namespace Pinball.Ingame.Map
             if (null == _bumpers)
                 return;
 
-            int breakScoreSum = 0;
+            long breakScoreSum = 0;
             int sweptCount = 0;
             Vector2 centerPoint = Vector2.zero;
             for (int i = 0; i < _bumpers.Count; ++i)
@@ -595,7 +595,7 @@ namespace Pinball.Ingame.Map
             if (sweptCount <= 0)
                 return;
 
-            int bonusScore = Mathf.RoundToInt(breakScoreSum * bonusScale);
+            int bonusScore = ScoreMath.RoundToScore(breakScoreSum * bonusScale);
             if (bonusScore <= 0)
                 return;
 

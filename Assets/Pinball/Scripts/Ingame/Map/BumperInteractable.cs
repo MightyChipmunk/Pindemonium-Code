@@ -6,6 +6,7 @@ using Pinball.Audio;
 using Pinball.FX;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -327,7 +328,7 @@ namespace Pinball.Ingame.Map
             PlayFX(_spec.HitFX, transform.position);
             PlayFX(extraFX, transform.position);
             PlayVisualPunch(HIT_PUNCH_RATIO, HIT_PUNCH_DURATION, HIT_PUNCH_VIBRATO);
-            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
+            GainScore(ScoreMath.RoundToScore(damage * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
             ReduceHealth(damage, NO_OVERKILL_SCORE_RATIO);
         }
 
@@ -404,7 +405,7 @@ namespace Pinball.Ingame.Map
                 return;
 
             if (overkillScoreRatio > NO_OVERKILL_SCORE_RATIO)
-                GainScore(Mathf.RoundToInt(-_currentHealth * GetScoreMultiplier() * overkillScoreRatio), transform.position, EScoreSource.PassiveEffect);
+                GainScore(ScoreMath.RoundToScore(-_currentHealth * GetScoreMultiplier() * overkillScoreRatio), transform.position, EScoreSource.PassiveEffect);
 
             Break();
         }
@@ -420,7 +421,7 @@ namespace Pinball.Ingame.Map
                     return;
 
                 PlayFX(_burnFX, transform.position);
-                GainScore(Mathf.RoundToInt(damagePerTick * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
+                GainScore(ScoreMath.RoundToScore(damagePerTick * GetScoreMultiplier()), transform.position, EScoreSource.PassiveEffect);
                 ReduceHealth(damagePerTick, NO_OVERKILL_SCORE_RATIO);
             }
 

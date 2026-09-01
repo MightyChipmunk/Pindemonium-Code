@@ -2,6 +2,7 @@ using System;
 using DG.Tweening;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Map
@@ -60,7 +61,7 @@ namespace Pinball.Ingame.Map
             if (IsDeactivated)
                 return;
 
-            GainScore(Mathf.RoundToInt(damage * GetScoreMultiplier()), worldPoint, EScoreSource.PassiveEffect);
+            GainScore(ScoreMath.RoundToScore(damage * GetScoreMultiplier()), worldPoint, EScoreSource.PassiveEffect);
         }
 
         protected override void OnInit()

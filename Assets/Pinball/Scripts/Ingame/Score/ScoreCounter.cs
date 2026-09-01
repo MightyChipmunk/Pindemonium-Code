@@ -2,6 +2,7 @@
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
+using Pinball.Util;
 using UnityEngine;
 
 namespace Pinball.Ingame.Score
@@ -51,12 +52,12 @@ namespace Pinball.Ingame.Score
                 + GetSlingshotGrowthRatio(gimmickType)
                 + StatProvider.GetEffectSum(ShopItemData.EEffectType.FragileBallScoreRatio)
                 + StatProvider.GetLowBallScoreRatio();
-            int finalScore = Mathf.RoundToInt(score * (1f + bonusRatio) * GetStageGimmickScoreMultiplier(gimmickType));
+            int finalScore = ScoreMath.RoundToScore(score * (1f + bonusRatio) * GetStageGimmickScoreMultiplier(gimmickType));
 
             if (scoreSource != MapInteractable.EScoreSource.PassiveEffect)
             {
                 _comboTracker.AddBounce();
-                finalScore = Mathf.RoundToInt(finalScore * _comboTracker.GetCurrentMultiplier());
+                finalScore = ScoreMath.RoundToScore(finalScore * _comboTracker.GetCurrentMultiplier());
             }
 
             Add(finalScore);
