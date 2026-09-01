@@ -86,21 +86,12 @@ namespace Pinball.Ingame.Input
             if (key == Key.None)
                 return;
 
-            if (keyboard[key].wasPressedThisFrame)
-            {
-                isHeld = true;
-                callback?.Invoke(true);
-                return;
-            }
-
-            if (!isHeld)
+            bool isPressed = keyboard[key].isPressed;
+            if (isPressed == isHeld)
                 return;
 
-            if (keyboard[key].wasReleasedThisFrame)
-            {
-                isHeld = false;
-                callback?.Invoke(false);
-            }
+            isHeld = isPressed;
+            callback?.Invoke(isPressed);
         }
     }
 }
