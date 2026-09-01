@@ -58,6 +58,7 @@ namespace Pinball.Ingame.Tutorial
         bool _isBallLostGuideRunning = false;
         bool _isModalActive = false;
         bool _isTimeFreezeActive = false;
+        bool _isFlipperControlLocked = false;
 
         public void Init(InitParam param)
         {
@@ -73,6 +74,7 @@ namespace Pinball.Ingame.Tutorial
                 MapGetter: GetCurrentMap,
                 ModalSetter: SetModal,
                 TimeFreezeSetter: SetTimeFreeze,
+                FlipperLockSetter: SetFlipperControlLocked,
                 IsPlayReadyGetter: GetIsPlayIntroReady,
                 IsPlayStateGetter: param.IsPlayStateGetter,
                 HasLaunchedGetter: GetHasLaunched,
@@ -109,6 +111,7 @@ namespace Pinball.Ingame.Tutorial
             CancelWatchers();
             ClearOverlay();
             _dialog.Release();
+            _isFlipperControlLocked = false;
             _isPlayIntroRunning = false;
             _isBallLostGuideRunning = false;
             _ballLostBlock = null;
@@ -180,6 +183,11 @@ namespace Pinball.Ingame.Tutorial
             return _isPlayIntroRunning;
         }
 
+        public bool IsFlipperControlLocked()
+        {
+            return _isPlayIntroRunning && _isFlipperControlLocked;
+        }
+
         public bool IsOverlayActive()
         {
             return _dimmer.IsShowing() || _dialog.IsShowing();
@@ -202,6 +210,7 @@ namespace Pinball.Ingame.Tutorial
 
         public void StopRunning()
         {
+            _isFlipperControlLocked = false;
             _isPlayIntroRunning = false;
             _isBallLostGuideRunning = false;
             CancelWatchers();
@@ -372,6 +381,16 @@ namespace Pinball.Ingame.Tutorial
         void PrepareComboWait()
         {
             _isComboTriggerReached = _param.ComboCountGetter() >= COMBO_TRIGGER_COUNT;
+        }
+
+        void SetFlipperControlLocked(bool isLocked)
+        {
+            if (_isFlipperControlLocked == isLocked)
+                return;
+
+            _isFlipperControlLocked = isLocked;
+            if (isLocked)
+                _param.ControlStateResetter();
         }
 
         void SetModal(bool isModal)

@@ -14,6 +14,7 @@ namespace Pinball.Ingame.Tutorial
             Func<MapRoot> MapGetter,
             Action<bool> ModalSetter,
             Action<bool> TimeFreezeSetter,
+            Action<bool> FlipperLockSetter,
             Func<bool> IsPlayReadyGetter,
             Func<bool> IsPlayStateGetter,
             Func<bool> HasLaunchedGetter,
@@ -54,6 +55,8 @@ namespace Pinball.Ingame.Tutorial
 
         public async UniTask<bool> RunAsync(CancellationToken cancellationToken)
         {
+            _param.FlipperLockSetter(true);
+
             await ScreenTransition.WaitUntilIdleAsync(cancellationToken);
             await RunStageSelectIntroAsync(cancellationToken);
 
@@ -175,6 +178,7 @@ namespace Pinball.Ingame.Tutorial
 
             await RunPlayGuideLoopAsync(cancellationToken);
 
+            _param.FlipperLockSetter(false);
             SetFlipperApproachArmed(false);
         }
 
@@ -250,6 +254,7 @@ namespace Pinball.Ingame.Tutorial
                 return;
 
             TutorialStepCatalogData.Step flipperStep = _catalog.GetStep(TutorialStepCatalogData.EStep.PlayFlipper);
+            _param.FlipperLockSetter(false);
             _highlighter.Apply(flipperStep.Highlight);
 
             _param.FlipWaitPreparer();

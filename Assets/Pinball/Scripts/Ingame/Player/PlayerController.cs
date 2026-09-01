@@ -10,6 +10,7 @@ namespace Pinball.Ingame.Player
     {
         public record InitParam(
             Func<bool> IsControlBlockedGetter,
+            Func<bool> IsFlipperBlockedGetter,
             Func<bool> IsPlayingGetter,
             Func<bool> IsNudgeTargetReadyGetter,
             Func<Vector2, bool> NudgeImpulseApplier,
@@ -20,6 +21,7 @@ namespace Pinball.Ingame.Player
         IngameInputRouter _inputRouter = null;
         MapRoot _map = null;
         Func<bool> _isControlBlockedGetter = null;
+        Func<bool> _isFlipperBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
         Func<bool> _isNudgeTargetReadyGetter = null;
         Func<Vector2, bool> _nudgeImpulseApplier = null;
@@ -38,6 +40,7 @@ namespace Pinball.Ingame.Player
         {
             _inputRouter = inputRouter;
             _isControlBlockedGetter = param.IsControlBlockedGetter;
+            _isFlipperBlockedGetter = param.IsFlipperBlockedGetter;
             _isPlayingGetter = param.IsPlayingGetter;
             _isNudgeTargetReadyGetter = param.IsNudgeTargetReadyGetter;
             _nudgeImpulseApplier = param.NudgeImpulseApplier;
@@ -149,6 +152,9 @@ namespace Pinball.Ingame.Player
             if (_isNudgeAiming && isPressed)
                 return;
 
+            if (isPressed && IsFlipperBlocked())
+                return;
+
             if (IsControlBlocked())
                 return;
 
@@ -245,6 +251,14 @@ namespace Pinball.Ingame.Player
                 return false;
 
             return _isControlBlockedGetter();
+        }
+
+        bool IsFlipperBlocked()
+        {
+            if (null == _isFlipperBlockedGetter)
+                return false;
+
+            return _isFlipperBlockedGetter();
         }
 
         bool IsPlaying()
