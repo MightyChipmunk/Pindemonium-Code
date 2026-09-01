@@ -96,6 +96,9 @@ namespace Pinball.UI
 
             for (int i = 0; i < _keyRows.Length; ++i)
                 _keyRows[i].SetValue(GetKeyLabel(_keyRows[i].KeyAction));
+
+            if (_isCapturing)
+                SetKeyRowValue(_capturingAction, LocalizationTable.Get(CAPTURE_WAITING_KEY, CAPTURE_WAITING_LABEL));
         }
 
         static void RefreshOptionRow(SettingsOptionRowView row)
