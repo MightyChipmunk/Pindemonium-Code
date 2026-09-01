@@ -51,6 +51,7 @@ namespace Pinball.Ingame.State
         CardPackShop _packShop = null;
         int _offerSlotCount = ShopSession.DEFAULT_OFFER_SLOT_COUNT;
         bool _isInterestDisabled = false;
+        bool _isRoundRewardOpening = false;
 
         public event Action OnLoadoutChanged;
         public event Action OnVoucherPurchased;
@@ -176,6 +177,7 @@ namespace Pinball.Ingame.State
         void Open()
         {
             BgmManager.Play(BgmStorage.EBgmType.Shop);
+            _isRoundRewardOpening = false;
             _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.ShopFreeReroll)));
             _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferPackItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
             RefreshShopView(false);
@@ -208,11 +210,23 @@ namespace Pinball.Ingame.State
             if (!IsRoundRewardPending())
                 return;
 
-            _roundRewardConsumer?.Invoke();
             if (!_packShop.TryOpenRandomPack())
+            {
+                _roundRewardConsumer?.Invoke();
+                return;
+            }
+
+            _isRoundRewardOpening = true;
+            ShowPackOpeningView(false, null);
+        }
+
+        void ConsumeRoundRewardOpening()
+        {
+            if (!_isRoundRewardOpening)
                 return;
 
-            ShowPackOpeningView(false, null);
+            _isRoundRewardOpening = false;
+            _roundRewardConsumer?.Invoke();
         }
 
         int GetRoundIndex()
@@ -480,6 +494,7 @@ namespace Pinball.Ingame.State
 
             int previousCount = GetOwnedUpgradeCount(item);
             ApplyItem(item);
+            ConsumeRoundRewardOpening();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             OnLoadoutChanged?.Invoke();
 
@@ -539,6 +554,7 @@ namespace Pinball.Ingame.State
 
         void DismissPackOpening(CardPackPopupView.PickEntry pick)
         {
+            ConsumeRoundRewardOpening();
             RefreshShopView(false);
             ShowPackOpeningView(true, pick);
             _packShop.CloseOpening();
