@@ -509,17 +509,20 @@ namespace Pinball.Ingame.State
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             OnLoadoutChanged?.Invoke();
 
+            CardPackPopupView.PickEntry pick = new CardPackPopupView.PickEntry(
+                CardIndex: cardIndex,
+                IsPassive: item.Kind == ShopItemData.EItemKind.Passive,
+                OwnedIndex: _loadout.GetOwnedIndex(item),
+                PreviousCount: previousCount);
+
             if (_packShop.IsOpeningFinished)
             {
-                DismissPackOpening(new CardPackPopupView.PickEntry(
-                    CardIndex: cardIndex,
-                    IsPassive: item.Kind == ShopItemData.EItemKind.Passive,
-                    OwnedIndex: _loadout.GetOwnedIndex(item),
-                    PreviousCount: previousCount));
+                DismissPackOpening(pick);
                 return;
             }
 
-            ShowPackOpeningView(false, null);
+            RefreshShopView(false);
+            ShowPackOpeningView(false, pick);
         }
 
         void ShowPackOpeningView(bool isDismissing, CardPackPopupView.PickEntry pick)

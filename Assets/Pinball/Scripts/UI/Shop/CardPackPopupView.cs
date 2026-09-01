@@ -20,7 +20,7 @@ namespace Pinball.UI
             public override UIViewCatalogData.EViewType ViewType => UIViewCatalogData.EViewType.CardPackPopup;
         }
 
-        const int NO_KEPT_CARD_INDEX = -1;
+        const int NO_CARD_INDEX = -1;
 
         const string HINT_FORMAT = "CHOOSE {0}";
         const string HINT_KEY = "ui.card_pack.hint";
@@ -94,23 +94,46 @@ namespace Pinball.UI
             _titleLabel.text = LocalizationTable.GetOrKey(viewArgs.PackTitleKey);
             _hintLabel.text = LocalizationTable.Format(HINT_KEY, HINT_FORMAT, viewArgs.RemainingPicks);
             _skipLabel.text = LocalizationTable.Get(SKIP_KEY, SKIP_FORMAT);
-            BindCards(viewArgs.Cards);
 
-            if (_isOpened)
+            int pickCardIndex = GetPickCardIndex(viewArgs.Cards, viewArgs.Pick);
+            BindCards(viewArgs.Cards, pickCardIndex);
+
+            if (!_isOpened)
+            {
+                _isOpened = true;
+                PlayAppear();
+            }
+
+            if (pickCardIndex < 0)
                 return;
 
-            _isOpened = true;
-            PlayAppear();
+            KillAppear();
+            if (!TryPlayPickFly(viewArgs.Pick, viewArgs.FlyStarter, showsSoldStamp: true))
+                BindCard(_cards[pickCardIndex], viewArgs.Cards[pickCardIndex]);
         }
 
-        void BindCards(CardArgs[] cards)
+        int GetPickCardIndex(CardArgs[] cards, PickEntry pick)
+        {
+            if (null == pick)
+                return NO_CARD_INDEX;
+
+            if (pick.CardIndex < 0 || pick.CardIndex >= _cards.Length)
+                return NO_CARD_INDEX;
+
+            if (null == cards || pick.CardIndex >= cards.Length || null == cards[pick.CardIndex])
+                return NO_CARD_INDEX;
+
+            return pick.CardIndex;
+        }
+
+        void BindCards(CardArgs[] cards, int skipCardIndex)
         {
             int cardCount = null == cards ? 0 : cards.Length;
             ApplyCardLayout(cardCount);
 
             for (int i = 0; i < _cards.Length; ++i)
             {
-                if (i >= cardCount || null == cards[i])
+                if (i >= cardCount || null == cards[i] || i == skipCardIndex)
                     continue;
 
                 BindCard(_cards[i], cards[i]);
@@ -194,8 +217,8 @@ namespace Pinball.UI
             _isDismissing = true;
             KillAppear();
 
-            int keptCardIndex = null == pick ? NO_KEPT_CARD_INDEX : pick.CardIndex;
-            float flyEndTime = TryPlayPickFly(pick, flyStarter) ? ShopItemView.PURCHASE_FLY_DURATION : 0f;
+            int keptCardIndex = null == pick ? NO_CARD_INDEX : pick.CardIndex;
+            float flyEndTime = TryPlayPickFly(pick, flyStarter, showsSoldStamp: false) ? ShopItemView.PURCHASE_FLY_DURATION : 0f;
 
             Sequence sequence = DOTween.Sequence();
             float dismissEndTime = 0f;
@@ -219,7 +242,7 @@ namespace Pinball.UI
             _dismissTween = sequence;
         }
 
-        bool TryPlayPickFly(PickEntry pick, PickFlyStarter flyStarter)
+        bool TryPlayPickFly(PickEntry pick, PickFlyStarter flyStarter, bool showsSoldStamp)
         {
             if (null == pick || null == flyStarter)
                 return false;
@@ -230,7 +253,7 @@ namespace Pinball.UI
             if (!flyStarter(pick.IsPassive, pick.OwnedIndex, pick.PreviousCount, out Vector3 position, out float width))
                 return false;
 
-            _cards[pick.CardIndex].PlayPurchase(position, width, showsSoldStamp: false);
+            _cards[pick.CardIndex].PlayPurchase(position, width, showsSoldStamp);
             return true;
         }
 
