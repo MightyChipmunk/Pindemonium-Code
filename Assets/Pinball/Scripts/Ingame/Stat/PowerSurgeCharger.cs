@@ -22,14 +22,20 @@ namespace Pinball.Ingame.Stat
 
         public void Tick(float deltaTime)
         {
+            float chargeInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.TimedAttackPowerSurge, ShopItemData.SUB_VALUE_INDEX);
+            if (chargeInterval <= 0f)
+            {
+                _elapsed = 0f;
+                if (_isCharged)
+                    SetCharged(false);
+
+                return;
+            }
+
             if (_isCharged)
                 return;
 
             if (null != _isPlayingGetter && !_isPlayingGetter())
-                return;
-
-            float chargeInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.TimedAttackPowerSurge, ShopItemData.SUB_VALUE_INDEX);
-            if (chargeInterval <= 0f)
                 return;
 
             _elapsed += deltaTime;
@@ -46,7 +52,11 @@ namespace Pinball.Ingame.Stat
                 return NO_SURGE_MULTIPLIER;
 
             SetCharged(false);
-            return StatProvider.GetEffectSum(ShopItemData.EEffectType.TimedAttackPowerSurge);
+            float multiplier = StatProvider.GetEffectSum(ShopItemData.EEffectType.TimedAttackPowerSurge);
+            if (multiplier <= 0f)
+                return NO_SURGE_MULTIPLIER;
+
+            return multiplier;
         }
 
         void SetCharged(bool isCharged)
