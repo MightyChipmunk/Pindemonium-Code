@@ -110,7 +110,7 @@ namespace Pinball.Ingame
             InitSceneComponents();
             InitPlay();
             InitPresentation();
-            InitStates();
+            InitStates(start);
             InitTutorial(start);
 
             UIManager.OnEvent += OnUIEvent;
@@ -310,7 +310,7 @@ namespace Pinball.Ingame
             RefreshOwnedItems();
         }
 
-        void InitStates()
+        void InitStates(IngameRunSetupResolver.RunStart start)
         {
             _stateMachine = new IngameStateMachine();
 
@@ -328,9 +328,13 @@ namespace Pinball.Ingame
                 IsRoundRewardPendingGetter: GetIsRoundRewardPending,
                 RoundRewardConsumer: ConsumeRoundReward,
                 OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
-                IsInterestDisabled: _runSetup.IsInterestDisabled), _loadout, _vouchers);
+                IsInterestDisabled: _runSetup.IsInterestDisabled,
+                RestoredOfferIds: start.ShopOfferIds,
+                RestoredPackIds: start.ShopPackIds,
+                RestoredRerollCount: start.ShopRerollCount), _loadout, _vouchers);
             _shopState.OnLoadoutChanged += OnShopLoadoutChanged;
             _shopState.OnVoucherPurchased += OnVoucherPurchased;
+            _shopState.OnOffersChanged += OnShopOffersChanged;
 
             _stageSelectState = new StageSelectState(new StageSelectState.InitParam(
                 StageCatalog: _stageCatalog,
@@ -670,6 +674,11 @@ namespace Pinball.Ingame
             RefreshOwnedItems();
         }
 
+        void OnShopOffersChanged()
+        {
+            SaveProgress(true);
+        }
+
         void OnComboChanged(int comboCount, float multiplier)
         {
             _director.PlayComboUp();
@@ -806,6 +815,9 @@ namespace Pinball.Ingame
                 VoucherOfferId: _vouchers.GetOfferId(),
                 VoucherOfferRound: _vouchers.OfferRoundIndex,
                 VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex,
+                ShopOfferIds: _shopState.CollectOfferIds(),
+                ShopPackIds: _shopState.CollectPackIds(),
+                ShopRerollCount: _shopState.GetRerollCount(),
                 SlingshotHitCount: _slingshotGrowth.HitCount,
                 GimmickScores: _gimmickScoreTracker.CollectScores()));
         }

@@ -29,6 +29,11 @@ namespace Pinball.Ingame.Shop
         public int RevealCount => Mathf.Max(MIN_REVEAL_COUNT, _revealCount);
         public int PickCount => Mathf.Clamp(_pickCount, MIN_PICK_COUNT, RevealCount);
 
+        public string GetId()
+        {
+            return name;
+        }
+
         public string GetNameKey()
         {
             return _nameKey;

@@ -35,6 +35,28 @@ namespace Pinball.Ingame.Shop
             RollPacks();
         }
 
+        public void Restore(string[] packIds)
+        {
+            if (null == _packs || null == _packCatalog || null == packIds)
+                return;
+
+            int count = Mathf.Min(_packs.Length, packIds.Length);
+            for (int i = 0; i < _packs.Length; ++i)
+                _packs[i] = i < count ? _packCatalog.FindById(packIds[i]) : null;
+        }
+
+        public string[] CollectPackIds()
+        {
+            if (null == _packs)
+                return new string[0];
+
+            string[] ids = new string[_packs.Length];
+            for (int i = 0; i < ids.Length; ++i)
+                ids[i] = null == _packs[i] ? string.Empty : _packs[i].GetId();
+
+            return ids;
+        }
+
         public void Reroll()
         {
             if (IsOpening)

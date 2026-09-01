@@ -25,7 +25,10 @@ namespace Pinball.Ingame.State
             Func<bool> IsRoundRewardPendingGetter,
             Action RoundRewardConsumer,
             int OfferSlotCount,
-            bool IsInterestDisabled);
+            bool IsInterestDisabled,
+            string[] RestoredOfferIds,
+            string[] RestoredPackIds,
+            int RestoredRerollCount);
 
         public record EnterParam(bool OpensImmediately);
 
@@ -52,8 +55,12 @@ namespace Pinball.Ingame.State
         int _offerSlotCount = ShopSession.DEFAULT_OFFER_SLOT_COUNT;
         bool _isInterestDisabled = false;
         bool _isRoundRewardOpening = false;
+        string[] _restoredOfferIds = null;
+        string[] _restoredPackIds = null;
+        int _restoredRerollCount = 0;
 
         public event Action OnLoadoutChanged;
+        public event Action OnOffersChanged;
         public event Action OnVoucherPurchased;
 
         public override EIngameState Key => EIngameState.Shop;
@@ -76,6 +83,9 @@ namespace Pinball.Ingame.State
             _roundRewardConsumer = param.RoundRewardConsumer;
             _offerSlotCount = param.OfferSlotCount;
             _isInterestDisabled = param.IsInterestDisabled;
+            _restoredOfferIds = param.RestoredOfferIds;
+            _restoredPackIds = param.RestoredPackIds;
+            _restoredRerollCount = param.RestoredRerollCount;
         }
 
         protected override void OnEnter(object param)
@@ -100,6 +110,22 @@ namespace Pinball.Ingame.State
         {
             OnLoadoutChanged = null;
             OnVoucherPurchased = null;
+            OnOffersChanged = null;
+        }
+
+        public string[] CollectOfferIds()
+        {
+            return null == _session ? new string[0] : _session.CollectOfferIds();
+        }
+
+        public string[] CollectPackIds()
+        {
+            return null == _packShop ? new string[0] : _packShop.CollectPackIds();
+        }
+
+        public int GetRerollCount()
+        {
+            return null == _session ? 0 : _session.RerollCount;
         }
 
         public int CalculateInterest()
@@ -180,8 +206,22 @@ namespace Pinball.Ingame.State
             _isRoundRewardOpening = false;
             _session = new ShopSession(_config, _catalog, CanOfferItem, _offerSlotCount, Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.ShopFreeReroll)));
             _packShop = new CardPackShop(_packCatalog, _catalog, CanOfferPackItem, CardPackShop.DEFAULT_PACK_SLOT_COUNT);
+            RestoreOffers();
             RefreshShopView(false);
+            OnOffersChanged?.Invoke();
             TryShowRoundClear();
+        }
+
+        void RestoreOffers()
+        {
+            if (null == _restoredOfferIds || _restoredOfferIds.Length <= 0)
+                return;
+
+            _session.Restore(new ShopSession.RestoreParam(OfferIds: _restoredOfferIds, RerollCount: _restoredRerollCount));
+            _packShop.Restore(_restoredPackIds);
+            _restoredOfferIds = null;
+            _restoredPackIds = null;
+            _restoredRerollCount = 0;
         }
 
         bool IsRoundRewardPending()
@@ -727,6 +767,7 @@ namespace Pinball.Ingame.State
             _packShop.Reroll();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopReroll);
             RefreshShopView(true);
+            OnOffersChanged?.Invoke();
         }
 
         int GetRerollPrice()

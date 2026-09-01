@@ -20,6 +20,9 @@ namespace Pinball.Ingame.Save
             string VoucherOfferId,
             int VoucherOfferRound,
             int VoucherPurchasedRound,
+            string[] ShopOfferIds,
+            string[] ShopPackIds,
+            int ShopRerollCount,
             int SlingshotHitCount,
             long[] GimmickScores);
 
@@ -47,6 +50,9 @@ namespace Pinball.Ingame.Save
                 param.VoucherOfferId,
                 param.VoucherOfferRound,
                 param.VoucherPurchasedRound,
+                param.ShopOfferIds,
+                param.ShopPackIds,
+                param.ShopRerollCount,
                 param.SlingshotHitCount,
                 param.GimmickScores));
         }

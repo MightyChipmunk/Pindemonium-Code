@@ -38,6 +38,9 @@ namespace Pinball.Save
         [SerializeField] string _voucherOfferId = string.Empty;
         [SerializeField] int _voucherOfferRound = -1;
         [SerializeField] int _voucherPurchasedRound = -1;
+        [SerializeField] string[] _shopOfferIds = null;
+        [SerializeField] string[] _shopPackIds = null;
+        [SerializeField] int _shopRerollCount = 0;
         [SerializeField] int _slingshotHitCount = 0;
         [SerializeField] long[] _gimmickScores = null;
 
@@ -50,12 +53,13 @@ namespace Pinball.Save
         public int VoucherPurchasedRound => _voucherPurchasedRound;
         public int Money => _money;
         public long TotalScore => _totalScore;
+        public int ShopRerollCount => _shopRerollCount;
         public int SlingshotHitCount => _slingshotHitCount;
         public string FlipperId => _flipperId;
 
         public IngamePlayData() { }
 
-        public IngamePlayData(int stageNumber, bool isEndless, bool isShopPending, bool isRoundRewardPending, int money, long totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, int slingshotHitCount, long[] gimmickScores)
+        public IngamePlayData(int stageNumber, bool isEndless, bool isShopPending, bool isRoundRewardPending, int money, long totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, string[] shopOfferIds, string[] shopPackIds, int shopRerollCount, int slingshotHitCount, long[] gimmickScores)
         {
             _stageNumber = stageNumber;
             _isEndless = isEndless;
@@ -72,6 +76,9 @@ namespace Pinball.Save
             _voucherOfferId = voucherOfferId;
             _voucherOfferRound = voucherOfferRound;
             _voucherPurchasedRound = voucherPurchasedRound;
+            _shopOfferIds = shopOfferIds;
+            _shopPackIds = shopPackIds;
+            _shopRerollCount = shopRerollCount;
             _slingshotHitCount = slingshotHitCount;
             _gimmickScores = gimmickScores;
         }
@@ -104,6 +111,16 @@ namespace Pinball.Save
         public string[] GetVoucherOfferedIds()
         {
             return _voucherOfferedIds;
+        }
+
+        public string[] GetShopOfferIds()
+        {
+            return _shopOfferIds;
+        }
+
+        public string[] GetShopPackIds()
+        {
+            return _shopPackIds;
         }
     }
 }

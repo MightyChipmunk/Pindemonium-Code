@@ -16,5 +16,17 @@ namespace Pinball.Ingame.Shop
 
             return _packs[index];
         }
+
+        public CardPackData FindById(string packId)
+        {
+            if (string.IsNullOrEmpty(packId))
+                return null;
+
+            for (int i = 0; i < Count; ++i)
+                if (null != _packs[i] && _packs[i].GetId() == packId)
+                    return _packs[i];
+
+            return null;
+        }
     }
 }

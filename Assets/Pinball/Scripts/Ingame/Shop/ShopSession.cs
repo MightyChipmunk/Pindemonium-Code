@@ -7,6 +7,8 @@ namespace Pinball.Ingame.Shop
 {
     public class ShopSession
     {
+        public record RestoreParam(string[] OfferIds, int RerollCount);
+
         public const int DEFAULT_OFFER_SLOT_COUNT = 3;
         public const int MAX_OFFER_SLOT_COUNT = 4;
 
@@ -18,6 +20,7 @@ namespace Pinball.Ingame.Shop
         int _freeRerollCount = 0;
 
         public int OfferSlotCount => null == _offers ? 0 : _offers.Length;
+        public int RerollCount => _rerollCount;
 
         public int CurrentRerollPrice
         {
@@ -42,6 +45,29 @@ namespace Pinball.Ingame.Shop
             _rerollCount = 0;
             _freeRerollCount = freeRerollCount;
             RollOffers();
+        }
+
+        public void Restore(RestoreParam param)
+        {
+            if (null == _offers || null == _catalog || null == param || null == param.OfferIds)
+                return;
+
+            _rerollCount = Mathf.Max(0, param.RerollCount);
+            int count = Mathf.Min(_offers.Length, param.OfferIds.Length);
+            for (int i = 0; i < _offers.Length; ++i)
+                _offers[i] = i < count ? _catalog.FindById(param.OfferIds[i]) : null;
+        }
+
+        public string[] CollectOfferIds()
+        {
+            if (null == _offers)
+                return new string[0];
+
+            string[] ids = new string[_offers.Length];
+            for (int i = 0; i < ids.Length; ++i)
+                ids[i] = null == _offers[i] ? string.Empty : _offers[i].GetId();
+
+            return ids;
         }
 
         public ShopItemData GetOffer(int slotIndex)
