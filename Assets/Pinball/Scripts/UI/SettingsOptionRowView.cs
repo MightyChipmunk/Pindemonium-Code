@@ -29,23 +29,42 @@ namespace Pinball.UI
         [SerializeField] Button _prevButton = null;
         [SerializeField] Button _nextButton = null;
         [SerializeField] TMP_Text _valueLabel = null;
+        [SerializeField] Slider _slider = null;
+        [SerializeField] GameObject _sliderBody = null;
 
         Action<EOptionType, int> _onShifted = null;
+        Action<EOptionType, float> _onSliderChanged = null;
 
         public EOptionType OptionType => _optionType;
 
-        public void Init(Action<EOptionType, int> onShifted)
+        public static bool HasSlider(EOptionType optionType)
+        {
+            return optionType == EOptionType.MasterVolume
+                || optionType == EOptionType.SfxVolume
+                || optionType == EOptionType.BgmVolume;
+        }
+
+        public void Init(Action<EOptionType, int> onShifted, Action<EOptionType, float> onSliderChanged)
         {
             _onShifted = onShifted;
+            _onSliderChanged = onSliderChanged;
             _prevButton.onClick.AddListener(OnPrevClicked);
             _nextButton.onClick.AddListener(OnNextClicked);
+
+            bool hasSlider = HasSlider(_optionType);
+            _sliderBody.SetActive(hasSlider);
+            _slider.enabled = hasSlider;
+            if (hasSlider)
+                _slider.onValueChanged.AddListener(OnSliderChanged);
         }
 
         public void Release()
         {
             _prevButton.onClick.RemoveListener(OnPrevClicked);
             _nextButton.onClick.RemoveListener(OnNextClicked);
+            _slider.onValueChanged.RemoveListener(OnSliderChanged);
             _onShifted = null;
+            _onSliderChanged = null;
         }
 
         public void SetValue(string value)
@@ -53,10 +72,16 @@ namespace Pinball.UI
             _valueLabel.text = value;
         }
 
+        public void SetSliderValue(float normalizedValue)
+        {
+            _slider.SetValueWithoutNotify(normalizedValue);
+        }
+
         public void SetInteractable(bool isInteractable)
         {
             _prevButton.interactable = isInteractable;
             _nextButton.interactable = isInteractable;
+            _slider.interactable = isInteractable;
             _canvasGroup.alpha = isInteractable ? ENABLED_ALPHA : DISABLED_ALPHA;
         }
 
@@ -68,6 +93,11 @@ namespace Pinball.UI
         void OnNextClicked()
         {
             _onShifted?.Invoke(_optionType, NEXT_DIRECTION);
+        }
+
+        void OnSliderChanged(float normalizedValue)
+        {
+            _onSliderChanged?.Invoke(_optionType, normalizedValue);
         }
     }
 }

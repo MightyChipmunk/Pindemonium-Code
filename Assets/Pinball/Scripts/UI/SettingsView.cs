@@ -40,7 +40,7 @@ namespace Pinball.UI
                 _keyRows[i].Init(OnKeyRowClicked);
 
             for (int i = 0; i < _optionRows.Length; ++i)
-                _optionRows[i].Init(OnOptionShifted);
+                _optionRows[i].Init(OnOptionShifted, OnOptionSliderChanged);
 
             _closeButton.onClick.AddListener(OnCloseClicked);
         }
@@ -109,6 +109,9 @@ namespace Pinball.UI
 
             row.SetValue(GetOptionLabel(optionType));
 
+            if (SettingsOptionRowView.HasSlider(optionType))
+                row.SetSliderValue(GetOptionSliderValue(optionType));
+
             if (optionType == SettingsOptionRowView.EOptionType.RefreshRate)
                 row.SetInteractable(!GameSettings.IsVSyncEnabled);
         }
@@ -135,6 +138,21 @@ namespace Pinball.UI
                     return LocalizationManager.GetDisplayName(LocalizationManager.CurrentLanguage);
                 default:
                     return string.Empty;
+            }
+        }
+
+        static float GetOptionSliderValue(SettingsOptionRowView.EOptionType optionType)
+        {
+            switch (optionType)
+            {
+                case SettingsOptionRowView.EOptionType.MasterVolume:
+                    return GameSettings.MasterVolume;
+                case SettingsOptionRowView.EOptionType.SfxVolume:
+                    return GameSettings.SfxVolume;
+                case SettingsOptionRowView.EOptionType.BgmVolume:
+                    return GameSettings.BgmVolume;
+                default:
+                    return 0f;
             }
         }
 
@@ -203,6 +221,24 @@ namespace Pinball.UI
                     break;
                 case SettingsOptionRowView.EOptionType.Language:
                     ShiftLanguage(direction);
+                    break;
+            }
+
+            RefreshLabels();
+        }
+
+        void OnOptionSliderChanged(SettingsOptionRowView.EOptionType optionType, float normalizedValue)
+        {
+            switch (optionType)
+            {
+                case SettingsOptionRowView.EOptionType.MasterVolume:
+                    GameSettings.SetMasterVolume(normalizedValue);
+                    break;
+                case SettingsOptionRowView.EOptionType.SfxVolume:
+                    GameSettings.SetSfxVolume(normalizedValue);
+                    break;
+                case SettingsOptionRowView.EOptionType.BgmVolume:
+                    GameSettings.SetBgmVolume(normalizedValue);
                     break;
             }
 
