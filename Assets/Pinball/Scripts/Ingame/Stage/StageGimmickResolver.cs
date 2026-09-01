@@ -1,3 +1,4 @@
+using System;
 using Pinball.Ingame.Map;
 using UnityEngine;
 
@@ -19,7 +20,8 @@ namespace Pinball.Ingame.Stage
 
         public int GetTargetScore(int baseTargetScore)
         {
-            return Mathf.RoundToInt(baseTargetScore * GetTargetScoreMultiplier());
+            double targetScore = Math.Round((double)baseTargetScore * GetTargetScoreMultiplier());
+            return (int)Math.Min(targetScore, int.MaxValue);
         }
 
         public float GetTargetScoreMultiplier()
