@@ -194,15 +194,18 @@ namespace Pinball.Ingame.Tutorial
             if (null == _cancellationTokenSource)
                 return;
 
-            await UniTask.WaitUntil(GetIsPlayIntroFinished, cancellationToken: _cancellationTokenSource.Token).SuppressCancellationThrow();
+            CancellationToken cancellationToken = _cancellationTokenSource.Token;
+            bool isCanceled = await UniTask.WaitUntil(GetIsPlayIntroFinished, cancellationToken: cancellationToken).SuppressCancellationThrow();
+            if (isCanceled && _isPlayIntroRunning)
+                cancellationToken.ThrowIfCancellationRequested();
         }
 
         public void StopRunning()
         {
-            CancelWatchers();
-            ClearOverlay();
             _isPlayIntroRunning = false;
             _isBallLostGuideRunning = false;
+            CancelWatchers();
+            ClearOverlay();
         }
 
         async UniTaskVoid WatchPlayIntroAsync(CancellationToken cancellationToken)
