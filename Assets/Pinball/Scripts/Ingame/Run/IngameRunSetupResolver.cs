@@ -31,7 +31,8 @@ namespace Pinball.Ingame.Run
             int MapPassiveSlotCount,
             int CommonPassiveSlotCount,
             string[] ShopOfferIds,
-            string[] ShopPackIds,
+            IngamePlayData.CardPackEntry[] ShopPacks,
+            IngamePlayData.CardPackEntry ShopOpening,
             int ShopRerollCount,
             int SlingshotHitCount,
             long[] GimmickScores);
@@ -63,7 +64,8 @@ namespace Pinball.Ingame.Run
                 MapPassiveSlotCount: param.BaseMapPassiveSlotCount,
                 CommonPassiveSlotCount: Mathf.Max(MIN_COMMON_PASSIVE_SLOT_COUNT, param.BaseCommonPassiveSlotCount + setup.PassiveSlotAdd),
                 ShopOfferIds: isNewRun || !saved.IsShopPending ? null : saved.GetShopOfferIds(),
-                ShopPackIds: isNewRun || !saved.IsShopPending ? null : saved.GetShopPackIds(),
+                ShopPacks: isNewRun || !saved.IsShopPending ? null : saved.GetShopPacks(),
+                ShopOpening: isNewRun || !saved.IsShopPending ? default : saved.GetShopOpening(),
                 ShopRerollCount: isNewRun || !saved.IsShopPending ? 0 : saved.ShopRerollCount,
                 SlingshotHitCount: isNewRun ? 0 : saved.SlingshotHitCount,
                 GimmickScores: isNewRun ? null : saved.GetGimmickScores());

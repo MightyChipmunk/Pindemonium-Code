@@ -330,7 +330,8 @@ namespace Pinball.Ingame
                 OfferSlotCount: ShopSession.DEFAULT_OFFER_SLOT_COUNT + _runSetup.ShopOfferSlotAdd,
                 IsInterestDisabled: _runSetup.IsInterestDisabled,
                 RestoredOfferIds: start.ShopOfferIds,
-                RestoredPackIds: start.ShopPackIds,
+                RestoredPackEntries: start.ShopPacks,
+                RestoredOpeningEntry: start.ShopOpening,
                 RestoredRerollCount: start.ShopRerollCount), _loadout, _vouchers);
             _shopState.OnLoadoutChanged += OnShopLoadoutChanged;
             _shopState.OnVoucherPurchased += OnVoucherPurchased;
@@ -816,7 +817,8 @@ namespace Pinball.Ingame
                 VoucherOfferRound: _vouchers.OfferRoundIndex,
                 VoucherPurchasedRound: _vouchers.LastPurchasedRoundIndex,
                 ShopOfferIds: _shopState.CollectOfferIds(),
-                ShopPackIds: _shopState.CollectPackIds(),
+                ShopPacks: _shopState.CollectPackEntries(),
+                ShopOpening: _shopState.CollectOpeningEntry(),
                 ShopRerollCount: _shopState.GetRerollCount(),
                 SlingshotHitCount: _slingshotGrowth.HitCount,
                 GimmickScores: _gimmickScoreTracker.CollectScores()));

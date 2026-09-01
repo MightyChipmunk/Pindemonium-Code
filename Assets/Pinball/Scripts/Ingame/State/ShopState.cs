@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
+using Pinball.Save;
 using Pinball.UI;
 using Pinball.Util;
 using UnityEngine;
@@ -27,7 +28,8 @@ namespace Pinball.Ingame.State
             int OfferSlotCount,
             bool IsInterestDisabled,
             string[] RestoredOfferIds,
-            string[] RestoredPackIds,
+            IngamePlayData.CardPackEntry[] RestoredPackEntries,
+            IngamePlayData.CardPackEntry RestoredOpeningEntry,
             int RestoredRerollCount);
 
         public record EnterParam(bool OpensImmediately);
@@ -56,7 +58,8 @@ namespace Pinball.Ingame.State
         bool _isInterestDisabled = false;
         bool _isRoundRewardOpening = false;
         string[] _restoredOfferIds = null;
-        string[] _restoredPackIds = null;
+        IngamePlayData.CardPackEntry[] _restoredPackEntries = null;
+        IngamePlayData.CardPackEntry _restoredOpeningEntry;
         int _restoredRerollCount = 0;
 
         public event Action OnLoadoutChanged;
@@ -84,7 +87,8 @@ namespace Pinball.Ingame.State
             _offerSlotCount = param.OfferSlotCount;
             _isInterestDisabled = param.IsInterestDisabled;
             _restoredOfferIds = param.RestoredOfferIds;
-            _restoredPackIds = param.RestoredPackIds;
+            _restoredPackEntries = param.RestoredPackEntries;
+            _restoredOpeningEntry = param.RestoredOpeningEntry;
             _restoredRerollCount = param.RestoredRerollCount;
         }
 
@@ -118,9 +122,14 @@ namespace Pinball.Ingame.State
             return null == _session ? new string[0] : _session.CollectOfferIds();
         }
 
-        public string[] CollectPackIds()
+        public IngamePlayData.CardPackEntry[] CollectPackEntries()
         {
-            return null == _packShop ? new string[0] : _packShop.CollectPackIds();
+            return null == _packShop ? new IngamePlayData.CardPackEntry[0] : _packShop.CollectSlotEntries();
+        }
+
+        public IngamePlayData.CardPackEntry CollectOpeningEntry()
+        {
+            return null == _packShop ? default : _packShop.CollectOpeningEntry();
         }
 
         public int GetRerollCount()
@@ -209,7 +218,20 @@ namespace Pinball.Ingame.State
             RestoreOffers();
             RefreshShopView(false);
             OnOffersChanged?.Invoke();
+            if (_packShop.IsOpening)
+            {
+                _isRoundRewardOpening = IsRoundRewardPending();
+                ShowPackOpeningView(false, null);
+                return;
+            }
+
             TryShowRoundClear();
+        }
+
+        void NotifyLoadoutChanged()
+        {
+            _packShop.RefreshSlotItems();
+            OnLoadoutChanged?.Invoke();
         }
 
         void RestoreOffers()
@@ -218,9 +240,10 @@ namespace Pinball.Ingame.State
                 return;
 
             _session.Restore(new ShopSession.RestoreParam(OfferIds: _restoredOfferIds, RerollCount: _restoredRerollCount));
-            _packShop.Restore(_restoredPackIds);
+            _packShop.Restore(_restoredPackEntries, _restoredOpeningEntry);
             _restoredOfferIds = null;
-            _restoredPackIds = null;
+            _restoredPackEntries = null;
+            _restoredOpeningEntry = default;
             _restoredRerollCount = 0;
         }
 
@@ -257,6 +280,7 @@ namespace Pinball.Ingame.State
             }
 
             _isRoundRewardOpening = true;
+            OnOffersChanged?.Invoke();
             ShowPackOpeningView(false, null);
         }
 
@@ -312,7 +336,7 @@ namespace Pinball.Ingame.State
             _moneyGranter(GetSellPrice(passive));
             ShopView.UpgradeGrantEntry grant = GrantSellUpgrades();
             AudioManager.Play(AudioStorage.EAudioClipType.MoneyGain);
-            OnLoadoutChanged?.Invoke();
+            NotifyLoadoutChanged();
             RefreshShopView(false, sell: new ShopView.SellEntry(Category: category, RemovedSlotIndex: removedSlotIndex, Grant: grant));
         }
 
@@ -414,12 +438,12 @@ namespace Pinball.Ingame.State
         {
             ShopView.PackEntry[] entries = new ShopView.PackEntry[_packShop.PackSlotCount];
             for (int i = 0; i < entries.Length; ++i)
-                entries[i] = BuildPackEntry(_packShop.GetPack(i));
+                entries[i] = BuildPackEntry(_packShop.GetPack(i), _packShop.CanBuy(i));
 
             return entries;
         }
 
-        ShopView.PackEntry BuildPackEntry(CardPackData pack)
+        ShopView.PackEntry BuildPackEntry(CardPackData pack, bool canBuy)
         {
             if (null == pack)
                 return null;
@@ -430,7 +454,7 @@ namespace Pinball.Ingame.State
                 Description: pack.GetDescriptionKey(),
                 Price: _vouchers.GetDiscountedPrice(pack.Price),
                 BandSprite: pack.BandSprite,
-                CanBuy: _packShop.HasCandidates(pack));
+                CanBuy: canBuy);
         }
 
         ShopView.VoucherEntry BuildVoucherEntry()
@@ -473,7 +497,7 @@ namespace Pinball.Ingame.State
             if (null == pack)
                 return;
 
-            if (!_packShop.HasCandidates(pack))
+            if (!_packShop.CanBuy(slotIndex))
                 return;
 
             if (!TrySpendMoney(_vouchers.GetDiscountedPrice(pack.Price)))
@@ -481,8 +505,9 @@ namespace Pinball.Ingame.State
 
             _packShop.TryStartOpening(slotIndex);
             if (ApplyBonusUpgradeOnBuy())
-                OnLoadoutChanged?.Invoke();
+                NotifyLoadoutChanged();
 
+            OnOffersChanged?.Invoke();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             RefreshShopView(false);
             ShowPackOpeningView(false, null);
@@ -503,7 +528,7 @@ namespace Pinball.Ingame.State
             _vouchers.PurchaseOffer();
             bool isLoadoutChanged = ApplyVoucherImmediateEffect(voucher);
             if (ApplyBonusUpgradeOnBuy() || isLoadoutChanged)
-                OnLoadoutChanged?.Invoke();
+                NotifyLoadoutChanged();
 
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             OnVoucherPurchased?.Invoke();
@@ -547,7 +572,7 @@ namespace Pinball.Ingame.State
             ApplyItem(item);
             ConsumeRoundRewardOpening();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
-            OnLoadoutChanged?.Invoke();
+            NotifyLoadoutChanged();
 
             CardPackPopupView.PickEntry pick = new CardPackPopupView.PickEntry(
                 CardIndex: cardIndex,
@@ -612,6 +637,7 @@ namespace Pinball.Ingame.State
             RefreshShopView(false);
             ShowPackOpeningView(true, pick);
             _packShop.CloseOpening();
+            OnOffersChanged?.Invoke();
         }
 
         ShopView.OfferEntry[] BuildOfferEntries()
@@ -696,7 +722,7 @@ namespace Pinball.Ingame.State
             ApplyBonusUpgradeOnBuy();
             AudioManager.Play(AudioStorage.EAudioClipType.ShopBuy);
             _session.MarkSold(slotIndex);
-            OnLoadoutChanged?.Invoke();
+            NotifyLoadoutChanged();
             RefreshShopView(false, new ShopView.PurchaseEntry(
                 SlotIndex: slotIndex,
                 IsPassive: item.Kind == ShopItemData.EItemKind.Passive,

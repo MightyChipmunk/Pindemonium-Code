@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pinball.Save;
 using Pinball.Util;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ namespace Pinball.Ingame.Shop
         ShopCatalogData _itemCatalog = null;
         Func<ShopItemData, bool> _offerFilter = null;
         CardPackData[] _packs = null;
+        List<ShopItemData>[] _slotItems = null;
         CardPackData _openedPack = null;
         List<ShopItemData> _revealedItems = null;
         List<bool> _takenFlags = null;
@@ -32,29 +34,56 @@ namespace Pinball.Ingame.Shop
             _revealedItems = new List<ShopItemData>();
             _takenFlags = new List<bool>();
             _packs = new CardPackData[Mathf.Max(0, packSlotCount)];
+            _slotItems = new List<ShopItemData>[_packs.Length];
             RollPacks();
         }
 
-        public void Restore(string[] packIds)
+        public void Restore(IngamePlayData.CardPackEntry[] slotEntries, IngamePlayData.CardPackEntry openingEntry)
         {
-            if (null == _packs || null == _packCatalog || null == packIds)
+            if (null == _packs || null == _packCatalog || null == _itemCatalog)
                 return;
 
-            int count = Mathf.Min(_packs.Length, packIds.Length);
             for (int i = 0; i < _packs.Length; ++i)
-                _packs[i] = i < count ? _packCatalog.FindById(packIds[i]) : null;
+            {
+                _packs[i] = null;
+                _slotItems[i] = new List<ShopItemData>();
+                if (null != slotEntries && i < slotEntries.Length)
+                    RestoreSlot(i, slotEntries[i]);
+            }
+
+            RestoreOpening(openingEntry);
         }
 
-        public string[] CollectPackIds()
+        public IngamePlayData.CardPackEntry[] CollectSlotEntries()
         {
             if (null == _packs)
-                return new string[0];
+                return new IngamePlayData.CardPackEntry[0];
 
-            string[] ids = new string[_packs.Length];
-            for (int i = 0; i < ids.Length; ++i)
-                ids[i] = null == _packs[i] ? string.Empty : _packs[i].GetId();
+            IngamePlayData.CardPackEntry[] entries = new IngamePlayData.CardPackEntry[_packs.Length];
+            for (int i = 0; i < entries.Length; ++i)
+                entries[i] = new IngamePlayData.CardPackEntry(
+                    null == _packs[i] ? string.Empty : _packs[i].GetId(),
+                    CollectItemIds(_slotItems[i]),
+                    null);
 
-            return ids;
+            return entries;
+        }
+
+        public IngamePlayData.CardPackEntry CollectOpeningEntry()
+        {
+            if (!IsOpening)
+                return default;
+
+            return new IngamePlayData.CardPackEntry(_openedPack.GetId(), CollectItemIds(_revealedItems), _takenFlags.ToArray());
+        }
+
+        public void RefreshSlotItems()
+        {
+            if (null == _packs)
+                return;
+
+            for (int i = 0; i < _packs.Length; ++i)
+                _slotItems[i] = RollItems(_packs[i]);
         }
 
         public void Reroll()
@@ -76,12 +105,15 @@ namespace Pinball.Ingame.Shop
             return _packs[slotIndex];
         }
 
-        public bool HasCandidates(CardPackData pack)
+        public bool CanBuy(int slotIndex)
         {
-            if (null == pack)
+            if (null == _slotItems)
                 return false;
 
-            return CollectCandidates(pack).Count > 0;
+            if (slotIndex < 0 || slotIndex >= _slotItems.Length)
+                return false;
+
+            return null != GetPack(slotIndex) && _slotItems[slotIndex].Count > 0;
         }
 
         public bool TryStartOpening(int slotIndex)
@@ -89,10 +121,14 @@ namespace Pinball.Ingame.Shop
             if (IsOpening)
                 return false;
 
-            if (!TryStartOpening(GetPack(slotIndex)))
+            if (!CanBuy(slotIndex))
+                return false;
+
+            if (!BeginOpening(_packs[slotIndex], _slotItems[slotIndex]))
                 return false;
 
             _packs[slotIndex] = null;
+            _slotItems[slotIndex] = new List<ShopItemData>();
             return true;
         }
 
@@ -112,29 +148,8 @@ namespace Pinball.Ingame.Shop
                 }
             }
 
-            return TryStartOpening(RandomDraw.TakeOne(candidates));
-        }
-
-        bool TryStartOpening(CardPackData pack)
-        {
-            if (null == pack)
-                return false;
-
-            List<ShopItemData> candidates = CollectCandidates(pack);
-            if (candidates.Count <= 0)
-                return false;
-
-            _revealedItems.Clear();
-            _takenFlags.Clear();
-            for (int i = 0; i < pack.RevealCount && candidates.Count > 0; ++i)
-            {
-                _revealedItems.Add(RandomDraw.TakeOne(candidates));
-                _takenFlags.Add(false);
-            }
-
-            _openedPack = pack;
-            _remainingPicks = Mathf.Min(pack.PickCount, _revealedItems.Count);
-            return true;
+            CardPackData picked = RandomDraw.TakeOne(candidates);
+            return BeginOpening(picked, RollItems(picked));
         }
 
         public string GetOpeningPackNameKey()
@@ -179,6 +194,80 @@ namespace Pinball.Ingame.Shop
             _remainingPicks = 0;
         }
 
+        bool BeginOpening(CardPackData pack, List<ShopItemData> items)
+        {
+            if (null == pack || null == items || items.Count <= 0)
+                return false;
+
+            _revealedItems.Clear();
+            _takenFlags.Clear();
+            for (int i = 0; i < items.Count; ++i)
+            {
+                _revealedItems.Add(items[i]);
+                _takenFlags.Add(false);
+            }
+
+            _openedPack = pack;
+            _remainingPicks = Mathf.Min(pack.PickCount, _revealedItems.Count);
+            return true;
+        }
+
+        void RestoreSlot(int slotIndex, IngamePlayData.CardPackEntry entry)
+        {
+            CardPackData pack = _packCatalog.FindById(entry.PackId);
+            if (null == pack)
+                return;
+
+            _packs[slotIndex] = pack;
+            string[] cardIds = entry.GetCardIds();
+            if (null == cardIds)
+                return;
+
+            for (int i = 0; i < cardIds.Length; ++i)
+            {
+                ShopItemData item = _itemCatalog.FindById(cardIds[i]);
+                if (null != item)
+                    _slotItems[slotIndex].Add(item);
+            }
+        }
+
+        void RestoreOpening(IngamePlayData.CardPackEntry entry)
+        {
+            CloseOpening();
+            CardPackData pack = _packCatalog.FindById(entry.PackId);
+            string[] cardIds = entry.GetCardIds();
+            if (null == pack || null == cardIds)
+                return;
+
+            bool[] takenFlags = entry.GetTakenFlags();
+            List<ShopItemData> items = new List<ShopItemData>();
+            List<bool> restoredFlags = new List<bool>();
+            for (int i = 0; i < cardIds.Length; ++i)
+            {
+                ShopItemData item = _itemCatalog.FindById(cardIds[i]);
+                if (null == item)
+                    continue;
+
+                items.Add(item);
+                restoredFlags.Add(null != takenFlags && i < takenFlags.Length && takenFlags[i]);
+            }
+
+            if (!BeginOpening(pack, items))
+                return;
+
+            for (int i = 0; i < restoredFlags.Count; ++i)
+            {
+                if (!restoredFlags[i])
+                    continue;
+
+                _takenFlags[i] = true;
+                --_remainingPicks;
+            }
+
+            if (IsOpeningFinished)
+                CloseOpening();
+        }
+
         void RollPacks()
         {
             List<CardPackData> candidates = new List<CardPackData>();
@@ -193,6 +282,40 @@ namespace Pinball.Ingame.Shop
             }
 
             RandomDraw.Fill(candidates, _packs);
+            RefreshSlotItems();
+        }
+
+        List<ShopItemData> RollItems(CardPackData pack)
+        {
+            List<ShopItemData> items = new List<ShopItemData>();
+            if (null == pack)
+                return items;
+
+            List<ShopItemData> candidates = CollectCandidates(pack);
+            for (int i = 0; i < pack.RevealCount && candidates.Count > 0; ++i)
+                items.Add(RandomDraw.TakeOne(candidates));
+
+            return items;
+        }
+
+        static string[] CollectItemIds(List<ShopItemData> items)
+        {
+            if (null == items)
+                return new string[0];
+
+            string[] ids = new string[items.Count];
+            for (int i = 0; i < ids.Length; ++i)
+                ids[i] = items[i].GetId();
+
+            return ids;
+        }
+
+        bool HasCandidates(CardPackData pack)
+        {
+            if (null == pack)
+                return false;
+
+            return CollectCandidates(pack).Count > 0;
         }
 
         List<ShopItemData> CollectCandidates(CardPackData pack)

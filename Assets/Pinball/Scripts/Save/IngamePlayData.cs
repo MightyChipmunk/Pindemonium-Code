@@ -23,6 +23,33 @@ namespace Pinball.Save
             }
         }
 
+        [Serializable]
+        public struct CardPackEntry
+        {
+            [SerializeField] string _packId;
+            [SerializeField] string[] _cardIds;
+            [SerializeField] bool[] _takenFlags;
+
+            public string PackId => _packId;
+
+            public CardPackEntry(string packId, string[] cardIds, bool[] takenFlags)
+            {
+                _packId = packId;
+                _cardIds = cardIds;
+                _takenFlags = takenFlags;
+            }
+
+            public string[] GetCardIds()
+            {
+                return _cardIds;
+            }
+
+            public bool[] GetTakenFlags()
+            {
+                return _takenFlags;
+            }
+        }
+
         [SerializeField, FormerlySerializedAs("StageNumber")] int _stageNumber = 1;
         [SerializeField] bool _isEndless = false;
         [SerializeField, FormerlySerializedAs("IsShopPending")] bool _isShopPending = false;
@@ -39,7 +66,8 @@ namespace Pinball.Save
         [SerializeField] int _voucherOfferRound = -1;
         [SerializeField] int _voucherPurchasedRound = -1;
         [SerializeField] string[] _shopOfferIds = null;
-        [SerializeField] string[] _shopPackIds = null;
+        [SerializeField] CardPackEntry[] _shopPacks = null;
+        [SerializeField] CardPackEntry _shopOpening;
         [SerializeField] int _shopRerollCount = 0;
         [SerializeField] int _slingshotHitCount = 0;
         [SerializeField] long[] _gimmickScores = null;
@@ -59,7 +87,7 @@ namespace Pinball.Save
 
         public IngamePlayData() { }
 
-        public IngamePlayData(int stageNumber, bool isEndless, bool isShopPending, bool isRoundRewardPending, int money, long totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, string[] shopOfferIds, string[] shopPackIds, int shopRerollCount, int slingshotHitCount, long[] gimmickScores)
+        public IngamePlayData(int stageNumber, bool isEndless, bool isShopPending, bool isRoundRewardPending, int money, long totalScore, int[] gimmickIndices, string flipperId, string[] passiveIds, UpgradeEntry[] upgrades, string[] voucherIds, string[] voucherOfferedIds, string voucherOfferId, int voucherOfferRound, int voucherPurchasedRound, string[] shopOfferIds, CardPackEntry[] shopPacks, CardPackEntry shopOpening, int shopRerollCount, int slingshotHitCount, long[] gimmickScores)
         {
             _stageNumber = stageNumber;
             _isEndless = isEndless;
@@ -77,7 +105,8 @@ namespace Pinball.Save
             _voucherOfferRound = voucherOfferRound;
             _voucherPurchasedRound = voucherPurchasedRound;
             _shopOfferIds = shopOfferIds;
-            _shopPackIds = shopPackIds;
+            _shopPacks = shopPacks;
+            _shopOpening = shopOpening;
             _shopRerollCount = shopRerollCount;
             _slingshotHitCount = slingshotHitCount;
             _gimmickScores = gimmickScores;
@@ -118,9 +147,14 @@ namespace Pinball.Save
             return _shopOfferIds;
         }
 
-        public string[] GetShopPackIds()
+        public CardPackEntry[] GetShopPacks()
         {
-            return _shopPackIds;
+            return _shopPacks;
+        }
+
+        public CardPackEntry GetShopOpening()
+        {
+            return _shopOpening;
         }
     }
 }
