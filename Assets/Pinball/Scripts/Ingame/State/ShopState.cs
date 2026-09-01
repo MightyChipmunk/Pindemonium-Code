@@ -308,6 +308,17 @@ namespace Pinball.Ingame.State
             return firstGrant;
         }
 
+        void NotifyItemDenied(ShopItemData item)
+        {
+            if (item.Kind != ShopItemData.EItemKind.Passive)
+            {
+                AudioManager.Play(AudioStorage.EAudioClipType.ShopDenied);
+                return;
+            }
+
+            NotifyPassiveDenied(item);
+        }
+
         void NotifyPassiveDenied(ShopItemData item)
         {
             AudioManager.Play(AudioStorage.EAudioClipType.ShopDenied);
@@ -485,7 +496,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveDenied(item);
+                NotifyItemDenied(item);
                 return;
             }
 
@@ -628,7 +639,7 @@ namespace Pinball.Ingame.State
 
             if (!CanApplyItem(item))
             {
-                NotifyPassiveDenied(item);
+                NotifyItemDenied(item);
                 return;
             }
 
@@ -760,7 +771,7 @@ namespace Pinball.Ingame.State
         bool CanApplyItem(ShopItemData item)
         {
             if (item.Kind != ShopItemData.EItemKind.Passive)
-                return true;
+                return !IsPurchaseLimitReached(item);
 
             return _loadout.CanAddPassive(item);
         }
