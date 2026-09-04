@@ -273,7 +273,7 @@ namespace Pinball.Ingame.State
             if (!IsRoundRewardPending())
                 return;
 
-            if (!_packShop.TryOpenRandomPack())
+            if (!_packShop.TryOpenRoundRewardPack())
             {
                 _roundRewardConsumer?.Invoke();
                 return;

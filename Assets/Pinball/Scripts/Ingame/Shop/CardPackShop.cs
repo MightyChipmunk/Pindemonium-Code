@@ -132,7 +132,7 @@ namespace Pinball.Ingame.Shop
             return true;
         }
 
-        public bool TryOpenRandomPack()
+        public bool TryOpenRoundRewardPack()
         {
             if (IsOpening)
                 return false;
@@ -143,7 +143,7 @@ namespace Pinball.Ingame.Shop
                 for (int i = 0; i < _packCatalog.Count; ++i)
                 {
                     CardPackData pack = _packCatalog.GetPack(i);
-                    if (HasCandidates(pack))
+                    if (HasCandidates(pack) && pack.CanOpenByRoundReward)
                         candidates.Add(pack);
                 }
             }

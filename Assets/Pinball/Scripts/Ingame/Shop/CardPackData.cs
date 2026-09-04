@@ -23,11 +23,13 @@ namespace Pinball.Ingame.Shop
         [SerializeField] EPackKind _kind = EPackKind.Random;
         [SerializeField] int _revealCount = 3;
         [SerializeField] int _pickCount = 1;
+        [SerializeField] bool _canOpenByRoundReward = true;
 
         public int Price => _price;
         public Sprite BandSprite => _bandSprite;
         public int RevealCount => Mathf.Max(MIN_REVEAL_COUNT, _revealCount);
         public int PickCount => Mathf.Clamp(_pickCount, MIN_PICK_COUNT, RevealCount);
+        public bool CanOpenByRoundReward => _canOpenByRoundReward;
 
         public string GetId()
         {
