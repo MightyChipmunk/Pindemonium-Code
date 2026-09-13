@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Stage;
 using Pinball.UI;
 using UnityEngine;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Tutorial
 {

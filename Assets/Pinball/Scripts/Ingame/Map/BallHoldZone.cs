@@ -1,6 +1,6 @@
 using System;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Map
 {

@@ -1,7 +1,8 @@
 using DG.Tweening;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.UI
 {

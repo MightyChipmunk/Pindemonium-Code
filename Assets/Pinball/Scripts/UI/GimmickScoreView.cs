@@ -1,6 +1,7 @@
-using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.UI
 {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.UI;
 using UnityEngine;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Tutorial
 {

@@ -3,8 +3,9 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
 using Pinball.Ingame.Stat;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Audio;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Map
 {

@@ -2,11 +2,12 @@ using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.UI;
-using Pinball.Localization;
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
+using GameCore.Util;
 
 namespace Pinball.UI
 {

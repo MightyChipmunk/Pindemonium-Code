@@ -1,9 +1,10 @@
 using System.Collections.Generic;
-using Pinball.Localization;
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
+using GameCore.Util;
 
 namespace Pinball.UI
 {

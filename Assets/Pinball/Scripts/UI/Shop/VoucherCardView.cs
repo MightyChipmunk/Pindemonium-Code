@@ -1,7 +1,7 @@
-using Pinball.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Util;
 
 namespace Pinball.UI
 {

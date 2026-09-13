@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.Save;
-using Pinball.Util;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Shop
 {

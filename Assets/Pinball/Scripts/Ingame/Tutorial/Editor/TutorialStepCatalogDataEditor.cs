@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using GameCore.Localization;
 using Pinball.Localization;
 using UnityEditor;
 using UnityEngine;
@@ -96,7 +97,7 @@ namespace Pinball.Ingame.Tutorial.Editor
         SerializedObject _tableObject = null;
         SerializedProperty _entriesProperty = null;
         LocalizationTableData _table = null;
-        ELanguage[] _languages = null;
+        int _languageCount = 0;
         string[] _languageNameArr = null;
         Dictionary<string, int[]> _entryIndexByKey = null;
         List<int>[] _flowIndexListArr = null;
@@ -127,17 +128,7 @@ namespace Pinball.Ingame.Tutorial.Editor
                 _flowExpandedArr[i] = true;
             }
 
-            LocalizationManager.EnsureInit();
-
-            _languages = new ELanguage[LocalizationManager.LanguageCount];
-            _languageNameArr = new string[_languages.Length];
-            for (int i = 0; i < _languages.Length; ++i)
-            {
-                _languages[i] = LocalizationManager.GetLanguage(i);
-                _languageNameArr[i] = LocalizationManager.GetDisplayName(_languages[i]);
-            }
-
-            _previewLanguageIndex = LocalizationManager.GetLanguageIndex(LocalizationManager.CurrentLanguage);
+            _previewLanguageIndex = LocalizationManager.CurrentLanguageIndex;
             BuildTable();
         }
 
@@ -150,7 +141,7 @@ namespace Pinball.Ingame.Tutorial.Editor
             _tableObject = null;
             _entriesProperty = null;
             _table = null;
-            _languages = null;
+            _languageCount = 0;
             _languageNameArr = null;
             _entryIndexByKey = null;
             _flowIndexListArr = null;
@@ -472,7 +463,7 @@ namespace Pinball.Ingame.Tutorial.Editor
                 return;
             }
 
-            for (int i = 0; i < _languages.Length; ++i)
+            for (int i = 0; i < _languageCount; ++i)
                 DrawTextRow(key, i);
         }
 
@@ -502,7 +493,7 @@ namespace Pinball.Ingame.Tutorial.Editor
                 return;
             }
 
-            for (int i = 0; i < _languages.Length; ++i)
+            for (int i = 0; i < _languageCount; ++i)
                 DrawTextRow(secondKey, i);
 
             EditorGUILayout.EndVertical();
@@ -511,7 +502,7 @@ namespace Pinball.Ingame.Tutorial.Editor
         void DrawTextRow(string key, int languageIndex)
         {
             string label = _languageNameArr[languageIndex];
-            if (languageIndex == LocalizationManager.GetLanguageIndex(LocalizationManager.CurrentLanguage))
+            if (languageIndex == LocalizationManager.CurrentLanguageIndex)
                 label = CURRENT_LANGUAGE_MARK + label;
 
             string text = GetTableText(key, languageIndex);
@@ -608,7 +599,7 @@ namespace Pinball.Ingame.Tutorial.Editor
                 return true;
 
             string secondKey = TutorialStepCatalogData.GetSecondPageKey(key);
-            for (int i = 0; i < _languages.Length; ++i)
+            for (int i = 0; i < _languageCount; ++i)
             {
                 if (Contains(GetTableText(key, i), _searchText))
                     return true;
@@ -716,7 +707,7 @@ namespace Pinball.Ingame.Tutorial.Editor
             if (!_entryIndexByKey.TryGetValue(key, out int[] indexArr))
                 indexArr = null;
 
-            for (int i = 0; i < _languages.Length; ++i)
+            for (int i = 0; i < _languageCount; ++i)
             {
                 if (null != indexArr && indexArr[i] != INVALID_INDEX)
                     continue;
@@ -726,7 +717,7 @@ namespace Pinball.Ingame.Tutorial.Editor
 
                 SerializedProperty element = _entriesProperty.GetArrayElementAtIndex(index);
                 element.FindPropertyRelative(ENTRY_KEY_FIELD).stringValue = key;
-                element.FindPropertyRelative(ENTRY_LANGUAGE_FIELD).enumValueIndex = LocalizationManager.GetLanguageIndex(_languages[i]);
+                element.FindPropertyRelative(ENTRY_LANGUAGE_FIELD).enumValueIndex = i;
                 element.FindPropertyRelative(ENTRY_TEXT_FIELD).stringValue = string.Empty;
             }
 
@@ -810,8 +801,15 @@ namespace Pinball.Ingame.Tutorial.Editor
             _tableObject = null;
             _entriesProperty = null;
             _entryIndexByKey.Clear();
+            _languageCount = 0;
+            _languageNameArr = new string[0];
             if (null == _table)
                 return;
+
+            _languageCount = _table.LanguageCount;
+            _languageNameArr = new string[_languageCount];
+            for (int i = 0; i < _languageCount; ++i)
+                _languageNameArr[i] = _table.GetLanguageName(i);
 
             _tableObject = new SerializedObject(_table);
             _entriesProperty = _tableObject.FindProperty(ENTRIES_PROPERTY);
@@ -832,12 +830,12 @@ namespace Pinball.Ingame.Tutorial.Editor
                     continue;
 
                 int languageIndex = element.FindPropertyRelative(ENTRY_LANGUAGE_FIELD).enumValueIndex;
-                if (languageIndex < 0 || languageIndex >= _languages.Length)
+                if (languageIndex < 0 || languageIndex >= _languageCount)
                     continue;
 
                 if (!_entryIndexByKey.TryGetValue(key, out int[] indexArr))
                 {
-                    indexArr = new int[_languages.Length];
+                    indexArr = new int[_languageCount];
                     for (int k = 0; k < indexArr.Length; ++k)
                         indexArr[k] = INVALID_INDEX;
 

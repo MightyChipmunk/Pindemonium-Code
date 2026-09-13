@@ -1,12 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Save;
 using Pinball.UI;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.UI;
+using GameCore.Util;
 
 namespace Pinball.Ingame.State
 {

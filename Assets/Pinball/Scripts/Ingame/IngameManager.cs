@@ -1,11 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
 using Pinball.Core;
 using Pinball.FX;
+
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using Pinball.Ingame.Cheat;
+
 #endif
 using Pinball.Ingame.Input;
 using Pinball.Ingame.Map;
@@ -21,11 +23,12 @@ using Pinball.Ingame.Stat;
 using Pinball.Ingame.State;
 using Pinball.Ingame.Tutorial;
 using Pinball.Ingame.UI;
-using Pinball.Localization;
 using Pinball.Save;
 using Pinball.UI;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Localization;
+using GameCore.UI;
+using GameCore.Util;
 
 namespace Pinball.Ingame
 {
@@ -252,11 +255,16 @@ namespace Pinball.Ingame
             _cameraController.Init();
             Track(_cameraController.Release);
 
-            _director = new IngameDirector(_presentationConfig, _fxPoolData, _cameraController.ShakeCam);
+            _director = new IngameDirector(_presentationConfig, _fxPoolData, ShakeCamera);
             Track(_director.Dispose);
 
             _mapLoader.Init();
             Track(_mapLoader.Release);
+        }
+
+        void ShakeCamera(ECameraShakeType shakeType, float delay)
+        {
+            _cameraController.ShakeCam(CameraShakePresets.Get(shakeType), delay);
         }
 
         void InitPlay()

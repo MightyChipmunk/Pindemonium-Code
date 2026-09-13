@@ -1,5 +1,5 @@
-using Pinball.Localization;
 using UnityEngine;
+using GameCore.Localization;
 
 namespace Pinball.Ingame.Shop
 {

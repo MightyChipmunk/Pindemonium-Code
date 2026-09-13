@@ -1,8 +1,8 @@
 using System;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
 
 namespace Pinball.Lobby
 {

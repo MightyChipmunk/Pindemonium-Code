@@ -2,6 +2,7 @@ using System;
 using Pinball.Audio;
 using Pinball.Ingame.Stage;
 using Pinball.UI;
+using GameCore.UI;
 
 namespace Pinball.Ingame.State
 {

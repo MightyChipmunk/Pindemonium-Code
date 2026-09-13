@@ -2,6 +2,7 @@ using System.Globalization;
 using Pinball.UI;
 using TMPro;
 using UnityEngine;
+using GameCore.UI;
 
 namespace Pinball.Ingame.UI
 {

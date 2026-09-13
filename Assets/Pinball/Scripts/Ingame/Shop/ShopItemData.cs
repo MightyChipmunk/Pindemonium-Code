@@ -1,7 +1,7 @@
 using Alchemy.Inspector;
 using Pinball.Ingame.Map;
-using Pinball.Localization;
 using UnityEngine;
+using GameCore.Localization;
 
 namespace Pinball.Ingame.Shop
 {

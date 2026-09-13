@@ -8,16 +8,17 @@ using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stat;
 using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Map
 {
     public class MapRoot : BehaviourBase
     {
         const float CHAIN_INTERVAL = 0.1f;
-        const PoolableFX.EFXType CHAIN_FX = PoolableFX.EFXType.LightningBall;
-        const PoolableFX.EFXType CHAIN_LINK_FX = PoolableFX.EFXType.LightningChainLink;
-        const PoolableFX.EFXType BLAST_FX = PoolableFX.EFXType.Blast;
-        const PoolableFX.EFXType SWEEP_FX = PoolableFX.EFXType.Blast;
+        const EFXType CHAIN_FX = EFXType.LightningBall;
+        const EFXType CHAIN_LINK_FX = EFXType.LightningChainLink;
+        const EFXType BLAST_FX = EFXType.Blast;
+        const EFXType SWEEP_FX = EFXType.Blast;
 
         public record InitParam(
             Action<MapInteractable.EGimmickType, int, Vector2, MapInteractable.EScoreSource> OnScoreGained,
@@ -30,8 +31,8 @@ namespace Pinball.Ingame.Map
             Func<SlingshotInteractable.ESide, float> SlingshotHitScoreMultiplierConsumer,
             Func<int> SlingshotGrowthHitCountGetter,
             Action<Spring.EChargeEvent, Vector2> OnSpringChargeEvent,
-            Action<PoolableFX.EFXType, Vector2> FXPlayer,
-            Action<PoolableFX.EFXType, Vector2, Vector2> LineFXPlayer,
+            Action<EFXType, Vector2> FXPlayer,
+            Action<EFXType, Vector2, Vector2> LineFXPlayer,
             Action<Collider2D> OnGimmickBallHit,
             Action GimmickHitPresenter,
             Func<MapInteractable.EGimmickType, bool> IsGimmickAbsentGetter,
@@ -55,8 +56,8 @@ namespace Pinball.Ingame.Map
         Action _onBumperBroken = null;
         Action<Collider2D> _onSlingshotBallHit = null;
         Func<int> _slingshotGrowthHitCountGetter = null;
-        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
-        Action<PoolableFX.EFXType, Vector2, Vector2> _lineFXPlayer = null;
+        Action<EFXType, Vector2> _fxPlayer = null;
+        Action<EFXType, Vector2, Vector2> _lineFXPlayer = null;
         List<MapInteractable> _activeInteractables = null;
         ObjectRegistry<int, IDamageable> _damageableRegistry = null;
         List<Collider2D> _damageColliderBuffer = null;
@@ -486,7 +487,7 @@ namespace Pinball.Ingame.Map
                 if (((Vector2)bumper.transform.position - originPoint).sqrMagnitude > sqrRadius)
                     continue;
 
-                bumper.ApplyDamage(blastDamage, PoolableFX.EFXType.NonePooling);
+                bumper.ApplyDamage(blastDamage, EFXType.NonePooling);
             }
         }
 

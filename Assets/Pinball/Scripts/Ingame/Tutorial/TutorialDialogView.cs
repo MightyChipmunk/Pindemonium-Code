@@ -1,11 +1,12 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Localization;
 using Pinball.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Tutorial
 {

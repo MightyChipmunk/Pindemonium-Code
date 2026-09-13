@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Shop;
-using Pinball.Localization;
 using Pinball.UI;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.Ingame.UI
 {

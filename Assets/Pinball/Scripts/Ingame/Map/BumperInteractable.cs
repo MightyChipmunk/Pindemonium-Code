@@ -42,8 +42,8 @@ namespace Pinball.Ingame.Map
 
         CancellationTokenSource _respawnTokenSource = null;
         CancellationTokenSource _burnTokenSource = null;
-        PoolableFX.EFXType _burnFX = PoolableFX.EFXType.NonePooling;
-        PoolableFX.EFXType _shatterFX = PoolableFX.EFXType.NonePooling;
+        EFXType _burnFX = EFXType.NonePooling;
+        EFXType _shatterFX = EFXType.NonePooling;
         Tween _visualTween = null;
         BumperGradeData.GradeSpec _spec = default;
         BumperGradeData.EGrade _baseGrade = BumperGradeData.EGrade.Yellow;
@@ -125,10 +125,10 @@ namespace Pinball.Ingame.Map
             return (collision.rigidbody.position - (Vector2)transform.position).normalized;
         }
 
-        protected override PoolableFX.EFXType GetBallHitFX()
+        protected override EFXType GetBallHitFX()
         {
             if (_isBroken)
-                return PoolableFX.EFXType.NonePooling;
+                return EFXType.NonePooling;
 
             return _spec.HitFX;
         }
@@ -311,10 +311,10 @@ namespace Pinball.Ingame.Map
                 return;
 
             PlayGimmickHitSound();
-            ApplyDamage(damage, PoolableFX.EFXType.NonePooling);
+            ApplyDamage(damage, EFXType.NonePooling);
         }
 
-        public void ApplyDamage(float damage, PoolableFX.EFXType extraFX)
+        public void ApplyDamage(float damage, EFXType extraFX)
         {
             if (_isBroken)
                 return;
@@ -343,7 +343,7 @@ namespace Pinball.Ingame.Map
             GainScore(score, transform.position, EScoreSource.PassiveEffect);
         }
 
-        public void Ignite(float damagePerTick, float intervalSeconds, float durationSeconds, PoolableFX.EFXType burnFX)
+        public void Ignite(float damagePerTick, float intervalSeconds, float durationSeconds, EFXType burnFX)
         {
             if (_isBroken)
                 return;
@@ -361,7 +361,7 @@ namespace Pinball.Ingame.Map
             BurnAsync(damagePerTick, tickInterval, Mathf.Max(tickInterval, durationSeconds), _burnTokenSource.Token).Forget();
         }
 
-        public void ApplyFrostHit(float shatterDamageMultiplier, PoolableFX.EFXType freezeFX, PoolableFX.EFXType shatterFX)
+        public void ApplyFrostHit(float shatterDamageMultiplier, EFXType freezeFX, EFXType shatterFX)
         {
             if (_isBroken)
                 return;
@@ -391,7 +391,7 @@ namespace Pinball.Ingame.Map
         {
             _isFrozen = false;
             _frozenDamageMultiplier = DEFAULT_DAMAGE_MULTIPLIER;
-            _shatterFX = PoolableFX.EFXType.NonePooling;
+            _shatterFX = EFXType.NonePooling;
             RefreshVisualTint();
         }
 
@@ -437,7 +437,7 @@ namespace Pinball.Ingame.Map
                 _burnTokenSource = null;
             }
 
-            _burnFX = PoolableFX.EFXType.NonePooling;
+            _burnFX = EFXType.NonePooling;
             RefreshVisualTint();
         }
 

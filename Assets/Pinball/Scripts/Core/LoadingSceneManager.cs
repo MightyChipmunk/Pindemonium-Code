@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Core
 {

@@ -38,8 +38,8 @@ namespace Pinball.Ingame.Map
         [SerializeField] int _baseRequiredCount = 3;
         [SerializeField] float _baseLampSpacing = 0.38f;
         [SerializeField] int _clearScoreReward = 0;
-        [SerializeField] PoolableFX.EFXType _lightUpFX = PoolableFX.EFXType.LampLightUp;
-        [SerializeField] PoolableFX.EFXType _clearFX = PoolableFX.EFXType.NonePooling;
+        [SerializeField] EFXType _lightUpFX = EFXType.LampLightUp;
+        [SerializeField] EFXType _clearFX = EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
         Tween _gaugeTween = null;

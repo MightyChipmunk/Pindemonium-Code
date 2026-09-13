@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.FX;
@@ -28,7 +28,7 @@ namespace Pinball.Ingame
             Func<bool> IsControlBlockedGetter,
             Func<bool> IsPlayingGetter,
             Func<bool> IsBallLossBlockedGetter,
-            Action<PoolableFX.EFXType, Vector2> FXPlayer,
+            Action<EFXType, Vector2> FXPlayer,
             Action<Vector2> SurfaceHitReporter);
 
         BallSpawner _spawner = null;
@@ -36,7 +36,7 @@ namespace Pinball.Ingame
         Func<bool> _isControlBlockedGetter = null;
         Func<bool> _isPlayingGetter = null;
         Func<bool> _isBallLossBlockedGetter = null;
-        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
+        Action<EFXType, Vector2> _fxPlayer = null;
         Action<Vector2> _surfaceHitReporter = null;
         MapRoot _map = null;
         Ball _activeBall = null;

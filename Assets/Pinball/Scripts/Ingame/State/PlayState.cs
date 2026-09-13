@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Cysharp.Threading.Tasks;
 using Pinball.Audio;
 using Pinball.FX;
@@ -12,6 +12,7 @@ using Pinball.Ingame.Stage;
 using Pinball.Ingame.Stat;
 using Pinball.UI;
 using UnityEngine;
+using GameCore.UI;
 
 namespace Pinball.Ingame.State
 {
@@ -332,11 +333,11 @@ namespace Pinball.Ingame.State
                 float burnDamage = damage * StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperBurn);
                 float burnInterval = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.SUB_VALUE_INDEX);
                 float burnDuration = StatProvider.GetEffectValue(ShopItemData.EEffectType.BumperBurn, ShopItemData.EXTRA_VALUE_INDEX);
-                bumper.Ignite(burnDamage, burnInterval, burnDuration, PoolableFX.EFXType.Fireball);
+                bumper.Ignite(burnDamage, burnInterval, burnDuration, EFXType.Fireball);
             }
 
             if (StatProvider.HasEffect(ShopItemData.EEffectType.BumperFreeze))
-                bumper.ApplyFrostHit(StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperFreeze), PoolableFX.EFXType.Frostbite, PoolableFX.EFXType.FrostShatter);
+                bumper.ApplyFrostHit(StatProvider.GetEffectSum(ShopItemData.EEffectType.BumperFreeze), EFXType.Frostbite, EFXType.FrostShatter);
 
             if (!StatProvider.HasEffect(ShopItemData.EEffectType.BumperChainLightning))
                 return;

@@ -1,9 +1,11 @@
-using Pinball.Localization;
 using Pinball.Settings;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.Settings;
+using GameCore.UI;
 
 namespace Pinball.UI
 {
@@ -135,7 +137,7 @@ namespace Pinball.UI
                 case SettingsOptionRowView.EOptionType.BgmVolume:
                     return GameSettings.GetVolumeLabel(GameSettings.BgmVolume);
                 case SettingsOptionRowView.EOptionType.Language:
-                    return LocalizationManager.GetDisplayName(LocalizationManager.CurrentLanguage);
+                    return LocalizationTable.GetLanguageName(LocalizationManager.CurrentLanguageIndex);
                 default:
                     return string.Empty;
             }
@@ -247,8 +249,7 @@ namespace Pinball.UI
 
         static void ShiftLanguage(int direction)
         {
-            int index = LocalizationManager.GetLanguageIndex(LocalizationManager.CurrentLanguage) + direction;
-            LocalizationManager.SetLanguage(LocalizationManager.GetLanguage(index));
+            LocalizationManager.ShiftLanguage(direction);
         }
 
         void OnCloseClicked()

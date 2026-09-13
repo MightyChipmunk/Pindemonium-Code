@@ -1,6 +1,6 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Pinball.Localization;
+using GameCore.Localization;
 
 namespace Pinball.Ingame.Tutorial
 {

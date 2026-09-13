@@ -5,11 +5,12 @@ using Pinball.Ingame;
 using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.Tutorial;
-using Pinball.Localization;
 using Pinball.Save;
 using Pinball.UI;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Localization;
+using GameCore.UI;
+using GameCore.Util;
 
 namespace Pinball.Lobby
 {

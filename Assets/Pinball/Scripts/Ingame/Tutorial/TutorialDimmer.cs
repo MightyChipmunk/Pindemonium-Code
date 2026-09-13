@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Pinball.Util;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Tutorial
 {

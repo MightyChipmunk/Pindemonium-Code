@@ -1,8 +1,8 @@
 using System;
 using Pinball.Audio;
 using Pinball.FX;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame
 {
@@ -14,7 +14,7 @@ namespace Pinball.Ingame
         const float MAX_HIT_SPEED = 12f;
         const float MIN_HIT_VOLUME_RATIO = 0.4f;
         const float MIN_HIT_FX_IMPULSE = 3f;
-        const PoolableFX.EFXType WALL_HIT_FX = PoolableFX.EFXType.BallCollide;
+        const EFXType WALL_HIT_FX = EFXType.BallCollide;
         const float MAX_HIT_VOLUME_RATIO = 1f;
         public const float DEFAULT_DAMAGE_STACK = 1f;
 
@@ -36,7 +36,7 @@ namespace Pinball.Ingame
         [SerializeField] Transform _nudgeAimPivot = null;
         [SerializeField] LayerMask _hitSoundLayerMask = 0;
 
-        Action<PoolableFX.EFXType, Vector2> _hitFXPlayer = null;
+        Action<EFXType, Vector2> _hitFXPlayer = null;
         Action<Vector2> _surfaceHitReporter = null;
         Color _baseTint = Color.white;
         float _damageStackMultiplier = DEFAULT_DAMAGE_STACK;
@@ -82,7 +82,7 @@ namespace Pinball.Ingame
             return _rigidbody.bodyType == RigidbodyType2D.Dynamic;
         }
 
-        public void SetHitFXPlayer(Action<PoolableFX.EFXType, Vector2> hitFXPlayer)
+        public void SetHitFXPlayer(Action<EFXType, Vector2> hitFXPlayer)
         {
             _hitFXPlayer = hitFXPlayer;
         }

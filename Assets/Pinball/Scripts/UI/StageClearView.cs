@@ -1,10 +1,11 @@
 using DG.Tweening;
 using Pinball.Audio;
 using Pinball.Ingame.Reward;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.UI
 {

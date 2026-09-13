@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.Ingame.Stat;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame
 {

@@ -38,9 +38,9 @@ namespace Pinball.Ingame.Map
             GainScore(ScoreMath.RoundToScore(damage * GetScoreMultiplier()), worldPoint);
         }
 
-        protected virtual PoolableFX.EFXType GetBallHitFX()
+        protected virtual EFXType GetBallHitFX()
         {
-            return PoolableFX.EFXType.BallCollide;
+            return EFXType.BallCollide;
         }
 
         protected virtual float GetScoreMultiplier()

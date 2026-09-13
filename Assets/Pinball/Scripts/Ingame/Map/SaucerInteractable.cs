@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -50,7 +50,7 @@ namespace Pinball.Ingame.Map
         [SerializeField] float _holdDuration = 0.75f;
         [SerializeField] float _cooldownDuration = 3f;
         [SerializeField] float _ejectSpeed = 14f;
-        [SerializeField] PoolableFX.EFXType _captureFX = PoolableFX.EFXType.NonePooling;
+        [SerializeField] EFXType _captureFX = EFXType.NonePooling;
 
         CancellationTokenSource _cancellationTokenSource = null;
         Rigidbody2D _heldBody = null;

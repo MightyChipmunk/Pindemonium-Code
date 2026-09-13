@@ -9,8 +9,8 @@ namespace Pinball.Ingame.Presentation
         [SerializeField] HitPresentationData _normalHit = default;
         [SerializeField] HitPresentationData _sweetSpotHit = default;
         [SerializeField] HitPresentationData _perfectHit = default;
-        [SerializeField] PoolableFX.EFXType _springChargePeakFX = PoolableFX.EFXType.NonePooling;
-        [SerializeField] PoolableFX.EFXType _springChargeCancelFX = PoolableFX.EFXType.NonePooling;
+        [SerializeField] EFXType _springChargePeakFX = EFXType.NonePooling;
+        [SerializeField] EFXType _springChargeCancelFX = EFXType.NonePooling;
 
         public HitPresentationData GetFlipperHit(Flipper.EHitGrade grade)
         {
@@ -25,7 +25,7 @@ namespace Pinball.Ingame.Presentation
             }
         }
 
-        public PoolableFX.EFXType GetSpringChargeFX(Spring.EChargeEvent chargeEvent)
+        public EFXType GetSpringChargeFX(Spring.EChargeEvent chargeEvent)
         {
             switch (chargeEvent)
             {

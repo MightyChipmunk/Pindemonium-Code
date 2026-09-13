@@ -1,5 +1,6 @@
-﻿using Pinball.Ingame.Shop;
+using Pinball.Ingame.Shop;
 using Pinball.UI;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Reward
 {

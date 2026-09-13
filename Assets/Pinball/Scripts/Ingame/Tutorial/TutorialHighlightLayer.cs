@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Pinball.Ingame.Map;
-using Pinball.Util;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Tutorial
 {

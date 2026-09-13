@@ -1,15 +1,24 @@
+using System;
+using GameCore.Localization;
+using GameCore.UI;
 using Pinball.Audio;
 using Pinball.Localization;
 using Pinball.Save;
 using Pinball.Settings;
-using Pinball.UI;
 using UnityEngine;
+using UIViewManager = Pinball.UI.UIManager;
 
 namespace Pinball.Core
 {
+    /// <summary>
+    /// 게임 전역 서비스의 초기화 순서를 정한다. 어떤 씬에서 시작해도 한 번만 실행된다.
+    /// </summary>
     public static class GameBootStrap
     {
         const string CONFIG_MISSING_MESSAGE = "[GameBootStrap] GameBootStrapConfig가 없어 서비스 초기화를 건너뜁니다.";
+        const string LANGUAGE_PREF_KEY = "Pinball.Localization.Language";
+
+        static readonly int LANGUAGE_COUNT = Enum.GetValues(typeof(ELanguage)).Length;
 
         static bool _isInitialized = false;
 
@@ -33,11 +42,12 @@ namespace Pinball.Core
         {
             SaveManager.EnsureInit();
             GameSettings.EnsureInit(config.SettingsConfig);
-            LocalizationManager.EnsureInit();
-            LocalizationTable.EnsureInit(config.LocalizationTable);
-            UIManager.EnsureInit(config.ViewCatalog);
+            LocalizationManager.Init(new LocalizationManager.InitParam(LANGUAGE_COUNT, (int)GetSystemLanguage(), LANGUAGE_PREF_KEY));
+            LocalizationTable.Init(config.LocalizationTable);
+            UIViewManager.EnsureInit(config.ViewCatalog);
+            UIButtonSound.Init(PlayButtonHover, PlayButtonClick);
             Blocker.Init();
-            ScreenTransition.EnsureInit(config.GetTransitionPrefab());
+            ScreenTransition.Init(config.GetTransitionPrefab());
             AudioStorage.Init(config.AudioStorage);
             BgmStorage.Init(config.BgmStorage);
             BgmManager.Init(config.GetBgmPlayerPrefab());
@@ -59,11 +69,30 @@ namespace Pinball.Core
             AudioStorage.Release();
             ScreenTransition.Release();
             Blocker.Release();
-            UIManager.Release();
+            UIButtonSound.Release();
+            UIViewManager.Release();
             LocalizationTable.Release();
             LocalizationManager.Release();
             GameSettings.Release();
             SaveManager.Release();
+        }
+
+        static ELanguage GetSystemLanguage()
+        {
+            if (Application.systemLanguage == SystemLanguage.Korean)
+                return ELanguage.Korean;
+
+            return ELanguage.English;
+        }
+
+        static void PlayButtonHover()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.UIButtonHover);
+        }
+
+        static void PlayButtonClick()
+        {
+            AudioManager.Play(AudioStorage.EAudioClipType.UIButtonClick);
         }
     }
 }

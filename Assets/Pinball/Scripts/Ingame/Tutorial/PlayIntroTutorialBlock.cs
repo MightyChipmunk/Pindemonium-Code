@@ -2,9 +2,11 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.Ingame.Map;
-using Pinball.Localization;
 using Pinball.Settings;
 using Pinball.UI;
+using GameCore.Localization;
+using GameCore.Settings;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Tutorial
 {

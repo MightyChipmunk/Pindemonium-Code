@@ -27,8 +27,8 @@ namespace Pinball.Ingame.Map
             public float MaxHealth;
             public int BreakScore;
             public float RespawnDelay;
-            public PoolableFX.EFXType HitFX;
-            public PoolableFX.EFXType BreakFX;
+            public EFXType HitFX;
+            public EFXType BreakFX;
         }
 
         [SerializeField] GradeSpec[] _specs = null;

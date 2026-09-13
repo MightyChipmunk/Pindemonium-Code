@@ -3,6 +3,7 @@ using Pinball.Settings;
 using Pinball.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Input
 {

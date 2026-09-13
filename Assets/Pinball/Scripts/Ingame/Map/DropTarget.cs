@@ -1,7 +1,7 @@
 using System;
 using DG.Tweening;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Map
 {

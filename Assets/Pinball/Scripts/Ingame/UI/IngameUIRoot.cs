@@ -1,8 +1,8 @@
 using System;
 using Pinball.Ingame.Stage;
-using Pinball.Localization;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
 
 namespace Pinball.Ingame.UI
 {

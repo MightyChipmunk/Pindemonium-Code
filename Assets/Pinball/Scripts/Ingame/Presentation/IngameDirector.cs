@@ -1,9 +1,11 @@
 using System;
 using Pinball.Audio;
 using Pinball.FX;
-using Pinball.StaticPoolModule;
-using Pinball.Util;
+using GameCore.Pool;
 using UnityEngine;
+using GameCore.Audio;
+using GameCore.FX;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Presentation
 {
@@ -21,15 +23,15 @@ namespace Pinball.Ingame.Presentation
 
         PresentationConfigData _config = null;
         HitStopPlayer _hitStopPlayer = null;
-        Action<CameraController.ECameraShakeType, float> _cameraShaker = null;
+        Action<ECameraShakeType, float> _cameraShaker = null;
         AudioPitchController _comboPitchController = null;
         float _comboVolume = 0f;
 
-        public IngameDirector(PresentationConfigData config, FXPoolData fxPoolData, Action<CameraController.ECameraShakeType, float> cameraShaker)
+        public IngameDirector(PresentationConfigData config, FXPoolData fxPoolData, Action<ECameraShakeType, float> cameraShaker)
         {
             _config = config;
             _cameraShaker = cameraShaker;
-            StaticPool<PoolableFX.EFXType, PoolableFX>.Init(fxPoolData);
+            StaticPool<EFXType, PoolableFX<EFXType>>.Init(fxPoolData);
             _hitStopPlayer = new HitStopPlayer();
             _comboVolume = AudioStorage.GetVolume(AudioStorage.EAudioClipType.ComboUp);
             _comboPitchController = new AudioPitchController(AudioManager.Play, CreateComboPitchConfig());
@@ -60,7 +62,7 @@ namespace Pinball.Ingame.Presentation
                 _hitStopPlayer = null;
             }
 
-            StaticPool<PoolableFX.EFXType, PoolableFX>.Release();
+            StaticPool<EFXType, PoolableFX<EFXType>>.Release();
         }
 
         public void SetPaused(bool isPaused)
@@ -123,7 +125,7 @@ namespace Pinball.Ingame.Presentation
 
         public void PlayNudge()
         {
-            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
+            _cameraShaker?.Invoke(ECameraShakeType.Nudge, NUDGE_SHAKE_DELAY);
             AudioManager.Play(AudioStorage.EAudioClipType.EffectNudge);
         }
 
@@ -132,25 +134,25 @@ namespace Pinball.Ingame.Presentation
             _cameraShaker?.Invoke(GetSpringLaunchShakeType(launchPowerRatio), SPRING_LAUNCH_SHAKE_DELAY);
         }
 
-        static CameraController.ECameraShakeType GetSpringLaunchShakeType(float launchPowerRatio)
+        static ECameraShakeType GetSpringLaunchShakeType(float launchPowerRatio)
         {
             if (launchPowerRatio >= SPRING_LAUNCH_HARD_POWER_RATIO)
-                return CameraController.ECameraShakeType.Hard;
+                return ECameraShakeType.Hard;
 
             if (launchPowerRatio >= SPRING_LAUNCH_NORMAL_POWER_RATIO)
-                return CameraController.ECameraShakeType.Normal;
+                return ECameraShakeType.Normal;
 
-            return CameraController.ECameraShakeType.Soft;
+            return ECameraShakeType.Soft;
         }
 
         public void PlayBumperBroken()
         {
-            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Normal, BUMPER_BROKEN_SHAKE_DELAY);
+            _cameraShaker?.Invoke(ECameraShakeType.Normal, BUMPER_BROKEN_SHAKE_DELAY);
         }
 
         public void PlayGimmickHit()
         {
-            _cameraShaker?.Invoke(CameraController.ECameraShakeType.Soft, GIMMICK_HIT_SHAKE_DELAY);
+            _cameraShaker?.Invoke(ECameraShakeType.Soft, GIMMICK_HIT_SHAKE_DELAY);
         }
 
         public void PlayComboUp()
@@ -186,12 +188,12 @@ namespace Pinball.Ingame.Presentation
             _cameraShaker?.Invoke(presentation.CameraShakeType, presentation.CameraShakeDelay);
         }
 
-        public void PlayLineFX(PoolableFX.EFXType fxType, Vector2 startPoint, Vector2 endPoint)
+        public void PlayLineFX(EFXType fxType, Vector2 startPoint, Vector2 endPoint)
         {
-            if (fxType == PoolableFX.EFXType.NonePooling)
+            if (fxType == EFXType.NonePooling)
                 return;
 
-            PoolableLineFX lineFX = StaticPool<PoolableFX.EFXType, PoolableFX>.GetObject(fxType) as PoolableLineFX;
+            PoolableLineFX lineFX = StaticPool<EFXType, PoolableFX<EFXType>>.GetObject(fxType) as PoolableLineFX;
             if (null == lineFX)
                 return;
 
@@ -200,12 +202,12 @@ namespace Pinball.Ingame.Presentation
             lineFX.PlayFX();
         }
 
-        public void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
+        public void PlayFX(EFXType fxType, Vector2 worldPoint)
         {
-            if (fxType == PoolableFX.EFXType.NonePooling)
+            if (fxType == EFXType.NonePooling)
                 return;
 
-            PoolableFX fx = StaticPool<PoolableFX.EFXType, PoolableFX>.GetObject(fxType);
+            PoolableFX<EFXType> fx = StaticPool<EFXType, PoolableFX<EFXType>>.GetObject(fxType);
             if (null == fx)
                 return;
 

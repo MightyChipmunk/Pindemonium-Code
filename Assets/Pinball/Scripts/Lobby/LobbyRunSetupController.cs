@@ -5,6 +5,7 @@ using Pinball.Ingame.Reward;
 using Pinball.Ingame.Stage;
 using Pinball.Save;
 using Pinball.UI;
+using GameCore.UI;
 
 namespace Pinball.Lobby
 {

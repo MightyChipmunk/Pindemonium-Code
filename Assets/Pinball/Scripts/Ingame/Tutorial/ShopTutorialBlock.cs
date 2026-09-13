@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Pinball.UI;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Tutorial
 {

@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using Pinball.Audio;
 using Pinball.FX;
-using Pinball.Util;
 using UnityEngine;
+using GameCore.Util;
 
 namespace Pinball.Ingame.Map
 {
@@ -32,7 +32,7 @@ namespace Pinball.Ingame.Map
             Action<EGimmickType, int, Vector2, EScoreSource> OnScoreGained,
             Func<Collider2D, float, float> DamageEvaluator,
             Func<Collider2D, float> AttackPowerEvaluator,
-            Action<PoolableFX.EFXType, Vector2> FXPlayer,
+            Action<EFXType, Vector2> FXPlayer,
             Action<Collider2D> OnBallHit,
             Action GimmickHitPresenter,
             int ScoreGainLimit);
@@ -132,7 +132,7 @@ namespace Pinball.Ingame.Map
         Action<EGimmickType, int, Vector2, EScoreSource> _onScoreGained = null;
         Func<Collider2D, float, float> _damageEvaluator = null;
         Func<Collider2D, float> _attackPowerEvaluator = null;
-        Action<PoolableFX.EFXType, Vector2> _fxPlayer = null;
+        Action<EFXType, Vector2> _fxPlayer = null;
         Action<Collider2D> _onBallHit = null;
         Action _gimmickHitPresenter = null;
         int _scoreGainLimit = NO_SCORE_GAIN_LIMIT;
@@ -351,9 +351,9 @@ namespace Pinball.Ingame.Map
             }
         }
 
-        protected void PlayFX(PoolableFX.EFXType fxType, Vector2 worldPoint)
+        protected void PlayFX(EFXType fxType, Vector2 worldPoint)
         {
-            if (fxType == PoolableFX.EFXType.NonePooling)
+            if (fxType == EFXType.NonePooling)
                 return;
 
             _fxPlayer?.Invoke(fxType, worldPoint);

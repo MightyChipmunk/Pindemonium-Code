@@ -1,9 +1,10 @@
 using System.Globalization;
 using DG.Tweening;
-using Pinball.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.UI
 {

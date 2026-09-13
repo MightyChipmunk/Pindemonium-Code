@@ -1,11 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Pinball.Ingame.Map;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Stage;
 using Pinball.Ingame.UI;
-using Pinball.Localization;
 using Pinball.UI;
+using GameCore.Localization;
+using GameCore.UI;
 
 namespace Pinball.Ingame.Presentation
 {
