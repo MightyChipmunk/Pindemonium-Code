@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using GameCore.Save;
+using GameCore.Steam;
 
 namespace Pinball.Save
 {
@@ -9,7 +10,6 @@ namespace Pinball.Save
     public static class SaveManager
     {
         const int CURRENT_SAVE_VERSION = 1;
-        const bool USE_STEAM_CLOUD = true;
         const string USER_FILE_NAME = "pinball_user.json";
         const string INGAME_FILE_NAME = "pinball_ingame.json";
 
@@ -29,13 +29,23 @@ namespace Pinball.Save
 
         public static void Init()
         {
-            SaveStore.Init(new SaveStore.InitParam(CURRENT_SAVE_VERSION, USE_STEAM_CLOUD));
+            SaveStore.Init(CURRENT_SAVE_VERSION, CreateStorages());
 
             _userData = SaveStore.ReadNewest<UserData>(USER_FILE_NAME);
             if (null == _userData)
                 _userData = new UserData();
 
             _ingameData = SaveStore.ReadNewest<IngamePlayData>(INGAME_FILE_NAME);
+        }
+
+        static List<ISaveStorage> CreateStorages()
+        {
+            List<ISaveStorage> storages = new List<ISaveStorage>();
+            if (SteamCloudStorage.IsAvailable())
+                storages.Add(new SteamCloudStorage());
+
+            storages.Add(new LocalFileStorage());
+            return storages;
         }
 
         public static void Release()
