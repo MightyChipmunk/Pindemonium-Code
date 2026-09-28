@@ -73,6 +73,11 @@ namespace Pinball.Save
             return null == _userData ? default : _userData.GetFlipperBest(flipperId);
         }
 
+        public static bool HasEndlessClear()
+        {
+            return null != _userData && _userData.HasAnyEndlessClear();
+        }
+
         public static void UpdateBestStage(string flipperId, int stageNumber)
         {
             if (null == _userData)

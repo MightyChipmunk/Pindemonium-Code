@@ -5,6 +5,7 @@ using Pinball.Audio;
 using Pinball.Localization;
 using Pinball.Save;
 using Pinball.Settings;
+using Pinball.Steam;
 using UnityEngine;
 using UIViewManager = Pinball.UI.UIManager;
 
@@ -41,6 +42,7 @@ namespace Pinball.Core
         static void Init(GameBootStrapConfig config)
         {
             SaveManager.EnsureInit();
+            AchievementManager.Init();
             GameSettings.EnsureInit(config.SettingsConfig);
             LocalizationManager.Init(new LocalizationManager.InitParam(LANGUAGE_COUNT, (int)GetSystemLanguage(), LANGUAGE_PREF_KEY));
             LocalizationTable.Init(config.LocalizationTable);
@@ -74,6 +76,7 @@ namespace Pinball.Core
             LocalizationTable.Release();
             LocalizationManager.Release();
             GameSettings.Release();
+            AchievementManager.Release();
             SaveManager.Release();
         }
 

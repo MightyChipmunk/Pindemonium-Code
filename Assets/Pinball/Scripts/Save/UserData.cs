@@ -95,6 +95,18 @@ namespace Pinball.Save
             return index == INVALID_INDEX ? default : _flipperBestStages[index];
         }
 
+        public bool HasAnyEndlessClear()
+        {
+            if (null == _flipperBestStages)
+                return false;
+
+            for (int i = 0; i < _flipperBestStages.Count; ++i)
+                if (_flipperBestStages[i].EndlessStageNumber > NO_BEST_STAGE)
+                    return true;
+
+            return false;
+        }
+
         public bool TryUpdateBestStage(string flipperId, int stageNumber)
         {
             return TryMergeFlipperBest(flipperId, stageNumber, false, NO_BEST_STAGE);
