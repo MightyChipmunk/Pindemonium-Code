@@ -1,10 +1,12 @@
 ﻿#if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using Alchemy.Editor;
 using Alchemy.Inspector;
 using Pinball.Ingame.Shop;
 using Pinball.Ingame.Tutorial;
 using Pinball.Save;
+using Pinball.Steam;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -43,6 +45,7 @@ namespace Pinball.Ingame.Cheat.Editor
         const string STAGE_GROUP = "스테이지";
         const string MONEY_GROUP = "돈";
         const string TUTORIAL_GROUP = "튜토리얼";
+        const string ACHIEVEMENT_GROUP = "도전과제";
         const string ITEM_GROUP = "아이템 목록 필터";
         const string ITEM_ASSET_FILTER = "t:ShopItemData";
         const string CATALOG_ASSET_FILTER = "t:ShopCatalogData";
@@ -74,6 +77,13 @@ namespace Pinball.Ingame.Cheat.Editor
         const string STAGE_FAIL_LOG = "[IngameCheat] 현재 스테이지 패배";
         const string TUTORIAL_SKIP_LOG = "[IngameCheat] 튜토리얼 스킵(전체 완료 처리)";
         const string TUTORIAL_RESET_LOG = "[IngameCheat] 튜토리얼 진행도 초기화 (다음 인게임 진입부터 적용)";
+        const string ACHIEVEMENT_UNLOCK_LOG_FORMAT = "[IngameCheat] 도전과제 해금 요청: {0}";
+        const string ACHIEVEMENT_CLEAR_LOG_FORMAT = "[IngameCheat] 도전과제 초기화 요청: {0}";
+        const string ACHIEVEMENT_RESET_ALL_LOG = "[IngameCheat] 도전과제·스탯 전체 초기화 요청";
+        const string ACHIEVEMENT_STATE_FORMAT = "[IngameCheat] {0}: {1}";
+        const string ACHIEVEMENT_UNLOCKED_LABEL = "달성";
+        const string ACHIEVEMENT_LOCKED_LABEL = "미달성";
+        const string ACHIEVEMENT_NOT_READY_WARNING = "[IngameCheat] Steam 도전과제를 쓸 수 없습니다. Loading 씬부터 플레이해 Steam이 초기화됐는지 확인하세요.";
         const string SAVE_NOT_READY_WARNING = "[IngameCheat] 세이브가 초기화되지 않았습니다. 로비 또는 인게임 씬을 실행하세요.";
         const string NOT_IN_STAGE_WARNING = "[IngameCheat] 스테이지 진행 중이 아닙니다. 일시정지 중이거나 상점/스테이지 선택 화면입니다.";
         const string SLOT_FULL_WARNING_FORMAT = "[IngameCheat] 패시브 슬롯이 가득 찼거나 이미 보유한 아이템입니다: {0}";
@@ -114,6 +124,7 @@ namespace Pinball.Ingame.Cheat.Editor
         [SerializeField] string _appliedFilterKey = string.Empty;
 
         [SerializeField, BoxGroup(MONEY_GROUP), LabelText("추가할 금액")] int _moneyAmount = DEFAULT_MONEY_AMOUNT;
+        [SerializeField, BoxGroup(ACHIEVEMENT_GROUP), LabelText("과제")] AchievementManager.EAchievement _achievement = AchievementManager.EAchievement.UpgradeX5;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("종류")] EKindFilter _kindFilter = EKindFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("패시브 분류"), ShowIf(nameof(ShowsPassiveCategoryFilter))] EPassiveCategoryFilter _passiveCategoryFilter = EPassiveCategoryFilter.All;
         [SerializeField, BoxGroup(ITEM_GROUP), LabelText("이름 검색")] string _searchText = string.Empty;
@@ -311,6 +322,55 @@ namespace Pinball.Ingame.Cheat.Editor
 
             _tutorialProgress.ResetAll();
             Debug.Log(TUTORIAL_RESET_LOG);
+        }
+
+        [Button, BoxGroup(ACHIEVEMENT_GROUP), LabelText("선택 과제 해금")]
+        void UnlockAchievement()
+        {
+            if (!IsAchievementReady())
+                return;
+
+            AchievementManager.Unlock(_achievement);
+            Debug.Log(string.Format(ACHIEVEMENT_UNLOCK_LOG_FORMAT, AchievementManager.GetApiName(_achievement)));
+        }
+
+        [Button, BoxGroup(ACHIEVEMENT_GROUP), LabelText("선택 과제 초기화")]
+        void ClearAchievement()
+        {
+            if (!IsAchievementReady())
+                return;
+
+            AchievementManager.Clear(_achievement);
+            Debug.Log(string.Format(ACHIEVEMENT_CLEAR_LOG_FORMAT, AchievementManager.GetApiName(_achievement)));
+        }
+
+        [Button, BoxGroup(ACHIEVEMENT_GROUP), LabelText("전체 과제·스탯 초기화")]
+        void ResetAllAchievements()
+        {
+            if (!IsAchievementReady())
+                return;
+
+            AchievementManager.ResetAll();
+            Debug.Log(ACHIEVEMENT_RESET_ALL_LOG);
+        }
+
+        [Button, BoxGroup(ACHIEVEMENT_GROUP), LabelText("달성 상태 출력")]
+        void LogAchievementStates()
+        {
+            if (!IsAchievementReady())
+                return;
+
+            foreach (AchievementManager.EAchievement achievement in Enum.GetValues(typeof(AchievementManager.EAchievement)))
+                Debug.Log(string.Format(ACHIEVEMENT_STATE_FORMAT, AchievementManager.GetApiName(achievement), AchievementManager.IsUnlocked(achievement) ? ACHIEVEMENT_UNLOCKED_LABEL : ACHIEVEMENT_LOCKED_LABEL));
+        }
+
+        bool IsAchievementReady()
+        {
+            if (EditorApplication.isPlaying && AchievementManager.IsAvailable)
+                return true;
+
+            Debug.LogWarning(ACHIEVEMENT_NOT_READY_WARNING);
+            return false;
         }
 
         bool IsSaveReady()
