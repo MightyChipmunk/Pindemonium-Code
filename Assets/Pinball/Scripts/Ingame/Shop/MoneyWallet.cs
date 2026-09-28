@@ -1,3 +1,5 @@
+using System;
+
 namespace Pinball.Ingame.Shop
 {
     public class MoneyWallet
@@ -5,6 +7,8 @@ namespace Pinball.Ingame.Shop
         int _current = 0;
 
         public int Current => _current;
+
+        public event Action<int> OnChanged;
 
         public MoneyWallet(int initialAmount)
         {
@@ -17,6 +21,7 @@ namespace Pinball.Ingame.Shop
                 return;
 
             _current += amount;
+            OnChanged?.Invoke(_current);
         }
 
         public bool TrySpend(int amount)
@@ -28,6 +33,7 @@ namespace Pinball.Ingame.Shop
                 return false;
 
             _current -= amount;
+            OnChanged?.Invoke(_current);
             return true;
         }
     }

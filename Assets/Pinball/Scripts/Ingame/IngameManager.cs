@@ -24,6 +24,7 @@ using Pinball.Ingame.State;
 using Pinball.Ingame.Tutorial;
 using Pinball.Ingame.UI;
 using Pinball.Save;
+using Pinball.Steam;
 using Pinball.UI;
 using UnityEngine;
 using GameCore.Localization;
@@ -96,6 +97,7 @@ namespace Pinball.Ingame
         FlipperData.RunSetup _runSetup = null;
         bool _isRoundRewardPending = false;
         bool _isExitingToLobby = false;
+        int _stageStartUsedBallCount = 0;
 
         void Awake()
         {
@@ -172,6 +174,7 @@ namespace Pinball.Ingame
         void InitRunModel(IngameRunSetupResolver.RunStart start)
         {
             _wallet = new MoneyWallet(start.Money);
+            _wallet.OnChanged += OnMoneyChanged;
             _loadout = new PlayerLoadout(start.BallPassiveSlotCount, start.MapPassiveSlotCount, start.CommonPassiveSlotCount);
             _vouchers = new PlayerVouchers(_runSetup.IsInterestDisabled);
             if (start.IsNewRun)
@@ -189,6 +192,9 @@ namespace Pinball.Ingame
 
             _powerSurgeCharger = new PowerSurgeCharger(GetIsPlaying);
             _breakMoneyGranter = new BreakMoneyGranter(_wallet, PlayMoneyGainSound);
+            CheckLoadoutAchievements();
+            AchievementManager.NotifyVoucherCount(_vouchers.OwnedCount);
+            AchievementManager.NotifyMoney(_wallet.Current);
         }
 
         static void PlayMoneyGainSound()
@@ -219,6 +225,18 @@ namespace Pinball.Ingame
         void OnVoucherPurchased()
         {
             _gimmickRoller.SetFreeRerollCount(Mathf.RoundToInt(_vouchers.GetEffectSum(VoucherData.EEffect.StageFreeReroll)));
+            AchievementManager.NotifyVoucherCount(_vouchers.OwnedCount);
+        }
+
+        void OnMoneyChanged(int money)
+        {
+            AchievementManager.NotifyMoney(money);
+        }
+
+        void CheckLoadoutAchievements()
+        {
+            AchievementManager.NotifyUpgradeCount(_loadout.GetMaxUpgradeCount());
+            AchievementManager.NotifyPassiveSlots(_loadout.PassiveCount, _loadout.GetTotalPassiveSlotCount());
         }
 
         void InitStageFlow(IngameRunSetupResolver.RunStart start)
@@ -228,6 +246,7 @@ namespace Pinball.Ingame
             _gimmickResolver = new StageGimmickResolver(_gimmickRoller);
             _stageTracker = new StageProgressTracker(_stageCatalog, start.StageNumber, start.Score, _gimmickResolver, _endlessConfig, start.IsEndless);
             _stageTracker.OnStageStarted += OnStageStarted;
+            _stageTracker.OnStageCleared += OnStageCleared;
             _stageTracker.OnAllStagesCleared += OnAllStagesCleared;
             _gimmickRoller.RestoreOrSetBase(start.GimmickIndices, _stageTracker.GetCurrentStage(), GetEndlessRoundLastGimmick());
 
@@ -447,6 +466,7 @@ namespace Pinball.Ingame
             _shopState.RefreshOpenedView();
             _stageSelectState.RefreshOpenedView();
             RefreshOwnedItems();
+            CheckLoadoutAchievements();
         }
 #else
         void InitCheatHandler()
@@ -622,6 +642,7 @@ namespace Pinball.Ingame
 
         void OnStageStarted(int stageNumber, StageData stage)
         {
+            _stageStartUsedBallCount = _ballFlow.UsedBallCount;
             _tutorialManager.NotifyStageStarted(stageNumber);
             if (!_stageTracker.IsEndless)
                 _saveHandler.UpdateBestStage(GetFlipperId(), stageNumber);
@@ -631,9 +652,24 @@ namespace Pinball.Ingame
             ShowStageGimmicks();
         }
 
+        void OnStageCleared(int stageNumber, StageData stage)
+        {
+            NotifyStageClearAchievements();
+        }
+
         void OnAllStagesCleared()
         {
             _saveHandler.UpdateBestClear(GetFlipperId());
+            NotifyStageClearAchievements();
+            AchievementManager.NotifyGameCleared();
+        }
+
+        void NotifyStageClearAchievements()
+        {
+            AchievementManager.NotifyStageCleared(
+                isEndless: _stageTracker.IsEndless,
+                remainingBalls: _ballFlow.RemainingBalls,
+                usedBallsInStage: _ballFlow.UsedBallCount - _stageStartUsedBallCount);
         }
 
         string GetFlipperId()
@@ -681,6 +717,7 @@ namespace Pinball.Ingame
         {
             SaveProgress(true);
             RefreshOwnedItems();
+            CheckLoadoutAchievements();
         }
 
         void OnShopOffersChanged()
